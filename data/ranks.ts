@@ -1,0 +1,41 @@
+type RankInfo = { name: string; title: string; min: number; color: string; trials: string[] };
+export const ranks: RankInfo[] = [
+  { name: "Ash III", title: "灰の起動者", min: 0, color: "#71717a", trials: ["実績1日", "筋トレか有酸素を1回行う"] },
+  { name: "Ash II", title: "灰を踏む者", min: 120, color: "#78716c", trials: ["実績2日", "有酸素1日"] },
+  { name: "Ash I", title: "火種を守る者", min: 220, color: "#a8a29e", trials: ["実績3日", "筋トレ1日"] },
+  { name: "Ember III", title: "小さな火花", min: 360, color: "#fb923c", trials: ["実績4日", "累計距離5km"] },
+  { name: "Ember II", title: "燃え始めた鼓動", min: 520, color: "#f97316", trials: ["実績5日", "筋トレ2日", "有酸素2日"] },
+  { name: "Ember I", title: "火種の入門者", min: 700, color: "#fb7185", trials: ["実績7日", "3日連続記録"] },
+  { name: "Iron III", title: "鉄の脈動", min: 920, color: "#38bdf8", trials: ["実績8日", "筋トレ3日", "有酸素3日"] },
+  { name: "Iron II", title: "鉄と鼓動の修練者", min: 1180, color: "#0ea5e9", trials: ["実績10日", "累計距離15km"] },
+  { name: "Iron I", title: "折れない基礎", min: 1480, color: "#0284c7", trials: ["実績12日", "筋トレ5日", "有酸素5日"] },
+  { name: "Twin Spark III", title: "二刀の火花", min: 1820, color: "#22c55e", trials: ["筋トレ6日", "有酸素6日", "累計距離25km"] },
+  { name: "Twin Spark II", title: "二刀の加速者", min: 2200, color: "#16a34a", trials: ["実績15日", "種目10個記録"] },
+  { name: "Twin Spark I", title: "二刀流の定着者", min: 2620, color: "#15803d", trials: ["実績18日", "4日連続記録"] },
+  { name: "Forge III", title: "鍛鉄の走者", min: 3100, color: "#f59e0b", trials: ["実績21日", "筋トレ8日", "有酸素8日"] },
+  { name: "Forge II", title: "鍛鉄の疾走者", min: 3650, color: "#d97706", trials: ["累計距離50km", "筋トレ10日"] },
+  { name: "Forge I", title: "鍛え抜く者", min: 4250, color: "#b45309", trials: ["実績30日", "有酸素12日"] },
+  { name: "Blade III", title: "刃と呼吸の二刀流", min: 4900, color: "#ef4444", trials: ["累計距離80km", "種目20個記録"] },
+  { name: "Blade II", title: "切り拓く呼吸", min: 5600, color: "#dc2626", trials: ["実績40日", "5日連続記録"] },
+  { name: "Blade I", title: "鋭き二刀の型", min: 6400, color: "#b91c1c", trials: ["筋トレ18日", "有酸素18日"] },
+  { name: "Warborn III", title: "戦火の先駆者", min: 7300, color: "#a855f7", trials: ["実績55日", "累計距離120km"] },
+  { name: "Warborn II", title: "戦場を駆ける者", min: 8300, color: "#9333ea", trials: ["筋トレ25日", "有酸素25日"] },
+  { name: "Warborn I", title: "戦火を越える二刀流", min: 9500, color: "#7e22ce", trials: ["実績75日", "VO2MAX記録"] },
+  { name: "Apex III", title: "頂への挑戦者", min: 10900, color: "#e0f2fe", trials: ["累計距離200km", "体脂肪率記録"] },
+  { name: "Apex II", title: "頂に迫る戦士", min: 12500, color: "#bae6fd", trials: ["実績100日", "7日連続記録"] },
+  { name: "Apex I", title: "頂の二刀流戦士", min: 14500, color: "#f8fafc", trials: ["筋トレ40日", "有酸素40日"] },
+  { name: "Master Dualist", title: "二刀流の達人", min: 17000, color: "#fde047", trials: ["実績150日", "累計距離300km"] },
+  { name: "Grandmaster Hunter", title: "風を狩る覇者", min: 21000, color: "#facc15", trials: ["実績220日", "筋トレ80日", "有酸素80日"] },
+  { name: "Fear None Sovereign", title: "恐れなき覇王", min: 28000, color: "#fbbf24", trials: ["実績365日", "二刀流を継続", "自分史上最高の身体を目指す"] },
+];
+
+export const longTermRanks = [
+  { days: 0, name: "First Flame", title: "初日の火種", bonus: 100 },
+  { days: 30, name: "Iron Habit", title: "1ヶ月継続の鉄習慣", bonus: 500 },
+  { days: 90, name: "Forge Disciple", title: "3ヶ月目の鍛錬者", bonus: 1200 },
+  { days: 180, name: "Half-Year Warrior", title: "6ヶ月の戦士", bonus: 2600 },
+  { days: 365, name: "Year One Dualist", title: "12ヶ月の二刀流", bonus: 6000 },
+  { days: 730, name: "Two-Year Vanguard", title: "2年継続の先駆者", bonus: 15000 },
+  { days: 1095, name: "Fear None Legend", title: "3年継続の伝説", bonus: 30000 },
+];
+
