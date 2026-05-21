@@ -62,6 +62,45 @@ function extractJsonObject(text: string) {
   try { return JSON.parse(match[0]); } catch { return null; }
 }
 
+
+function decodeXml(value: string) {
+  return String(value || "")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+function stripTags(value: string) {
+  return decodeXml(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+async function fetchGoogleNewsItems(query: string) {
+  const q = encodeURIComponent(`${query} when:7d`);
+  const url = `https://news.google.com/rss/search?q=${q}&hl=ja&gl=JP&ceid=JP:ja`;
+  const res = await fetch(url, { headers: { "User-Agent": "LifeCommandOS/1.0" }, next: { revalidate: 900 } as any });
+  if (!res.ok) return [];
+  const xml = await res.text();
+  return Array.from(xml.matchAll(/<item>([\s\S]*?)<\/item>/g)).slice(0, 8).map((match) => {
+    const item = match[1];
+    const title = stripTags(item.match(/<title>([\s\S]*?)<\/title>/)?.[1] || "");
+    const link = stripTags(item.match(/<link>([\s\S]*?)<\/link>/)?.[1] || "");
+    const pubDate = stripTags(item.match(/<pubDate>([\s\S]*?)<\/pubDate>/)?.[1] || "");
+    const source = stripTags(item.match(/<source[^>]*>([\s\S]*?)<\/source>/)?.[1] || "");
+    return { title, link, pubDate, source };
+  }).filter((item) => item.title);
+}
+
+function splitNewsTerms(value: string) {
+  return String(value || "")
+    .split(/[、,\n]/)
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
 function normalizeBudget(input: unknown) {
   const row = (input || {}) as Record<string, unknown>;
   const amount = Math.max(0, Math.round(Number(row.amount || row.total || row.price || 0)));
@@ -82,7 +121,7 @@ export async function POST(req: Request) {
     const mode = String(body.mode || "");
     const aiModes = [
       "memoAI", "diaryAI", "guideAI", "budgetAI", "emotionAI", "weeklyReportAI", "todayAnalysisAI",
-      "memoSmartAI", "memoToTodosAI", "todoAI", "belongingsAI", "brainDumpAI", "navigationAI", "gentleNoticeAI", "emotionSpendingAI", "happinessBudgetAI", "mindMapAI", "lifeArchiveAI", "reversePlanAI", "futureSelfAI", "doingOrderAI", "imageScheduleAI", "imageToTodosAI", "receiptToBudgetAI",
+      "memoSmartAI", "memoToTodosAI", "todoAI", "belongingsAI", "brainDumpAI", "navigationAI", "gentleNoticeAI", "emotionSpendingAI", "happinessBudgetAI", "mindMapAI", "lifeArchiveAI", "reversePlanAI", "futureSelfAI", "doingOrderAI", "imageScheduleAI", "imageToTodosAI", "receiptToBudgetAI", "aiNews",
     ];
     if (!aiModes.includes(mode)) return NextResponse.json({ error: "mode が不正です" }, { status: 400 });
 
@@ -91,7 +130,33 @@ export async function POST(req: Request) {
       if (mode === "memoToTodosAI") return NextResponse.json(localTodoCandidates(String(body.text || "")));
       if (mode === "imageToTodosAI" || mode === "imageScheduleAI") return NextResponse.json({ todos: [], events: [], result: "OPENAI_API_KEY がVercelに設定されていないため、画像読み取りは使えません。" }, { status: 200 });
       if (mode === "receiptToBudgetAI") return NextResponse.json({ budget: null, result: "OPENAI_API_KEY がVercelに設定されていないため、レシート読み取りは使えません。" }, { status: 200 });
+      if (mode === "aiNews") return NextResponse.json({ result: "OPENAI_API_KEY が未設定だから、癒し系AIのニュース要約はまだ使えないみたい。Vercelにキーを入れると動くよ。" }, { status: 200 });
       return NextResponse.json({ error: "OPENAI_API_KEY が設定されていません" }, { status: 500 });
+    }
+
+
+    if (mode === "aiNews") {
+      const wantTerms = splitNewsTerms(body.want || "筋トレ、ランニング、サウナ、健康、睡眠、運動科学");
+      const avoidText = String(body.avoid || "政治、事故、事件、災害、炎上");
+      try {
+        const fetched = (await Promise.all(wantTerms.map((term) => fetchGoogleNewsItems(term)))).flat();
+        const avoidWords = splitNewsTerms(avoidText);
+        const unique = Array.from(new Map(fetched.map((item) => [item.title, item])).values())
+          .filter((item) => !avoidWords.some((word) => `${item.title} ${item.source}`.includes(word)))
+          .slice(0, 12);
+        if (!unique.length) return NextResponse.json({ result: "今日は好みに合うニュースが少なめだったよ。苦手な話題を避けた結果、無理に出さない方がよさそう。" });
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: "あなたはLife Command OSの癒し系ニュース案内AIです。ユーザーが聞きたい話題だけを、政治・事故・事件など苦手な話題を避けながら、やさしく具体的に日本語でまとめます。命令口調は禁止。見出し3〜5個、各2文以内。最後に今日の行動に繋がる一言を添えてください。" },
+            { role: "user", content: JSON.stringify({ want: wantTerms, avoid: avoidText, news: unique }, null, 2) },
+          ],
+        });
+        return NextResponse.json({ result: completion.choices[0].message.content || "ニュースをまとめられなかったみたい。" });
+      } catch (error) {
+        console.error(error);
+        return NextResponse.json({ result: "ニュース取得が少し詰まったみたい。設定は保存されているから、少し時間を置いてもう一度で大丈夫だよ。" }, { status: 200 });
+      }
     }
 
     if (mode === "receiptToBudgetAI") {

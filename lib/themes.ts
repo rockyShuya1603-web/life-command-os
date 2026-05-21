@@ -1,4 +1,5 @@
 export type ThemeKey =
+  | "mirai"
   | "hanabi"
   | "natsumatsuri"
   | "umi"
@@ -16,6 +17,15 @@ export type ThemeKey =
   | "paper";
 
 export const themes = {
+  mirai: {
+    name: "未来",
+    emoji: "🌐",
+    bg: "from-[#020617] via-[#082f72] to-[#020617]",
+    card: "bg-sky-950/35 border-sky-200/25 shadow-sky-400/10",
+    accent: "from-sky-200 via-blue-300 to-indigo-300",
+    image: "/future-bg.png?v=20260521-future-v14",
+    pattern: "radial-gradient(circle at 50% 0%, rgba(125,211,252,.24), transparent 40%), radial-gradient(circle at 80% 20%, rgba(129,140,248,.18), transparent 36%)",
+  },
   hanabi: {
     name: "花火",
     emoji: "🎆",
@@ -139,9 +149,9 @@ export const themes = {
 } as const;
 
 export function getStoredTheme(): ThemeKey {
-  if (typeof window === "undefined") return "hanabi";
+  if (typeof window === "undefined") return "mirai";
   const stored = localStorage.getItem("theme") as ThemeKey | null;
-  return stored && stored in themes ? stored : "hanabi";
+  return stored && stored in themes ? stored : "mirai";
 }
 
 export function saveTheme(theme: ThemeKey) {
