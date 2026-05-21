@@ -68,3 +68,161 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .diary-content h3 { font-size: 1.25rem; font-weight: 800; line-height: 1.35; margin: .7rem 0 .35rem; }
 .diary-content img { max-width: 100%; border-radius: 1.5rem; margin: .8rem 0; }
 .diary-content p { margin: .5rem 0; }
+
+
+.natsumatsuri-bg {
+  filter: saturate(1.15) contrast(1.05);
+  transform: scale(1.02);
+}
+
+/* ===== Summer Festival / Fireworks full UI theme ===== */
+.matsuri-os {
+  --matsuri-gold: #ffd98a;
+  --matsuri-amber: #f59e0b;
+  --matsuri-red: #b91c1c;
+  --matsuri-rose: #fb7185;
+  --matsuri-ink: #090513;
+  --matsuri-panel: rgba(38, 12, 30, 0.66);
+  --matsuri-line: rgba(255, 210, 132, 0.34);
+  background: radial-gradient(circle at 50% 0%, rgba(244, 63, 94, .18), transparent 34%), #05030d;
+}
+
+.matsuri-os .matsuri-bg-layer::before,
+.matsuri-os .matsuri-bg-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: inherit;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.matsuri-os .matsuri-bg-layer::before {
+  filter: saturate(1.22) contrast(1.08) brightness(.72);
+  transform: scale(1.015);
+}
+
+.matsuri-os .matsuri-bg-layer::after {
+  background:
+    radial-gradient(circle at 48% 6%, rgba(255, 90, 150, .34), transparent 18%),
+    radial-gradient(circle at 72% 10%, rgba(56, 189, 248, .22), transparent 18%),
+    radial-gradient(circle at 14% 35%, rgba(251, 146, 60, .2), transparent 22%),
+    linear-gradient(90deg, rgba(4, 2, 15, .88), rgba(9, 4, 23, .42) 42%, rgba(5, 2, 12, .72));
+  mix-blend-mode: screen;
+  opacity: .72;
+}
+
+.matsuri-os .matsuri-night-vignette {
+  background:
+    radial-gradient(circle at center top, transparent 0 34%, rgba(0, 0, 0, .4) 72%, rgba(0,0,0,.82) 100%),
+    linear-gradient(180deg, rgba(0,0,0,.06), rgba(0,0,0,.55));
+}
+
+.matsuri-os .matsuri-sidebar,
+.matsuri-os .matsuri-topbar,
+.matsuri-os .matsuri-stage,
+.matsuri-os .matsuri-card {
+  border-color: var(--matsuri-line) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 218, 138, .09), transparent 28%),
+    radial-gradient(circle at 92% 8%, rgba(248, 113, 113, .18), transparent 28%),
+    linear-gradient(180deg, rgba(48, 16, 38, .78), rgba(12, 6, 24, .72)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.13),
+    0 22px 55px rgba(0,0,0,.48),
+    0 0 0 1px rgba(255, 180, 82, .04) !important;
+  backdrop-filter: blur(18px) saturate(1.25);
+}
+
+.matsuri-os .matsuri-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.matsuri-os .matsuri-card::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 95% 0%, rgba(255, 190, 90, .16), transparent 24%),
+    radial-gradient(circle at 0% 100%, rgba(236, 72, 153, .12), transparent 28%),
+    repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 1px, transparent 1px 18px);
+  opacity: .78;
+}
+
+.matsuri-os .matsuri-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.matsuri-os .matsuri-sidebar button,
+.matsuri-os nav button,
+.matsuri-os .matsuri-topbar button,
+.matsuri-os .matsuri-stage button {
+  border-color: rgba(255, 210, 132, .24);
+}
+
+.matsuri-os .matsuri-sidebar button:hover,
+.matsuri-os nav button:hover,
+.matsuri-os .matsuri-stage button:hover {
+  background: linear-gradient(135deg, rgba(185, 28, 28, .34), rgba(251, 146, 60, .18));
+  box-shadow: 0 0 24px rgba(251, 146, 60, .18);
+}
+
+.matsuri-os .matsuri-welcome {
+  background:
+    linear-gradient(90deg, rgba(8, 3, 18, .45), rgba(58, 18, 43, .62)),
+    radial-gradient(circle at 75% 16%, rgba(249, 115, 22, .34), transparent 23%),
+    radial-gradient(circle at 48% 8%, rgba(236, 72, 153, .24), transparent 22%) !important;
+}
+
+.matsuri-os .matsuri-welcome::after {
+  content: "夏祭り";
+  position: absolute;
+  right: 24px;
+  top: 22px;
+  writing-mode: vertical-rl;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 221, 150, .44);
+  background: linear-gradient(180deg, rgba(255, 230, 170, .9), rgba(185, 28, 28, .92));
+  padding: 14px 9px;
+  color: #45100a;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-shadow: 0 1px 0 rgba(255,255,255,.25);
+  box-shadow: 0 0 30px rgba(251, 146, 60, .32);
+}
+
+.matsuri-os .matsuri-mini {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 0 24px rgba(251, 146, 60, .08);
+}
+
+.matsuri-row {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-height: 2.55rem;
+  border-bottom: 1px solid rgba(255, 210, 132, .16);
+  color: rgba(255,255,255,.82);
+  font-size: .92rem;
+}
+
+.matsuri-row:last-child { border-bottom: 0; }
+
+.matsuri-os input,
+.matsuri-os textarea,
+.matsuri-os select {
+  border-color: rgba(255, 210, 132, .28) !important;
+  background: rgba(9, 4, 19, .86) !important;
+}
+
+.matsuri-os ::selection {
+  background: rgba(251, 146, 60, .45);
+}
+
+@media (max-width: 640px) {
+  .matsuri-os .matsuri-stage { padding: .75rem !important; }
+  .matsuri-os .matsuri-welcome::after { right: 12px; top: 12px; transform: scale(.82); transform-origin: top right; }
+}

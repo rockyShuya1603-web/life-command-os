@@ -1120,7 +1120,7 @@ export default function Home() {
   const panelProps = { snapshot, refreshSnapshot, setPage };
   return (
     <main
-      className={`relative min-h-screen overflow-hidden bg-gradient-to-br ${theme.bg} ${visual.shell} ${themeKey === "hanabi" ? "matsuri-os" : ""} text-white`}
+      className={`relative min-h-screen overflow-hidden bg-gradient-to-br ${theme.bg} ${visual.shell} text-white`}
     >
       {appNotice && (
         <div className="fixed inset-x-3 top-3 z-[100] mx-auto max-w-md rounded-3xl border border-white/15 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl">
@@ -1143,7 +1143,7 @@ export default function Home() {
       )}
       <div
         aria-hidden="true"
-        className={`pointer-events-none fixed inset-0 z-0 ${themeKey === "hanabi" ? "matsuri-bg-layer opacity-100" : "opacity-70"}`}
+        className="pointer-events-none fixed inset-0 z-0 opacity-70"
         style={{
           backgroundImage: themeImage ? `url(${themeImage})` : theme.pattern,
           backgroundSize: themeImage
@@ -1154,11 +1154,11 @@ export default function Home() {
         }}
       />
       <div
-        className={`pointer-events-none fixed inset-0 z-0 ${themeKey === "hanabi" ? "matsuri-night-vignette" : "bg-black/20"}`}
+        className="pointer-events-none fixed inset-0 z-0 bg-black/20"
         aria-hidden="true"
       />
-      <div className="relative z-10 mx-auto flex max-w-[1540px] gap-4 px-3 pb-32 pt-4 sm:px-4 sm:pt-6 lg:pb-8">
-        <aside className="matsuri-sidebar sticky top-4 hidden h-[calc(100vh-2rem)] w-64 shrink-0 overflow-hidden rounded-[2rem] border border-white/10 bg-black/45 p-3 shadow-2xl backdrop-blur-xl lg:block">
+      <div className="relative z-10 mx-auto flex max-w-7xl gap-4 px-3 pb-32 pt-4 sm:px-4 sm:pt-6 lg:pb-8">
+        <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-64 shrink-0 overflow-hidden rounded-[2rem] border border-white/10 bg-black/45 p-3 shadow-2xl backdrop-blur-xl lg:block">
           <div className="mb-3 rounded-3xl bg-white/10 p-4">
             <p className="text-xs font-black text-white/50">Life Command OS</p>
             <p className="mt-1 text-lg font-black">ページ一覧</p>
@@ -1185,7 +1185,7 @@ export default function Home() {
         </aside>
         <div className="min-w-0 flex-1">
           <header
-            className={`matsuri-topbar rounded-[1.75rem] border ${theme.card} p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] sm:p-5`}
+            className={`rounded-[1.75rem] border ${theme.card} p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] sm:p-5`}
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -1248,7 +1248,7 @@ export default function Home() {
             </div>
           </header>
           <section
-            className={`matsuri-stage mt-4 rounded-[1.75rem] border ${theme.card} p-3 shadow-2xl backdrop-blur-xl sm:mt-5 sm:rounded-[2rem] sm:p-6`}
+            className={`mt-4 rounded-[1.75rem] border ${theme.card} p-3 shadow-2xl backdrop-blur-xl sm:mt-5 sm:rounded-[2rem] sm:p-6`}
           >
             {page === "home" && (
               <HomePanel themeKey={themeKey} {...panelProps} />
@@ -1505,7 +1505,7 @@ function GlassCard({
 }) {
   return (
     <div
-      className={`matsuri-card rounded-[1.6rem] border border-white/10 bg-white/[0.075] p-4 shadow-xl ${className}`}
+      className={`rounded-[1.6rem] border border-white/10 bg-white/[0.075] p-4 shadow-xl ${className}`}
     >
       {children}
     </div>
@@ -1747,7 +1747,7 @@ function HomePanel({
 }: PanelProps & { themeKey: ThemeKey }) {
   const theme = themes[themeKey];
   const [guideMessage, setGuideMessage] = useState(
-    "こんばんは、しゅうやさん。今日も最高の1日を積み上げよう。",
+    "おかえり。今日の記録を一緒に整えるね。",
   );
   const [loading, setLoading] = useState(false);
   async function refreshGuide() {
@@ -1776,106 +1776,52 @@ function HomePanel({
     const saved = localStorage.getItem("lifeGuideMessage");
     if (saved) setGuideMessage(saved);
     const handler = (e: Event) =>
-      setGuideMessage((e as CustomEvent<string>).detail || "記録を受け取ったよ。");
+      setGuideMessage(
+        (e as CustomEvent<string>).detail || "記録を受け取ったよ。",
+      );
     window.addEventListener("life-guide-message", handler as EventListener);
-    return () => window.removeEventListener("life-guide-message", handler as EventListener);
+    return () =>
+      window.removeEventListener(
+        "life-guide-message",
+        handler as EventListener,
+      );
   }, []);
-
   const now = new Date();
-  const today = todayKey();
-  const dateLabel = now.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
-  const timeLabel = now.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-  const todayTodos = (snapshot?.todos || []).filter((t) => !t.done && (t.due_date || getCreatedDateKey(t.created_at)) === today);
-  const doneTodos = (snapshot?.todos || []).filter((t) => t.done).length;
-  const allTodos = snapshot?.todos?.length || 0;
-  const monthLogs = (snapshot?.budget || []).filter((b) => isSameMonth(b.spend_date));
-  const income = monthLogs.filter((b) => b.type === "income").reduce((s, b) => s + Number(b.amount || 0), 0);
-  const expense = monthLogs.filter((b) => b.type === "expense").reduce((s, b) => s + Number(b.amount || 0), 0);
-  const balance = income - expense;
-  const sleep = snapshot?.sleep?.[0];
-  const coffee = snapshot?.coffee?.find((c) => c.drink_date === today);
-  const latestMemo = (snapshot?.memos || []).slice(0, 4);
-  const routines = (snapshot?.routines || []).filter((r) => r.active).slice(0, 4);
-  const completion = allTodos ? Math.round((doneTodos / allTodos) * 100) : 0;
-
+  const dateLabel = now.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  });
+  const timeLabel = now.toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   return (
-    <div className="matsuri-dashboard space-y-4">
-      <div className="matsuri-hero grid gap-4 xl:grid-cols-[1.2fr_0.82fr]">
-        <GlassCard className="matsuri-welcome relative min-h-[245px] overflow-hidden p-6 sm:p-8">
-          <div className="relative z-10 max-w-xl">
-            <p className="text-xs font-black tracking-[0.3em] text-amber-100/75">LIFE COMMAND OS / SUMMER FESTIVAL</p>
-            <h2 className="mt-5 text-3xl font-black leading-tight text-white sm:text-5xl">こんばんは、しゅうやさん 🌙</h2>
-            <p className="mt-4 max-w-lg text-sm leading-7 text-amber-50/75">花火・屋台・提灯の空気を、背景だけじゃなくカード、枠線、アイコン、ボタン、ページ全体の質感に反映したホームだよ。</p>
-            <div className="mt-5 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-5">
-              {[{label:"エネルギー",value:"78%",icon:"🔥"},{label:"集中力",value:"82",icon:"🎯"},{label:"気分",value:"Good",icon:"😊"},{label:"時刻",value:timeLabel,icon:"🕘"},{label:"日付",value:dateLabel.replace(/年|月/g,"/").replace("日","") ,icon:"📅"}].map((item) => (
-                <div key={item.label} className="matsuri-mini rounded-2xl border border-amber-300/20 bg-black/30 p-3 text-center">
-                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full border border-amber-200/30 bg-orange-400/10 text-lg shadow-[0_0_22px_rgba(251,146,60,.35)]">{item.icon}</div>
-                  <p className="mt-2 text-[10px] font-black text-amber-100/55">{item.label}</p>
-                  <p className="mt-1 text-sm font-black text-white">{item.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </GlassCard>
-
-        <GlassCard className="matsuri-quest p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black text-amber-100/60">モーニングクエスト</p>
-              <h3 className="mt-1 text-2xl font-black">今日の進行</h3>
-            </div>
-            <span className="rounded-full border border-orange-300/30 bg-orange-400/15 px-3 py-1 text-xs font-black text-orange-100">進捗 {completion}%</span>
-          </div>
-          <div className="mt-4 space-y-3">
-            {(todayTodos.length ? todayTodos : [
-              { id: "stretch", title: "ストレッチする", done: false, priority: "normal", due_date: today, created_at: new Date().toISOString() },
-              { id: "coffee", title: "コーヒーを淹れる", done: false, priority: "normal", due_date: today, created_at: new Date().toISOString() },
-              { id: "goal", title: "今日の目標を立てる", done: false, priority: "normal", due_date: today, created_at: new Date().toISOString() },
-            ] as Todo[]).slice(0, 4).map((todo) => (
-              <button key={todo.id} onClick={() => setPage("todos")} className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-left transition hover:bg-white/10">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-cyan-200/50 bg-cyan-300/20 text-xs">✓</span>
-                <span className="min-w-0 flex-1 truncate text-sm font-bold text-white/85">{todo.title}</span>
-                <span className="rounded-full bg-orange-400/20 px-2 py-1 text-[10px] font-black text-orange-100">{todo.priority === "high" ? "高" : todo.priority === "low" ? "低" : "中"}</span>
-              </button>
-            ))}
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-orange-300 via-rose-300 to-fuchsia-300" style={{ width: `${Math.max(8, completion)}%` }} /></div>
-        </GlassCard>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-3">
+    <div className="space-y-4">
+      <LifeAssistPanel snapshot={snapshot} setPage={setPage} />
+      <div className="grid gap-4 xl:grid-cols-[0.72fr_0.72fr_1.28fr]">
         <GlassCard className="p-5">
-          <div className="flex items-center justify-between"><h3 className="text-xl font-black">今日の予定</h3><button onClick={() => setPage("calendar")} className="text-xs font-black text-orange-200">カレンダーへ</button></div>
-          <div className="mt-4 space-y-3">
-            {(snapshot?.events || []).filter((e) => e.event_date === today).slice(0, 5).map((e) => <div key={e.id} className="matsuri-row"><span>🏮</span><span className="truncate">{e.title}</span></div>)}
-            {!(snapshot?.events || []).some((e) => e.event_date === today) && ["07:00　ジム・筋トレ", "09:30　仕事・集中タイム", "12:30　ランチ・サウナ", "20:00　花火大会へ行く 🎆"].map((x) => <div key={x} className="matsuri-row"><span>🏮</span><span>{x}</span></div>)}
-          </div>
+          <p className="text-xs font-bold text-white/55">
+            {theme.emoji} Life Command OS
+          </p>
+          <h2 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">
+            {dateLabel}
+          </h2>
+          <p className="mt-3 text-5xl font-black tracking-tight sm:text-6xl">
+            {timeLabel}
+          </p>
+          <p className="mt-3 text-sm leading-7 text-white/60">
+            ページ一覧は下のバーと左メニューに任せて、ホーム上部は軽くしたよ。
+          </p>
         </GlassCard>
-        <GlassCard className="p-5">
-          <div className="flex items-center justify-between"><h3 className="text-xl font-black">タスク</h3><button onClick={() => setPage("todos")} className="text-xs font-black text-orange-200">タスク一覧へ</button></div>
-          <div className="mt-4 space-y-3">
-            {(snapshot?.todos || []).filter((t) => !t.done).slice(0, 5).map((t) => <div key={t.id} className="matsuri-row"><span className="h-4 w-4 rounded-full border border-amber-200/70"/><span className="truncate">{t.title}</span></div>)}
-            {!(snapshot?.todos || []).filter((t) => !t.done).length && <Empty text="未完了タスクはないよ。" />}
-          </div>
-          <p className="mt-4 text-xs font-black text-white/55">完了: {doneTodos} / {allTodos}</p>
-        </GlassCard>
-        <GlassCard className="p-5">
-          <div className="flex items-center justify-between"><h3 className="text-xl font-black">今日のメモ</h3><button onClick={() => setPage("memos")} className="text-xs font-black text-orange-200">すべて見る</button></div>
-          <div className="mt-4 space-y-3">
-            {latestMemo.length ? latestMemo.map((m) => <div key={m.id} className="matsuri-row"><span>✎</span><span className="truncate">{m.content}</span></div>) : ["アイデア：新しいアプリの構想", "学び：継続は力なり", "感謝：家族と過ごした時間"].map((m) => <div key={m} className="matsuri-row"><span>✎</span><span>{m}</span></div>)}
-          </div>
-        </GlassCard>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-3">
-        <GlassCard className="p-5"><h3 className="text-xl font-black">体調サマリー</h3><div className="mt-4 space-y-3"><div className="matsuri-row"><span>🌙</span><span>睡眠品質</span><b className="ml-auto">{sleep?.quality || "記録待ち"}</b></div><div className="matsuri-row"><span>☕</span><span>カフェイン</span><b className="ml-auto">{coffee?.caffeine_mg || 0}mg</b></div><div className="matsuri-row"><span>✅</span><span>ルーティン</span><b className="ml-auto">{routines.length}件</b></div></div></GlassCard>
-        <GlassCard className="p-5"><h3 className="text-xl font-black">予算サマリー</h3><p className="mt-4 text-4xl font-black text-amber-50">{yen(balance)}</p><div className="mt-4 h-2 rounded-full bg-white/10"><div className="h-full w-2/3 rounded-full bg-gradient-to-r from-emerald-300 to-orange-300" /></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div className="rounded-2xl bg-black/25 p-3"><p className="text-white/50">収入</p><b>{yen(income)}</b></div><div className="rounded-2xl bg-black/25 p-3"><p className="text-white/50">支出</p><b>{yen(expense)}</b></div></div></GlassCard>
-        <GlassCard className="p-5"><h3 className="text-xl font-black">AIアドバイス</h3><p className="mt-4 text-sm leading-7 text-white/70">{guideMessage}</p><button onClick={refreshGuide} disabled={loading} className="mt-4 w-full rounded-2xl border border-orange-200/25 bg-orange-400/15 px-4 py-3 text-sm font-black text-orange-100 transition active:scale-95">{loading ? "考え中..." : "AIに聞く"}</button></GlassCard>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <WeatherCard />
-        <GuideAiCard themeKey={themeKey} message={guideMessage} onRefresh={refreshGuide} loading={loading} />
+        <GuideAiCard
+          themeKey={themeKey}
+          message={guideMessage}
+          onRefresh={refreshGuide}
+          loading={loading}
+        />
       </div>
     </div>
   );
