@@ -35,6 +35,29 @@ type PageKey =
   | "exp"
   | "night"
   | "ainews"
+  | "timeline"
+
+  | "todaycommand"
+  | "lowenergy"
+  | "outing"
+  | "shoppingmission"
+  | "paymentcalendar"
+  | "subscriptions"
+  | "decisionlog"
+  | "projectlab"
+  | "promptvault"
+  | "bugcenter"
+  | "recovery"
+  | "reset"
+  | "weeklyreview"
+  | "monthlyreview"
+  | "lifescore"
+  | "skilltree"
+  | "archive"
+  | "futureletter"
+  | "emergencynote"
+  | "placelog"
+  | "sleepprep"
   | "settings";
 
 type Memo = {
@@ -68,6 +91,8 @@ type EventItem = {
   id: string;
   title: string;
   event_date: string;
+  start_time?: string | null;
+  end_time?: string | null;
   note: string | null;
   created_at: string;
 };
@@ -255,6 +280,28 @@ const navItems: { key: PageKey; label: string; icon: string }[] = [
   { key: "map", label: "地図", icon: "🗺️" },
   { key: "heatmap", label: "ヒートマップ", icon: "🔥" },
   { key: "lifehub", label: "生活OS", icon: "🧬" },
+  { key: "todaycommand", label: "Today Command", icon: "🧭" },
+  { key: "lowenergy", label: "Low Energy", icon: "🫧" },
+  { key: "outing", label: "Outing", icon: "🎒" },
+  { key: "shoppingmission", label: "Shopping Mission", icon: "🛒" },
+  { key: "paymentcalendar", label: "支払いカレンダー", icon: "💳" },
+  { key: "subscriptions", label: "Subscription", icon: "🔁" },
+  { key: "decisionlog", label: "Decision Log", icon: "🧩" },
+  { key: "projectlab", label: "Project Lab", icon: "🧪" },
+  { key: "promptvault", label: "Prompt Vault", icon: "📦" },
+  { key: "bugcenter", label: "Bug Center", icon: "🐞" },
+  { key: "recovery", label: "Recovery", icon: "🛟" },
+  { key: "reset", label: "Reset", icon: "🔄" },
+  { key: "weeklyreview", label: "Weekly Review", icon: "📆" },
+  { key: "monthlyreview", label: "Monthly Review", icon: "🗓️" },
+  { key: "lifescore", label: "Life Score", icon: "🎮" },
+  { key: "skilltree", label: "Skill Tree", icon: "🌳" },
+  { key: "archive", label: "Archive", icon: "🏛️" },
+  { key: "futureletter", label: "Future Letter", icon: "✉️" },
+  { key: "emergencynote", label: "Emergency", icon: "🛡️" },
+  { key: "placelog", label: "Place Log", icon: "📍" },
+  { key: "sleepprep", label: "Sleep Prep", icon: "🌙" },
+  { key: "timeline", label: "Timeline", icon: "🕰️" },
   { key: "braindump", label: "Mind Capture", icon: "🧠" },
   { key: "focus", label: "集中タイマー", icon: "⏱️" },
   { key: "search", label: "検索", icon: "🧠" },
@@ -945,6 +992,8 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = useState("同期準備中");
   const [appNotice, setAppNotice] = useState<AppNotice | null>(null);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const [visualMode, setVisualMode] = useState<VisualMode>("liquid");
   const syncingRef = useRef(false);
   const realtimeRefreshTimerRef = useRef<number | null>(null);
@@ -1174,6 +1223,21 @@ export default function Home() {
     );
   }
   const panelProps = { snapshot, refreshSnapshot, setPage };
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setCommandOpen(true);
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
+        event.preventDefault();
+        setQuickAddOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <main
       className={`relative min-h-screen overflow-hidden bg-gradient-to-br ${theme.bg} ${visual.shell} ${(themeKey === "mirai" ? "future-os" : (themeKey === "hanabi" || themeKey === "natsumatsuri") ? "matsuri-os" : "")} text-white`}
@@ -1349,6 +1413,72 @@ export default function Home() {
             {page === "focus" && (
               <FocusTimerPanel snapshot={snapshot} setPage={setPage} />
             )}
+            {page === "todaycommand" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.todaycommand} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "lowenergy" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.lowenergy} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "outing" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.outing} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "shoppingmission" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.shoppingmission} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "paymentcalendar" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.paymentcalendar} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "subscriptions" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.subscriptions} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "decisionlog" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.decisionlog} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "projectlab" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.projectlab} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "promptvault" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.promptvault} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "bugcenter" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.bugcenter} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "recovery" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.recovery} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "reset" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.reset} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "weeklyreview" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.weeklyreview} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "monthlyreview" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.monthlyreview} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "lifescore" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.lifescore} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "skilltree" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.skilltree} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "archive" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.archive} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "futureletter" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.futureletter} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "emergencynote" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.emergencynote} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "placelog" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.placelog} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "sleepprep" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.sleepprep} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
+            {page === "timeline" && (
+              <LifeModulePanel config={lifeModuleConfigsByKey.timeline} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+            )}
             {page === "search" && (
               <SecondBrainSearch snapshot={snapshot} setPage={setPage} />
             )}
@@ -1392,6 +1522,22 @@ export default function Home() {
           </section>
         </div>
       </div>
+      <QuickAddFab
+        open={quickAddOpen}
+        onOpen={() => setQuickAddOpen(true)}
+        onClose={() => setQuickAddOpen(false)}
+        setPage={setPage}
+        refreshSnapshot={refreshSnapshot}
+      />
+      {commandOpen && (
+        <CommandPaletteModal
+          snapshot={snapshot}
+          setPage={setPage}
+          onClose={() => setCommandOpen(false)}
+          openSearch={() => setGlobalSearchOpen(true)}
+          openQuickAdd={() => setQuickAddOpen(true)}
+        />
+      )}
       {globalSearchOpen && (
         <GlobalSearchModal
           snapshot={snapshot}
@@ -8067,6 +8213,13 @@ type MindCaptureCategory =
   | "budget"
   | "workout"
   | "routine"
+  | "promptvault"
+
+  | "projectlab"
+  | "bugcenter"
+  | "decisionlog"
+  | "futureletter"
+  | "timeline"
   | "memo"
   | "inbox";
 
@@ -8113,6 +8266,12 @@ const mindCaptureCategoryMeta: Record<
   budget: { label: "家計簿候補", short: "家計簿", emoji: "👛", tone: "border-amber-300/25 bg-amber-400/10" },
   workout: { label: "ワークアウトメモ候補", short: "ワークアウト", emoji: "💪", tone: "border-rose-300/25 bg-rose-400/10" },
   routine: { label: "ルーティン候補", short: "Routine", emoji: "🌅", tone: "border-indigo-300/25 bg-indigo-400/10" },
+  projectlab: { label: "Project Lab候補", short: "Project Lab", emoji: "🧪", tone: "border-cyan-300/25 bg-cyan-400/10" },
+  bugcenter: { label: "Bug Report候補", short: "Bug", emoji: "🐞", tone: "border-red-300/25 bg-red-400/10" },
+  decisionlog: { label: "Decision Log候補", short: "Decision", emoji: "🧩", tone: "border-violet-300/25 bg-violet-400/10" },
+  futureletter: { label: "Future Letter候補", short: "Future Letter", emoji: "✉️", tone: "border-indigo-300/25 bg-indigo-400/10" },
+  timeline: { label: "Timeline候補", short: "Timeline", emoji: "🕰️", tone: "border-slate-300/25 bg-slate-400/10" },
+  promptvault: { label: "Prompt Vault候補", short: "Prompt", emoji: "📦", tone: "border-emerald-300/25 bg-emerald-400/10" },
   memo: { label: "通常メモ候補", short: "メモ", emoji: "📝", tone: "border-blue-300/25 bg-blue-400/10" },
   inbox: { label: "保留ボックス / Mind Inbox", short: "Mind Inbox", emoji: "📥", tone: "border-white/20 bg-white/10" },
 };
@@ -8811,6 +8970,12 @@ function isMindCaptureCategory(value: unknown): value is MindCaptureCategory {
 function inferMindCaptureCategory(text: string): MindCaptureCategory {
   const line = String(text || "");
   if (/(\d{1,3}(?:,\d{3})*|\d+)\s*円|使った|支払|支出|収入|予算|家計簿/.test(line)) return "budget";
+  if (/バグ|エラー|build|ビルド|表示がおかしい|保存されない|崩れ|不具合/.test(line)) return "bugcenter";
+  if (/プロジェクト|アップデート|実装|GitHub|デプロイ|次にやる|開発/.test(line)) return "projectlab";
+  if (/迷って|決める|判断|選択肢|結論|方針/.test(line)) return "decisionlog";
+  if (/プロンプト|AIに伝える|依頼文|コピペ/.test(line)) return "promptvault";
+  if (/未来の自分|手紙|年末|誕生日|目標日/.test(line)) return "futureletter";
+  if (/タイムライン|今日やった|時系列|振り返り/.test(line)) return "timeline";
   if (/朝ルーティン|夜ルーティン|モーニング|ナイトルーティン|寝る前|起床後|習慣に|習慣化|毎朝|毎晩|毎日|ルーティン/.test(line)) return "routine";
   if (/筋トレ|ジム|ワークアウト|ランニング|有酸素|肩|胸|背中|脚|腕|腹筋|レッグ|ベンチ|プレス|スクワット/.test(line)) return "workout";
   if (/買う|買い|購入|欲しい|牛乳|卵|米|パン|日用品|スーパー|コンビニ|Amazon|アマゾン/.test(line)) return "shopping";
@@ -9017,6 +9182,23 @@ async function persistMindCaptureCandidate(candidate: MindCaptureCandidate) {
       if (error) throw error;
       return "Routineに保存しました";
     }
+    if (
+      candidate.category === "projectlab" ||
+      candidate.category === "bugcenter" ||
+      candidate.category === "decisionlog" ||
+      candidate.category === "futureletter" ||
+      candidate.category === "timeline" ||
+      candidate.category === "promptvault"
+    ) {
+      const config = lifeModuleConfigs.find((row) => row.key === candidate.category);
+      addLifeModuleItem(candidate.category, {
+        title: content.slice(0, 80),
+        note: content,
+        category: mindCaptureCategoryMeta[candidate.category].short,
+        status: "未整理",
+      });
+      return `${config?.title || "Life module"}に保存しました`;
+    }
     const { error } = await supabase.from("memos").insert({ content });
     if (error) throw error;
     return "メモに保存しました";
@@ -9026,6 +9208,468 @@ async function persistMindCaptureCandidate(candidate: MindCaptureCandidate) {
     return "保存に失敗したためMind Inboxに保留しました";
   }
 }
+
+
+type LifeModuleKey =
+  | "todaycommand"
+  | "lowenergy"
+  | "outing"
+  | "shoppingmission"
+  | "paymentcalendar"
+  | "subscriptions"
+  | "decisionlog"
+  | "projectlab"
+  | "promptvault"
+  | "bugcenter"
+  | "recovery"
+  | "reset"
+  | "weeklyreview"
+  | "monthlyreview"
+  | "lifescore"
+  | "skilltree"
+  | "archive"
+  | "futureletter"
+  | "emergencynote"
+  | "placelog"
+  | "sleepprep"
+  | "timeline";
+
+type LifeModuleItem = {
+  id: string;
+  title: string;
+  note: string;
+  category: string;
+  status: string;
+  amount?: number;
+  date?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type LifeModuleConfig = {
+  key: LifeModuleKey;
+  page: PageKey;
+  title: string;
+  subtitle: string;
+  description: string;
+  icon: string;
+  placeholder: string;
+  categories: string[];
+  statuses: string[];
+  quickLinks: PageKey[];
+};
+
+const lifeModuleConfigs: LifeModuleConfig[] = [
+  { key: "todaycommand", page: "todaycommand", title: "Today Command / 今日の司令室", subtitle: "今日だけに集中する", description: "予定、TODO、支出、Routine、Mind Inboxを今日用にまとめるページ。", icon: "🧭", placeholder: "今日の一言メモ / やらなくていいこと / 最重要タスク", categories: ["最重要", "今日やる", "やらなくていい", "メモ"], statuses: ["今日", "完了", "保留"], quickLinks: ["todos", "calendar", "budget", "routines", "braindump"] },
+  { key: "lowenergy", page: "lowenergy", title: "Low Energy Mode / 低エネルギーモード", subtitle: "今日はこれだけでOK", description: "疲れている日でも生活を崩しきらないための最低限モード。", icon: "🫧", placeholder: "水を飲む / 家計簿1件だけ / 明日の予定確認", categories: ["最低限", "明日に回す", "回復", "メモ"], statuses: ["今日でOK", "明日へ", "済み"], quickLinks: ["routines", "recovery", "reset", "braindump"] },
+  { key: "outing", page: "outing", title: "Outing Mode / 外出モード", subtitle: "外出前と外出中の確認", description: "持ち物、買い物、交通費、目的地メモ、財布残高をまとめて確認。", icon: "🎒", placeholder: "モバイルバッテリー確認 / 傘 / 交通費メモ", categories: ["持ち物", "外出TODO", "買うもの", "帰宅後"], statuses: ["未確認", "OK", "帰宅後"], quickLinks: ["belongings", "shopping", "budget", "calendar"] },
+  { key: "shoppingmission", page: "shoppingmission", title: "Shopping Mission / 買い物ミッション", subtitle: "買い忘れを減らす", description: "買うもの、予算、店舗、今買わなくていいものを管理。", icon: "🛒", placeholder: "牛乳 / 卵 / 予算1500円 / 今は買わないもの", categories: ["必須", "余裕があれば", "今買わない", "よく買う"], statuses: ["未購入", "購入済み", "保留"], quickLinks: ["shopping", "budget"] },
+  { key: "paymentcalendar", page: "paymentcalendar", title: "Payment Calendar / 支払いカレンダー", subtitle: "支払い予定だけを見る", description: "固定費、サブスク、カード支払い、給料日前後を確認。", icon: "💳", placeholder: "スマホ代 4980円 / 支払元 銀行 / 毎月25日", categories: ["固定費", "サブスク", "カード", "給料"], statuses: ["未払い", "支払い済み", "確認"], quickLinks: ["budget", "calendar"] },
+  { key: "subscriptions", page: "subscriptions", title: "Subscription Center / サブスク管理", subtitle: "月額と年額を見える化", description: "サブスク名、月額、次回更新日、使用頻度、解約候補を管理。", icon: "🔁", placeholder: "Apple Music 1080円 / 使用頻度 高 / 継続", categories: ["必須", "趣味", "学習", "健康", "解約候補"], statuses: ["継続", "見直し", "解約候補"], quickLinks: ["budget"] },
+  { key: "decisionlog", page: "decisionlog", title: "Decision Log / 決断ログ", subtitle: "迷ったことと決めたこと", description: "選択肢、メリット、デメリット、最終決定を残す。", icon: "🧩", placeholder: "迷っていること / 選択肢A/B / 結論 / 理由", categories: ["未決定", "決定済み", "見返し"], statuses: ["検討中", "決定", "保留"], quickLinks: ["memos", "projectlab"] },
+  { key: "projectlab", page: "projectlab", title: "Project Lab / プロジェクト管理", subtitle: "開発と生活改善の研究所", description: "目的、状態、次にやること、バグ、AI依頼文、GitHubメモを管理。", icon: "🧪", placeholder: "Life Command OS大型更新 / 次: Money Hub / 注意: Wind Huntに触れない", categories: ["目的", "次にやる", "バグ", "GitHub", "AI依頼"], statuses: ["未着手", "進行中", "完了"], quickLinks: ["bugcenter", "promptvault", "decisionlog"] },
+  { key: "promptvault", page: "promptvault", title: "Prompt Vault / AI依頼文保管庫", subtitle: "成功した依頼文を保存", description: "コピペ用プロンプト、カテゴリ、成功/失敗メモを管理。", icon: "📦", placeholder: "AIに渡す文章をここへ保存。コード修正用 / 画像生成用 / GitHub用", categories: ["メモアプリ", "コード修正", "画像生成", "GitHub", "成功"], statuses: ["使える", "改善中", "失敗"], quickLinks: ["projectlab", "bugcenter"] },
+  { key: "bugcenter", page: "bugcenter", title: "Bug Report Center / バグ報告センター", subtitle: "AIへ渡しやすく記録", description: "バグ名、発生条件、期待、実際、ログ、優先度、状態を管理。", icon: "🐞", placeholder: "バグ名 / 発生ページ / 期待 / 実際 / エラーログ", categories: ["高", "中", "低", "UI", "保存", "Build"], statuses: ["未修正", "調査中", "修正済み"], quickLinks: ["projectlab", "promptvault"] },
+  { key: "recovery", page: "recovery", title: "Recovery Page / 回復ページ", subtitle: "消耗した時の避難所", description: "休憩候補、やらなくていいこと、安心メモ、深呼吸タイマー。", icon: "🛟", placeholder: "今の状態 / 休憩候補 / やらなくていいこと", categories: ["安心", "休憩", "明日へ", "最低限"], statuses: ["今やる", "後で", "回復済み"], quickLinks: ["lowenergy", "reset", "sleepprep"] },
+  { key: "reset", page: "reset", title: "Reset Button / 生活リセット", subtitle: "崩れた日を立て直す", description: "失敗を責めず、明日に回すTODOと今夜の最低限だけ残す。", icon: "🔄", placeholder: "明日へ回す / 今夜は歯磨きと予定確認だけ", categories: ["明日へ", "今夜最低限", "家計簿だけ", "安心メモ"], statuses: ["整理中", "明日へ", "完了"], quickLinks: ["lowenergy", "recovery", "sleepprep"] },
+  { key: "weeklyreview", page: "weeklyreview", title: "Weekly Review / 週次レビュー", subtitle: "1週間を整える", description: "支出、TODO完了、Routine、メモ、気分、来週の予算を確認。", icon: "📆", placeholder: "今週よかったこと / 来週気をつけること", categories: ["支出", "TODO", "Routine", "気分", "来週"], statuses: ["下書き", "完了", "見返し"], quickLinks: ["budget", "routines", "todos", "diary"] },
+  { key: "monthlyreview", page: "monthlyreview", title: "Monthly Review / 月次レビュー", subtitle: "月末の生活改善", description: "収入、支出、カテゴリ、サブスク、Routine、来月目標を確認。", icon: "🗓️", placeholder: "今月の支出 / 来月の目標 / 来月の予算", categories: ["お金", "Routine", "目標", "反省なし振り返り"], statuses: ["下書き", "完了", "来月へ"], quickLinks: ["budget", "subscriptions", "goals"] },
+  { key: "lifescore", page: "lifescore", title: "Life Score / 生活スコア", subtitle: "ゲーム感覚で見える化", description: "予定、TODO、お金、Routine、Mind Inboxを軽く点数化。", icon: "🎮", placeholder: "今日のスコアメモ / お金安定 / 予定多め", categories: ["お金", "予定", "Routine", "メモ整理"], statuses: ["安定", "多め", "回復"], quickLinks: ["todaycommand", "weeklyreview"] },
+  { key: "skilltree", page: "skilltree", title: "Skill Tree / 生活スキルツリー", subtitle: "生活改善を育てる", description: "お金管理、朝習慣、夜習慣、整理力をバッジ化。", icon: "🌳", placeholder: "家計簿3日継続 / Mind Inbox整理 / サブスク見直し", categories: ["お金管理", "朝習慣", "夜習慣", "整理力"], statuses: ["未開放", "進行中", "達成"], quickLinks: ["budget", "routines", "braindump"] },
+  { key: "archive", page: "archive", title: "Archive / 人生アーカイブ", subtitle: "大事な言葉と思い出", description: "成長ログ、励ましメモ、未来の自分へ残す場所。", icon: "🏛️", placeholder: "大事な言葉 / 成長ログ / 乗り越えたこと", categories: ["大事な言葉", "成長ログ", "思い出", "未来の自分へ"], statuses: ["保存", "お気に入り", "見返し"], quickLinks: ["memos", "diary"] },
+  { key: "futureletter", page: "futureletter", title: "Future Letter / 未来の自分への手紙", subtitle: "未来日付に向けたメッセージ", description: "宛先日、タイトル、本文、今の気持ちを残す。", icon: "✉️", placeholder: "2028年8月12日の自分へ / 今の努力をどう思ってる？", categories: ["1ヶ月後", "誕生日", "年末", "目標日"], statuses: ["未開封", "開封日待ち", "開封済み"], quickLinks: ["goals", "archive"] },
+  { key: "emergencynote", page: "emergencynote", title: "Emergency Note / 緊急メモ", subtitle: "急ぎで見る重要情報", description: "病院、役所、問い合わせ、重要契約、トラブル対応メモ。", icon: "🛡️", placeholder: "病院メモ / 問い合わせ先 / 手続きメモ", categories: ["病院", "役所", "契約", "トラブル"], statuses: ["重要", "確認済み", "非表示風"], quickLinks: ["memos"] },
+  { key: "placelog", page: "placelog", title: "Cafe / Place Log / 行った場所ログ", subtitle: "場所と思い出と支出", description: "場所名、金額、滞在時間、集中度、また行きたいかを記録。", icon: "📍", placeholder: "カフェ名 / 支出520円 / 集中度4/5 / また行きたい", categories: ["カフェ", "サウナ", "ジム", "図書館", "散歩"], statuses: ["また行きたい", "普通", "微妙"], quickLinks: ["map", "budget", "cafe"] },
+  { key: "sleepprep", page: "sleepprep", title: "Sleep Prep / 睡眠準備", subtitle: "寝る前の安心導線", description: "ナイトルーティン、明日の予定、持ち物、家計簿、安心メモ。", icon: "🌙", placeholder: "明日の予定確認 / スマホ終了 / 安心メモ", categories: ["明日の準備", "安心メモ", "ナイトルーティン", "家計簿"], statuses: ["今夜", "完了", "明日へ"], quickLinks: ["routines", "calendar", "belongings", "budget"] },
+  { key: "timeline", page: "timeline", title: "Timeline / 生活タイムライン", subtitle: "今日の流れを時系列で見る", description: "予定、支出、メモ、Routine、日記、Mind Captureの流れを整理。", icon: "🕰️", placeholder: "07:30 朝ルーティン / 12:20 メモ / 21:30 ナイトルーティン", categories: ["予定", "支出", "メモ", "Routine", "日記"], statuses: ["記録", "重要", "振り返り"], quickLinks: ["diary", "budget", "routines"] },
+];
+
+const lifeModuleConfigsByKey = Object.fromEntries(
+  lifeModuleConfigs.map((config) => [config.key, config]),
+) as Record<LifeModuleKey, LifeModuleConfig>;
+
+function readLifeModuleItems(key: LifeModuleKey): LifeModuleItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(`lifeModule:${key}`) || "[]") as LifeModuleItem[];
+  } catch {
+    return [];
+  }
+}
+
+function writeLifeModuleItems(key: LifeModuleKey, items: LifeModuleItem[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`lifeModule:${key}`, JSON.stringify(items.slice(0, 400)));
+}
+
+function addLifeModuleItem(key: LifeModuleKey, input: Partial<LifeModuleItem>) {
+  const now = new Date().toISOString();
+  const item: LifeModuleItem = {
+    id: `module-${key}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title: String(input.title || "無題").slice(0, 120),
+    note: String(input.note || ""),
+    category: String(input.category || "メモ"),
+    status: String(input.status || "未整理"),
+    amount: Number(input.amount || 0) || undefined,
+    date: input.date || todayKey(),
+    created_at: now,
+    updated_at: now,
+  };
+  writeLifeModuleItems(key, [item, ...readLifeModuleItems(key)]);
+  return item;
+}
+
+function calcLifeScore(snapshot: Snapshot | null) {
+  const today = todayKey();
+  const todos = snapshot?.todos || [];
+  const todayTodos = todos.filter((t) => t.due_date === today);
+  const doneTodos = todayTodos.filter((t) => t.done).length;
+  const routines = (snapshot?.routines || []).filter((r) => r.active);
+  const routineDone = routines.filter((r) => (snapshot?.routineChecks || []).some((c) => c.routine_id === r.id && c.check_date === today)).length;
+  const todayExpense = (snapshot?.budget || []).filter((b) => b.type === "expense" && b.spend_date === today).reduce((sum, b) => sum + Number(b.amount || 0), 0);
+  const inbox = readMindInboxItems().length;
+  const todoScore = todayTodos.length ? Math.round((doneTodos / todayTodos.length) * 25) : 18;
+  const routineScore = routines.length ? Math.round((routineDone / routines.length) * 25) : 15;
+  const moneyScore = todayExpense <= 3000 ? 22 : todayExpense <= 6000 ? 16 : 10;
+  const inboxScore = inbox <= 2 ? 20 : inbox <= 6 ? 14 : 8;
+  return Math.min(100, todoScore + routineScore + moneyScore + inboxScore);
+}
+
+function buildTimelineRows(snapshot: Snapshot | null, moduleItems: LifeModuleItem[]) {
+  const today = todayKey();
+  const rows: { time: string; title: string; body: string; page: PageKey }[] = [];
+  (snapshot?.events || []).filter((e) => e.event_date === today).forEach((e) => rows.push({ time: e.start_time || "予定", title: e.title, body: e.note || "予定", page: "calendar" }));
+  (snapshot?.budget || []).filter((b) => b.spend_date === today).forEach((b) => rows.push({ time: "支出", title: `${b.type === "income" ? "収入" : b.type === "charge" ? "移動" : "支出"} ${yen(Number(b.amount || 0))}`, body: `${b.category} ${b.memo || ""}`, page: "budget" }));
+  (snapshot?.memos || []).filter((m) => getCreatedDateKey(m.created_at) === today).slice(0, 8).forEach((m) => rows.push({ time: "メモ", title: "メモ追加", body: m.content, page: "memos" }));
+  moduleItems.forEach((item) => rows.push({ time: item.date || today, title: item.title, body: item.note, page: "timeline" }));
+  return rows.slice(0, 30);
+}
+
+function LifeModulePanel({
+  config,
+  snapshot,
+  setPage,
+  refreshSnapshot,
+}: {
+  config: LifeModuleConfig;
+  snapshot: Snapshot | null;
+  setPage: (p: PageKey) => void;
+  refreshSnapshot: (reason?: string) => Promise<void>;
+}) {
+  const [items, setItems] = useState<LifeModuleItem[]>(() => readLifeModuleItems(config.key));
+  const [title, setTitle] = useState("");
+  const [note, setNote] = useState("");
+  const [category, setCategory] = useState(config.categories[0] || "メモ");
+  const [status, setStatus] = useState(config.statuses[0] || "未整理");
+  const [amount, setAmount] = useState(0);
+  const [date, setDate] = useState(todayKey());
+  const [editing, setEditing] = useState<LifeModuleItem | null>(null);
+
+  function persist(next: LifeModuleItem[]) {
+    setItems(next);
+    writeLifeModuleItems(config.key, next);
+  }
+
+  function addItem() {
+    if (!title.trim() && !note.trim()) return;
+    const item = addLifeModuleItem(config.key, { title: title.trim() || note.slice(0, 60), note, category, status, amount, date });
+    setItems([item, ...items].slice(0, 400));
+    setTitle("");
+    setNote("");
+    setAmount(0);
+  }
+
+  function updateItem() {
+    if (!editing) return;
+    const now = new Date().toISOString();
+    const next = items.map((item) =>
+      item.id === editing.id ? { ...editing, updated_at: now } : item,
+    );
+    persist(next);
+    setEditing(null);
+  }
+
+  function deleteItem(id: string) {
+    persist(items.filter((item) => item.id !== id));
+  }
+
+  async function connectToMoney(item: LifeModuleItem) {
+    const value = Number(item.amount || extractYenAmount(`${item.title} ${item.note}`) || 0);
+    if (!value) return alert("金額が見つからないよ。金額を入れると家計簿に送れるよ。");
+    const { error } = await supabase.from("budget_logs").insert({
+      spend_date: item.date || todayKey(),
+      type: "expense",
+      category: config.key === "placelog" ? "カフェ" : config.key === "shoppingmission" ? "食費" : "その他",
+      amount: value,
+      wallet: "財布",
+      payment_method: "財布",
+      memo: `${config.title}: ${item.title}`,
+    } as any);
+    if (error) return alert("家計簿登録に失敗: " + error.message);
+    await refreshSnapshot("Life Moduleから家計簿へ同期中...");
+    persist(items.map((row) => row.id === item.id ? { ...row, status: "家計簿登録済み" } : row));
+  }
+
+  const score = calcLifeScore(snapshot);
+  const timelineRows = config.key === "timeline" ? buildTimelineRows(snapshot, items) : [];
+  const todayBudget = (snapshot?.budget || []).filter((b) => b.spend_date === todayKey() && b.type === "expense").reduce((sum, b) => sum + Number(b.amount || 0), 0);
+  const undoneTodos = (snapshot?.todos || []).filter((t) => !t.done).slice(0, 3);
+  const todayEvents = (snapshot?.events || []).filter((e) => e.event_date === todayKey()).slice(0, 4);
+  const mindInboxCount = readMindInboxItems().length;
+
+  return (
+    <div className="life-module-page space-y-4">
+      <GlassCard className="life-module-hero">
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px] lg:items-end">
+          <div>
+            <p className="text-xs font-black tracking-[0.32em] text-sky-100/60">LIFE COMMAND OS / MODULE</p>
+            <h2 className="mt-2 text-3xl font-black sm:text-5xl">{config.icon} {config.title}</h2>
+            <p className="mt-2 text-lg font-black text-sky-50/82">{config.subtitle}</p>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/62">{config.description}</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="life-module-stat"><span>記録</span><b>{items.length}</b></div>
+            <div className="life-module-stat"><span>Inbox</span><b>{mindInboxCount}</b></div>
+            <div className="life-module-stat"><span>Score</span><b>{score}</b></div>
+          </div>
+        </div>
+      </GlassCard>
+
+      <div className="grid gap-4 xl:grid-cols-[1.05fr_.95fr]">
+        <GlassCard>
+          <h3 className="text-xl font-black">追加 / 編集</h3>
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_160px_160px]">
+            <Field placeholder={config.placeholder} value={title} onChange={(e) => setTitle(e.target.value)} />
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-2xl border border-white/20 bg-slate-950/90 p-4 text-white">
+              {config.categories.map((name) => <option key={name}>{name}</option>)}
+            </select>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-2xl border border-white/20 bg-slate-950/90 p-4 text-white">
+              {config.statuses.map((name) => <option key={name}>{name}</option>)}
+            </select>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-[160px_160px_1fr]">
+            <Field type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Field type="number" placeholder="金額 任意" value={amount || ""} onChange={(e) => setAmount(Number(e.target.value))} />
+            <TextArea className="min-h-24" placeholder="詳細メモ" value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <PrimaryButton onClick={addItem}>追加する</PrimaryButton>
+        </GlassCard>
+
+        <GlassCard>
+          <h3 className="text-xl font-black">連携ショートカット</h3>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {config.quickLinks.map((pageKey) => {
+              const nav = navItems.find((n) => n.key === pageKey);
+              return (
+                <button key={pageKey} onClick={() => setPage(pageKey)} className="rounded-2xl border border-white/10 bg-white/[0.06] p-3 text-left">
+                  <p className="text-lg">{nav?.icon || "🔗"}</p>
+                  <p className="mt-1 text-sm font-black">{nav?.label || pageKey}</p>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-4 rounded-3xl border border-sky-200/14 bg-sky-300/10 p-4">
+            <p className="text-sm leading-7 text-sky-50/78">
+              {config.key === "todaycommand" && `今日の予定 ${todayEvents.length}件 / 未完了TODO ${undoneTodos.length}件 / 今日の支出 ${yen(todayBudget)}。`}
+              {config.key === "lowenergy" && "最低限3つだけ表示する設計。水・家計簿1件・明日の予定確認だけでもOK。"}
+              {config.key === "outing" && "持ち物・買い物・交通費・財布残高を見る導線をまとめているよ。"}
+              {config.key === "shoppingmission" && "購入済みにしたものは金額を入れて家計簿登録候補にできるよ。"}
+              {config.key === "paymentcalendar" && "Money Hubの固定費やサブスクと一緒に確認する前提のページだよ。"}
+              {config.key === "lifescore" && `今日のLife Scoreは ${score}点。ゲーム感覚の目安として軽く見てね。`}
+              {!["todaycommand","lowenergy","outing","shoppingmission","paymentcalendar","lifescore"].includes(config.key) && "このページの記録はlocalStorageに追加保存するから、既存Supabaseデータは壊さないよ。"}
+            </p>
+          </div>
+        </GlassCard>
+      </div>
+
+      {config.key === "timeline" && (
+        <GlassCard>
+          <h3 className="text-xl font-black">今日のタイムライン</h3>
+          <div className="mt-4 space-y-2">
+            {timelineRows.map((row, index) => (
+              <button key={`${row.title}-${index}`} onClick={() => setPage(row.page)} className="w-full rounded-2xl bg-black/25 p-3 text-left">
+                <p className="text-xs font-black text-sky-100/55">{row.time}</p>
+                <p className="mt-1 font-black">{row.title}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-white/55">{row.body}</p>
+              </button>
+            ))}
+            {!timelineRows.length && <Empty text="今日のタイムラインはまだ空だよ。" />}
+          </div>
+        </GlassCard>
+      )}
+
+      <GlassCard>
+        <h3 className="text-xl font-black">記録一覧</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {items.map((item) => (
+            <div key={item.id} id={`life-module-${config.key}-${item.id}`} className="rounded-3xl border border-white/10 bg-black/24 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-sky-100/50">{item.category} / {item.status}</p>
+                  <h4 className="mt-1 truncate text-lg font-black">{item.title}</h4>
+                </div>
+                <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[10px] font-black text-white/55">{item.date}</span>
+              </div>
+              {item.amount ? <p className="mt-2 text-xl font-black text-sky-100">{yen(item.amount)}</p> : null}
+              {item.note && <p className="mt-2 line-clamp-5 whitespace-pre-wrap text-sm leading-6 text-white/62">{item.note}</p>}
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <button onClick={() => setEditing(item)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">編集</button>
+                {(config.key === "shoppingmission" || config.key === "placelog" || config.key === "paymentcalendar") && (
+                  <button onClick={() => connectToMoney(item)} className="rounded-xl bg-sky-300/20 px-2 py-2 text-xs font-black text-sky-50">家計簿</button>
+                )}
+                <button onClick={() => deleteItem(item.id)} className="rounded-xl bg-red-500 px-2 py-2 text-xs font-black">削除</button>
+              </div>
+            </div>
+          ))}
+          {!items.length && <Empty text="まだ記録がないよ。上の入力欄から追加できるよ。" />}
+        </div>
+      </GlassCard>
+
+      {editing && (
+        <Modal title="記録を編集" onClose={() => setEditing(null)}>
+          <div className="space-y-3">
+            <Field value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} />
+            <select value={editing.category} onChange={(e) => setEditing({ ...editing, category: e.target.value })} className="w-full rounded-2xl border border-white/20 bg-slate-950/90 p-4 text-white">
+              {config.categories.map((name) => <option key={name}>{name}</option>)}
+            </select>
+            <select value={editing.status} onChange={(e) => setEditing({ ...editing, status: e.target.value })} className="w-full rounded-2xl border border-white/20 bg-slate-950/90 p-4 text-white">
+              {config.statuses.map((name) => <option key={name}>{name}</option>)}
+            </select>
+            <Field type="date" value={editing.date || todayKey()} onChange={(e) => setEditing({ ...editing, date: e.target.value })} />
+            <Field type="number" value={editing.amount || ""} onChange={(e) => setEditing({ ...editing, amount: Number(e.target.value) })} />
+            <TextArea value={editing.note} onChange={(e) => setEditing({ ...editing, note: e.target.value })} />
+            <button onClick={updateItem} className="w-full rounded-2xl bg-white px-4 py-3 font-black text-black">保存する</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function QuickAddFab({
+  open,
+  onOpen,
+  onClose,
+  setPage,
+  refreshSnapshot,
+}: {
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  setPage: (p: PageKey) => void;
+  refreshSnapshot: (reason?: string) => Promise<void>;
+}) {
+  const [text, setText] = useState("");
+  const [amount, setAmount] = useState(0);
+
+  async function save(category: MindCaptureCategory) {
+    if (!text.trim() && category !== "budget") return;
+    const message = await persistMindCaptureCandidate({
+      id: `quick-${Date.now()}`,
+      category,
+      content: text || `かんたん支出 ${yen(amount)}`,
+      save: true,
+      confidence: "確認が必要",
+      amount: amount || extractYenAmount(text),
+      date: todayKey(),
+      source: "manual",
+    });
+    setText("");
+    setAmount(0);
+    await refreshSnapshot("Quick Add同期中...");
+    setGuideDraft(message);
+    onClose();
+  }
+
+  return (
+    <>
+      <button
+        onClick={onOpen}
+        className="quick-add-fab fixed bottom-24 right-4 z-[85] flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl font-black text-black shadow-2xl lg:bottom-6"
+        aria-label="Quick Add"
+      >
+        ＋
+      </button>
+      {open && (
+        <Modal title="Quick Add / どこでも追加" onClose={onClose}>
+          <div className="space-y-3">
+            <TextArea
+              className="min-h-28"
+              placeholder="すぐ記録したいこと。メモ、TODO、予定、家計簿、買い物、Routine候補など。"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+            <Field type="number" placeholder="金額 任意" value={amount || ""} onChange={(e) => setAmount(Number(e.target.value))} />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {([
+                ["memo", "メモ"],
+                ["todo", "TODO"],
+                ["budget", "家計簿"],
+                ["shopping", "買い物"],
+                ["calendar", "予定"],
+                ["routine", "Routine"],
+                ["inbox", "Mind Inbox"],
+              ] as [MindCaptureCategory, string][]).map(([cat, label]) => (
+                <button key={cat} onClick={() => save(cat)} className="rounded-2xl bg-white/10 px-3 py-3 text-sm font-black">
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => { setPage("braindump"); onClose(); }} className="w-full rounded-2xl bg-sky-200 px-4 py-3 font-black text-black">
+              Mind Captureを開く
+            </button>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function CommandPaletteModal({
+  snapshot,
+  setPage,
+  onClose,
+  openSearch,
+  openQuickAdd,
+}: {
+  snapshot: Snapshot | null;
+  setPage: (p: PageKey) => void;
+  onClose: () => void;
+  openSearch: () => void;
+  openQuickAdd: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const results = useMemo(() => collectGlobalSearchResults(snapshot, query), [snapshot, query]);
+  const pageResults = useMemo(
+    () => navItems.filter((item) => `${item.label} ${item.key}`.toLowerCase().includes(query.toLowerCase())).slice(0, 10),
+    [query],
+  );
+  return (
+    <Modal title="Command Palette / ⌘K" onClose={onClose}>
+      <div className="space-y-3">
+        <Field autoFocus placeholder="ページ移動 / 今日の支出 / ナイトルーティン / 未整理メモ" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={() => { openQuickAdd(); onClose(); }} className="rounded-2xl bg-white px-4 py-3 font-black text-black">Quick Add</button>
+          <button onClick={() => { openSearch(); onClose(); }} className="rounded-2xl bg-white/10 px-4 py-3 font-black">AI検索</button>
+        </div>
+        <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
+          {pageResults.map((item) => (
+            <button key={item.key} onClick={() => { setPage(item.key); onClose(); }} className="w-full rounded-2xl border border-white/10 bg-white/10 p-3 text-left">
+              <p className="font-black">{item.icon} {item.label}</p>
+            </button>
+          ))}
+          {results.slice(0, 10).map((row) => (
+            <button key={row.id} onClick={() => { setPage(row.page); onClose(); }} className="w-full rounded-2xl border border-white/10 bg-white/10 p-3 text-left">
+              <p className="text-xs font-black text-sky-100/60">{row.title}</p>
+              <p className="mt-1 line-clamp-2 text-sm text-white/70">{row.body}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 
 type GlobalSearchResult = {
   page: PageKey;
@@ -9258,7 +9902,19 @@ function collectGlobalSearchResults(
         kind: "record",
       });
   });
-  return rows.slice(0, 80);
+  lifeModuleConfigs.forEach((config) => {
+    readLifeModuleItems(config.key).forEach((item) => {
+      if (hit(`${config.title} ${config.description} ${item.title} ${item.note} ${item.category} ${item.status}`))
+        rows.push({
+          page: config.page,
+          title: config.title,
+          body: `${item.title} ${item.note}`,
+          id: `life-module-${config.key}-${item.id}`,
+          kind: "record",
+        });
+    });
+  });
+  return rows.slice(0, 120);
 }
 
 function GlobalSearchModal({

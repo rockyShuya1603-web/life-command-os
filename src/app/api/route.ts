@@ -149,7 +149,7 @@ export async function POST(req: Request) {
 形式:
 {
   "candidates": [
-    {"category":"calendar|todo|shopping|diary|budget|workout|routine|memo|inbox","content":"短い保存内容","confidence":"確定候補|確認が必要|保留推奨","date":"YYYY-MM-DD|null","amount":1234|null,"note":"補足|null"}
+    {"category":"calendar|todo|shopping|diary|budget|workout|routine|projectlab|bugcenter|decisionlog|futureletter|timeline|promptvault|memo|inbox","content":"短い保存内容","confidence":"確定候補|確認が必要|保留推奨","date":"YYYY-MM-DD|null","amount":1234|null,"note":"補足|null"}
   ],
   "state": {"labels":["やること多め"],"summary":"診断ではなく整理補助としての短い要約"}
 }
@@ -158,6 +158,7 @@ export async function POST(req: Request) {
 - 曖昧な内容はinboxまたは confidence=保留推奨
 - 予定、TODO、買い物、感情/日記、出費、筋トレ、ルーティン候補、通常メモ、Mind Inboxに分類
 - 毎朝/毎晩/寝る前/起床後/習慣化したい内容はroutineに分類
+- アプリ開発や実装計画はprojectlab、バグやbuildログはbugcenter、迷った結論はdecisionlog、AI依頼文はpromptvault、未来への手紙はfutureletter、時系列の振り返りはtimelineに分類
 - 金額は数字でamountに入れる。金額不明ならnull
 - 日付が不明ならdateはnull。推測しすぎない
 - 日本語で返す`,
