@@ -2449,3 +2449,531 @@ body {
     font-size: 16px;
   }
 }
+
+
+/* ===== v23 Mobile UI Stability Patch =====
+   目的: 既存機能・保存処理に触れず、スマホUI/GUIの崩れと横はみ出しをCSSで強制補正する。
+   page.tsxは上書きしない。 */
+:root {
+  --mobile-safe-bottom: calc(104px + env(safe-area-inset-bottom));
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+body {
+  overscroll-behavior-x: none;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+.future-os,
+.matsuri-os,
+main {
+  max-width: 100vw;
+  overflow-x: clip !important;
+}
+
+@media (max-width: 767px) {
+  html,
+  body {
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  .future-bg-layer,
+  .matsuri-bg-layer {
+    background-position: center top !important;
+    background-size: cover !important;
+    transform: scale(1.015) !important;
+    filter: saturate(1.06) contrast(1.02) brightness(.72) !important;
+  }
+
+  .future-vignette,
+  .matsuri-night-vignette {
+    background:
+      linear-gradient(180deg, rgba(2,6,23,.72), rgba(2,8,23,.18) 34%, rgba(2,6,23,.72)),
+      radial-gradient(circle at 50% 0%, rgba(96,165,250,.16), transparent 32%) !important;
+  }
+
+  .future-os > .relative.z-10,
+  .matsuri-os > .relative.z-10,
+  main > .relative.z-10 {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    padding: 10px 10px var(--mobile-safe-bottom) !important;
+    margin: 0 !important;
+  }
+
+  .future-os aside,
+  .matsuri-os aside,
+  aside.matsuri-sidebar {
+    display: none !important;
+  }
+
+  .future-os .min-w-0.flex-1,
+  .matsuri-os .min-w-0.flex-1,
+  .min-w-0.flex-1 {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Top HUD: PC版の要素をスマホ用カードに再配置 */
+  .future-top-hud {
+    position: sticky !important;
+    top: 8px !important;
+    z-index: 65 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 12px !important;
+    padding: 12px !important;
+    border: 1px solid rgba(186,224,255,.16) !important;
+    border-radius: 24px !important;
+    background:
+      radial-gradient(circle at 16% 0%, rgba(125,211,252,.13), transparent 34%),
+      linear-gradient(135deg, rgba(5,18,42,.76), rgba(2,8,25,.84)) !important;
+    box-shadow: 0 18px 60px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.10) !important;
+    backdrop-filter: blur(18px) saturate(1.25) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.25) !important;
+  }
+
+  .future-brand-lockup {
+    min-width: 0 !important;
+    padding: 0 !important;
+  }
+
+  .future-brand-lockup p:first-child {
+    font-size: 21px !important;
+    line-height: 1.12 !important;
+    letter-spacing: -0.02em !important;
+  }
+
+  .future-brand-lockup p:last-child {
+    margin-top: 4px !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+  }
+
+  .future-search-pill {
+    order: 3;
+    width: 100% !important;
+    min-height: 48px !important;
+    border-radius: 18px !important;
+    padding: 0 14px !important;
+    background: rgba(2, 8, 25, .42) !important;
+  }
+
+  .future-search-pill span:first-child {
+    font-size: 24px !important;
+  }
+
+  .future-hud-widgets {
+    order: 2;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, .9fr) 46px 46px !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .future-hud-card,
+  .future-icon-button,
+  .future-avatar {
+    min-width: 0 !important;
+    min-height: 46px !important;
+    border-radius: 16px !important;
+    padding: 8px 10px !important;
+  }
+
+  .future-hud-card b {
+    display: block;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .future-hud-card small {
+    display: block;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .future-weather-chip span:first-child {
+    display: none !important;
+  }
+
+  .future-clock-chip {
+    text-align: center !important;
+  }
+
+  .future-icon-button,
+  .future-avatar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 18px !important;
+  }
+
+  .future-mode-row {
+    order: 4;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 8px !important;
+    border-radius: 16px !important;
+  }
+
+  .future-mode-row > span:not(.future-system-dot) {
+    grid-column: 1 / -1;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    color: rgba(224,242,254,.68) !important;
+  }
+
+  .future-mode-row select {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 42px !important;
+    padding: 0 10px !important;
+    border-radius: 14px !important;
+    font-size: 12px !important;
+  }
+
+  /* Future以外の上部HUDもスマホ用に丸める */
+  .matsuri-topbar {
+    position: sticky !important;
+    top: 8px !important;
+    z-index: 65 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 0 12px !important;
+    padding: 12px !important;
+    border-radius: 24px !important;
+    background: rgba(2,8,25,.78) !important;
+    backdrop-filter: blur(18px) saturate(1.2) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(1.2) !important;
+  }
+
+  .matsuri-topbar h1 {
+    font-size: 24px !important;
+    line-height: 1.15 !important;
+  }
+
+  .matsuri-topbar .fixed.right-3.top-3 {
+    position: static !important;
+    width: 100% !important;
+  }
+
+  /* Main stage */
+  .matsuri-stage,
+  .future-main-stage {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow-x: hidden !important;
+  }
+
+  .matsuri-stage > *,
+  .future-main-stage > * {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* 全ページ共通カード: 他ページだけ急にダサく/読みにくくなるのを防ぐ */
+  .matsuri-card,
+  .future-panel-card,
+  .future-progress-card,
+  .future-welcome-card,
+  .future-mind-capture-home,
+  .future-ai-navigator,
+  .future-budget-hero,
+  .future-money-card,
+  .future-routine-card,
+  .future-routine-hero,
+  .life-module-hero,
+  .life-module-page .matsuri-card,
+  .money-hub-page .matsuri-card,
+  .routine-command-page .matsuri-card,
+  .belongings-fast-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    border-radius: 22px !important;
+    padding: 14px !important;
+    border-color: rgba(186,224,255,.16) !important;
+    background:
+      radial-gradient(circle at 16% 0%, rgba(125,211,252,.10), transparent 34%),
+      linear-gradient(135deg, rgba(8,28,68,.46), rgba(2,8,28,.68)) !important;
+    box-shadow: 0 18px 58px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.10) !important;
+    backdrop-filter: blur(16px) saturate(1.18) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(1.18) !important;
+    overflow: hidden !important;
+  }
+
+  .matsuri-card + .matsuri-card,
+  .life-module-page .matsuri-card + .matsuri-card {
+    margin-top: 12px;
+  }
+
+  /* グリッドは基本1列。必要なKPIだけ2列にする */
+  .future-hero-grid,
+  .future-middle-grid,
+  .future-bottom-grid,
+  .budget-command-page,
+  .money-hub-page,
+  .routine-command-page,
+  .life-module-page,
+  .belongings-fast-grid,
+  .routine-card-grid,
+  .grid.lg\:grid-cols-2,
+  .grid.lg\:grid-cols-3,
+  .grid.xl\:grid-cols-3,
+  .grid.xl\:grid-cols-4,
+  .grid.xl\:grid-cols-5,
+  .grid.xl\:grid-cols-6 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .money-hub-kpi-grid,
+  .future-launch-card .xl\:grid-cols-6,
+  .life-module-stat,
+  .future-routine-hero .grid-cols-3 {
+    max-width: 100% !important;
+  }
+
+  .money-hub-kpi-grid,
+  .future-launch-card .mt-4.grid,
+  .life-module-hero .grid-cols-3,
+  .future-routine-hero .grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .money-hub-kpi-grid > :first-child,
+  .future-launch-card .mt-4.grid > :first-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  /* 見出し/本文 */
+  h1, h2, h3 {
+    overflow-wrap: anywhere;
+  }
+
+  .future-welcome-card h2,
+  .matsuri-welcome h2,
+  .life-module-hero h2,
+  .future-budget-hero h2,
+  .future-routine-hero h2 {
+    font-size: clamp(28px, 8vw, 38px) !important;
+    line-height: 1.14 !important;
+    letter-spacing: -0.04em !important;
+  }
+
+  .future-welcome-card p,
+  .matsuri-card p,
+  .life-module-page p,
+  .money-hub-page p,
+  .routine-command-page p {
+    line-height: 1.68 !important;
+  }
+
+  /* 入力欄とボタンを指で押しやすく */
+  input,
+  textarea,
+  select,
+  button {
+    max-width: 100% !important;
+    font-size: 16px !important;
+  }
+
+  input,
+  select {
+    min-height: 48px !important;
+  }
+
+  textarea {
+    min-height: 112px;
+  }
+
+  button,
+  [role="button"] {
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .PrimaryButton,
+  .future-os button,
+  .matsuri-os button {
+    border-radius: 16px;
+  }
+
+  /* 横にはみ出す長文/ログ */
+  pre,
+  code,
+  .line-clamp-2,
+  .line-clamp-5,
+  .whitespace-pre-wrap {
+    max-width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  /* 画像プレビュー */
+  .matsuri-card img,
+  .life-module-page img,
+  .money-hub-page img {
+    max-height: 260px !important;
+    object-fit: cover;
+  }
+
+  /* ボトムナビ: 横スクロール禁止、5項目固定 */
+  .safe-bottom {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(env(safe-area-inset-bottom) + 8px) !important;
+    width: auto !important;
+    padding: 8px !important;
+    border: 1px solid rgba(186,224,255,.18) !important;
+    border-radius: 24px !important;
+    background: rgba(2,8,28,.92) !important;
+    box-shadow: 0 18px 60px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.08) !important;
+    backdrop-filter: blur(20px) saturate(1.25) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(1.25) !important;
+  }
+
+  .safe-bottom .mx-auto {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .safe-bottom button {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 8px 3px !important;
+    border-radius: 17px !important;
+    font-size: 10px !important;
+    line-height: 1.15 !important;
+  }
+
+  .safe-bottom img,
+  .safe-bottom .h-8,
+  .safe-bottom svg {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  .safe-bottom button[class*="bg-gradient-to-r"] {
+    color: #06111f !important;
+    box-shadow: 0 0 20px rgba(125,211,252,.22) !important;
+  }
+
+  /* Quick Add */
+  .quick-add-fab {
+    right: 14px !important;
+    bottom: calc(94px + env(safe-area-inset-bottom)) !important;
+    width: 58px !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    z-index: 84 !important;
+    border: 1px solid rgba(255,255,255,.35) !important;
+    box-shadow: 0 18px 52px rgba(96,165,250,.34), inset 0 1px 0 rgba(255,255,255,.35) !important;
+  }
+
+  /* Modal */
+  .fixed.inset-0.z-\[90\],
+  .fixed.inset-0.z-\[80\] {
+    padding: 10px !important;
+  }
+
+  [role="dialog"],
+  .fixed.inset-0 .rounded-\[1\.75rem\],
+  .fixed.inset-0 .rounded-3xl {
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Tablet: PC縮小ではなく2列中心にする */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .future-os > .relative.z-10,
+  .matsuri-os > .relative.z-10 {
+    display: block !important;
+    max-width: 100% !important;
+    padding: 16px 16px 116px !important;
+  }
+
+  aside.matsuri-sidebar {
+    display: none !important;
+  }
+
+  .future-top-hud {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 14px !important;
+    border-radius: 28px !important;
+    background: rgba(2,8,28,.68) !important;
+  }
+
+  .future-hud-widgets {
+    justify-content: stretch !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 54px 54px !important;
+  }
+
+  .future-hero-grid,
+  .future-middle-grid,
+  .future-bottom-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .future-hero-grid > :first-child,
+  .future-middle-grid > :first-child,
+  .future-bottom-grid > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .safe-bottom {
+    left: 14px !important;
+    right: 14px !important;
+    border-radius: 28px !important;
+  }
+
+  .safe-bottom .mx-auto {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+  }
+}
