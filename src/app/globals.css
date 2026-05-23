@@ -3540,3 +3540,123 @@ main {
     grid-template-columns: 1fr 1fr !important;
   }
 }
+
+
+/* ===== v37 Motto: もっと手軽に / AI Everywhere ===== */
+.mobile-quick-add-nav {
+  position: relative;
+  overflow: hidden;
+  background: conic-gradient(from 180deg, #38bdf8, #818cf8, #c084fc, #f472b6, #fb7185, #fbbf24, #34d399, #38bdf8);
+  box-shadow: 0 0 30px rgba(125, 211, 252, .28);
+}
+
+.mobile-quick-add-nav::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, .34);
+  backdrop-filter: blur(12px);
+}
+
+.mobile-quick-add-nav > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 767px) {
+  nav.safe-bottom .mx-auto {
+    justify-content: space-between;
+  }
+
+  nav.safe-bottom button {
+    min-width: 64px !important;
+    flex: 1 1 0;
+  }
+
+  .quick-add-fab {
+    display: none !important;
+  }
+
+  .future-mind-capture-home textarea {
+    min-height: 110px !important;
+  }
+}
+
+
+/* ===== v37.2 Mobile bottom nav / Quick Add toast / Weather front ===== */
+.mobile-bottom-fixed-grid {
+  overflow: visible !important;
+}
+
+.mobile-bottom-nav-button {
+  min-width: 0 !important;
+  width: 100%;
+  min-height: 54px;
+  touch-action: manipulation;
+}
+
+.mobile-quick-add-nav {
+  position: relative !important;
+  overflow: hidden !important;
+  background: conic-gradient(from 180deg, #38bdf8, #818cf8, #c084fc, #f472b6, #fb7185, #fbbf24, #34d399, #38bdf8) !important;
+  color: white !important;
+  box-shadow: 0 0 30px rgba(125, 211, 252, .38), 0 10px 30px rgba(14, 165, 233, .18) !important;
+}
+
+.mobile-quick-add-nav::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, .34);
+  backdrop-filter: blur(12px);
+}
+
+.mobile-quick-add-nav > * {
+  position: relative;
+  z-index: 1;
+}
+
+.quick-add-save-toast {
+  animation: quickAddToastIn .18s ease-out both;
+}
+
+@keyframes quickAddToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.home-weather-front {
+  margin-top: .25rem;
+}
+
+@media (max-width: 767px) {
+  nav.safe-bottom .mobile-bottom-fixed-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+
+  nav.safe-bottom button {
+    min-width: 0 !important;
+  }
+
+  .home-weather-front .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .home-weather-front h2 {
+    font-size: 1.35rem !important;
+  }
+
+  .quick-add-save-toast {
+    position: sticky;
+    top: .25rem;
+    z-index: 5;
+  }
+}

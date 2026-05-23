@@ -1694,29 +1694,32 @@ export default function Home() {
         }
       `}</style>
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/85 px-2 py-2 backdrop-blur-xl lg:hidden">
-        <div className="mx-auto flex max-w-6xl snap-x gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
-          {navItems.filter((item) => ["home", "memos", "todos", "budget"].includes(item.key)).map((item) => {
+        <div className="mobile-bottom-fixed-grid mx-auto grid max-w-6xl grid-cols-5 gap-2">
+          {([
+            { key: "home", label: "ホーム", icon: "🏠" },
+            { key: "memos", label: "メモ", icon: "📝" },
+            { key: "todos", label: "TODO", icon: "✅" },
+            { key: "budget", label: "家計簿", icon: "💰" },
+          ] as { key: PageKey; label: string; icon: string }[]).map((item) => {
             const active = page === item.key;
             return (
               <button
                 key={item.key}
                 onClick={() => setPage(item.key)}
-                className={`min-w-[76px] snap-start rounded-2xl px-2 py-2 text-center text-[11px] transition sm:min-w-0 sm:flex-1 ${active ? `bg-gradient-to-r ${theme.accent} font-black text-black` : "bg-white/[0.04] text-white/65 hover:bg-white/10"}`}
+                className={`mobile-bottom-nav-button rounded-2xl px-1 py-2 text-center text-[11px] transition ${active ? `bg-gradient-to-r ${theme.accent} font-black text-black` : "bg-white/[0.04] text-white/65 hover:bg-white/10"}`}
               >
-                <div className="flex justify-center">
-                  <NavIcon icon={item.icon} label={item.label} className="h-8 w-8" />
-                </div>
-                <div>{item.label}</div>
+                <div className="mx-auto flex h-8 w-8 items-center justify-center text-xl">{item.icon}</div>
+                <div className="mt-0.5 truncate">{item.label}</div>
               </button>
             );
           })}
           <button
             onClick={() => setQuickAddOpen(true)}
-            className="mobile-quick-add-nav min-w-[76px] snap-start rounded-2xl px-2 py-2 text-center text-[11px] font-black text-white sm:min-w-0 sm:flex-1"
+            className="mobile-quick-add-nav mobile-bottom-nav-button rounded-2xl px-1 py-2 text-center text-[11px] font-black text-white"
             aria-label="Quick Add"
           >
             <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xl">＋</div>
-            <div>追加</div>
+            <div className="mt-0.5">追加</div>
           </button>
         </div>
       </nav>
@@ -1922,7 +1925,7 @@ function WeatherCard() {
     <GlassCard className="p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-black text-sky-100/70">現在地の天気</p>
+          <p className="text-xs font-black text-sky-100/70">現在地の天気・気温</p>
           <h2 className="mt-1 text-2xl font-black">
             {weather.status === "ready"
               ? label
@@ -1961,7 +1964,7 @@ function WeatherCard() {
         </p>
       )}
       <p className="mt-3 text-xs text-white/40">
-        30分キャッシュで反応速度を保つ設定。
+        現在地ベース。30分キャッシュで反応速度を保つ設定。
       </p>
     </GlassCard>
   );
@@ -2305,7 +2308,11 @@ function HomePanel({
         </GlassCard>
       </div>
 
-      <HomeMindCaptureCard refreshSnapshot={refreshSnapshot} setPage={setPage} />
+            <div className="home-weather-front">
+        <WeatherCard />
+      </div>
+
+<HomeMindCaptureCard refreshSnapshot={refreshSnapshot} setPage={setPage} />
 
       <GlassCard className="future-launch-card p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -10711,6 +10718,7 @@ function QuickAddFab({
   const [amount, setAmount] = useState(0);
   const [quickMode, setQuickMode] = useState<"smart" | "money" | "plan" | "routine" | "inbox">("smart");
   const [keepOpen, setKeepOpen] = useState(false);
+  const [quickNotice, setQuickNotice] = useState<string | null>(null);
 
   const detected = useMemo(() => inferUniversalAIAction(text, amount), [text, amount]);
 
@@ -10756,8 +10764,13 @@ function QuickAddFab({
     setText("");
     setAmount(0);
     await refreshSnapshot("Quick Add同期中...");
-    setGuideDraft(messages.join(" / "));
-    if (!keepOpen) onClose();
+    const notice = messages.join(" / ") || "保存しました";
+    setGuideDraft(notice);
+    setQuickNotice(notice);
+    window.setTimeout(() => setQuickNotice(null), 1800);
+    if (!keepOpen) {
+      window.setTimeout(() => onClose(), 1100);
+    }
   }
 
   function applyTemplate(template: string, mode: typeof quickMode = "smart") {
@@ -10790,6 +10803,11 @@ function QuickAddFab({
       {open && (
         <Modal title="Quick Add / どこでも追加" onClose={onClose}>
           <div className="quick-add-panel space-y-4">
+            {quickNotice && (
+              <div className="quick-add-save-toast rounded-3xl border border-emerald-200/35 bg-emerald-300/15 px-4 py-3 text-sm font-black text-emerald-50">
+                {quickNotice}
+              </div>
+            )}
             <div className="rounded-3xl border border-white/10 bg-white/8 p-3">
               <p className="text-xs font-black tracking-[0.25em] text-sky-100/55">RAINBOW QUICK ADD</p>
               <p className="mt-2 text-sm leading-6 text-white/65">
@@ -10803,7 +10821,6 @@ function QuickAddFab({
                 ["money", "支出"],
                 ["plan", "予定"],
                 ["routine", "Routine"],
-                ["inbox", "Inbox"],
                 ["inbox", "Inbox"],
               ] as const).map(([mode, label]) => (
                 <button
