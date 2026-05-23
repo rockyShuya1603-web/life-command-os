@@ -3962,6 +3962,7 @@ function CalendarPanel({ snapshot, refreshSnapshot }: { snapshot: Snapshot | nul
   return (
     <div className="space-y-4">
       <CalendarQuickAddPanel refreshSnapshot={refreshSnapshot} setSelected={setSelected} setCursorMonth={setCursorMonth} />
+      <CalendarEventOpsPanel events={snapshot?.events || []} refreshSnapshot={refreshSnapshot} setSelected={setSelected} />
       <GlassCard>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -10856,6 +10857,72 @@ function buildLifeSearchAnswer(snapshot: Snapshot | null, query: string) {
     };
   }
 
+  if (/比較|先週より|今週と先週/.test(q) && /支出|料金|使った/.test(q)) {
+    const thisWeek = getWeekRange(0);
+    const lastWeek = getWeekRange(-1);
+    const thisRows = budget.filter((b) => inRange(b.spend_date, thisWeek.start, thisWeek.end));
+    const lastRows = budget.filter((b) => inRange(b.spend_date, lastWeek.start, lastWeek.end));
+    const thisTotal = sumExpense(thisRows);
+    const lastTotal = sumExpense(lastRows);
+    const diff = thisTotal - lastTotal;
+    return {
+      title: "今週と先週の支出比較",
+      page: "budget" as PageKey,
+      lines: [
+        `今週：${yen(thisTotal)}`,
+        `先週：${yen(lastTotal)}`,
+        `差額：${diff >= 0 ? "+" : ""}${yen(diff)}`,
+      ],
+      records: Object.entries(budgetCategoryTotals(thisRows)).slice(0, 8).map(([category, amount]) => `今週 ${category}: ${yen(amount)}`),
+    };
+  }
+
+  if (/予定がない日|空いてる日|空き日/.test(q)) {
+    const targetRange = /来週/.test(q) ? getWeekRange(1) : getWeekRange(0);
+    const freeDays = getFreeDaysFromEvents(events, targetRange);
+    return {
+      title: "予定が少ない日",
+      page: "calendar" as PageKey,
+      lines: [
+        `対象：${targetRange.start}〜${targetRange.end}`,
+        `予定がない日：${freeDays.length}日`,
+      ],
+      records: freeDays.map((day) => `${day} は予定が少なめです`),
+    };
+  }
+
+  if (/今日やること|今日の司令|今日まとめ/.test(q)) {
+    const digest = buildCalendarTodoDigest(snapshot, { start: todayKey(), end: todayKey() });
+    return {
+      title: "今日やることまとめ",
+      page: "todaycommand" as PageKey,
+      lines: [
+        `今日の予定：${digest.events.length}件`,
+        `今日期限のTODO：${digest.todos.length}件`,
+        `今日の支出：${yen(sumExpense(budget.filter((b) => b.spend_date === todayKey())))}`,
+      ],
+      records: [
+        ...digest.events.slice(0, 6).map((e) => `予定 ${e.start_time || ""} ${e.title}`),
+        ...digest.todos.slice(0, 6).map((t) => `TODO ${t.title}`),
+      ],
+    };
+  }
+
+  if (/paypay|suica|pasmo|財布|残高|銀行/i.test(q)) {
+    const accounts = snapshot?.budgetAccounts || [];
+    const selected = accounts.filter((a) => {
+      const text = `${a.name} ${a.kind}`.toLowerCase();
+      return !q || text.includes(q.toLowerCase()) || /残高|財布/.test(q);
+    });
+    const total = selected.reduce((sum, a) => sum + Number(a.balance || 0), 0);
+    return {
+      title: "財布・電子マネー残高",
+      page: "budget" as PageKey,
+      lines: [`対象残高：${yen(total)}`, `口座/財布：${selected.length}件`],
+      records: selected.slice(0, 10).map((a) => `${a.name}: ${yen(a.balance)} ${a.kind || ""}`),
+    };
+  }
+
   if (/メール|未返信|請求書|予約|添付/.test(q)) {
     const selected = mail.filter((m) =>
       /未返信/.test(q)
@@ -11024,6 +11091,266 @@ function CalendarQuickAddPanel({
   );
 }
 
+
+
+function budgetCategoryTotals(rows: BudgetLog[]) {
+  return rows.reduce<Record<string, number>>((acc, row) => {
+    if (row.type !== "expense") return acc;
+    const key = row.category || "その他";
+    acc[key] = (acc[key] || 0) + Number(row.amount || 0);
+    return acc;
+  }, {});
+}
+
+function sumExpense(rows: BudgetLog[]) {
+  return rows.filter((row) => row.type === "expense").reduce((sum, row) => sum + Number(row.amount || 0), 0);
+}
+
+function getFreeDaysFromEvents(events: EventItem[], range: { start: string; end: string }) {
+  const days: string[] = [];
+  const cursor = new Date(`${range.start}T00:00:00`);
+  const end = new Date(`${range.end}T00:00:00`);
+  while (cursor <= end) {
+    const key = toDateKeyFromDate(cursor);
+    if (!events.some((event) => event.event_date === key)) days.push(key);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+}
+
+function buildCalendarTodoDigest(snapshot: Snapshot | null, range: { start: string; end: string }) {
+  const events = (snapshot?.events || []).filter((event) => inRange(event.event_date, range.start, range.end));
+  const todos = (snapshot?.todos || []).filter((todo) => !todo.done && inRange(todo.due_date, range.start, range.end));
+  return { events, todos };
+}
+
+function MailOAuthBridgePanel() {
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function checkGmailOAuth() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/mail/gmail/start", { method: "GET" });
+      const contentType = res.headers.get("content-type") || "";
+      if (res.redirected) {
+        window.location.href = res.url;
+        return;
+      }
+      if (contentType.includes("application/json")) {
+        const json = await res.json();
+        setStatus(json.message || "Gmail OAuthの状態を確認したよ。");
+        return;
+      }
+      setStatus("Gmail OAuth開始URLを確認したよ。環境変数が揃っていればGoogle認証へ進めます。");
+    } catch {
+      setStatus("Gmail OAuth確認に失敗しました。API routeか環境変数を確認してね。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="rounded-3xl border border-sky-200/16 bg-sky-300/10 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-xs font-black tracking-[0.28em] text-sky-100/55">GMAIL OAUTH BRIDGE</p>
+          <h3 className="mt-1 text-xl font-black">Gmail本格連携の入口</h3>
+          <p className="mt-2 text-sm leading-6 text-white/62">
+            OAuth開始APIを追加済み。環境変数が未設定なら安全に説明を返し、設定後はGoogle認証へ進める土台だよ。
+          </p>
+        </div>
+        <button onClick={checkGmailOAuth} disabled={loading} className="rounded-2xl bg-white px-4 py-3 font-black text-black disabled:opacity-50">
+          {loading ? "確認中" : "Gmail連携を確認"}
+        </button>
+      </div>
+      {status && <p className="mt-3 rounded-2xl bg-black/25 p-3 text-sm leading-6 text-white/75">{status}</p>}
+      <div className="mt-3 grid gap-2 text-xs text-white/45 sm:grid-cols-2">
+        <p>必要ENV: GOOGLE_CLIENT_ID</p>
+        <p>必要ENV: GOOGLE_CLIENT_SECRET</p>
+        <p>必要ENV: GOOGLE_GMAIL_REDIRECT_URI</p>
+        <p>推奨ENV: NEXT_PUBLIC_APP_URL</p>
+      </div>
+    </div>
+  );
+}
+
+function CalendarEventOpsPanel({
+  events,
+  refreshSnapshot,
+  setSelected,
+}: {
+  events: EventItem[];
+  refreshSnapshot: (reason?: string) => Promise<void>;
+  setSelected: (date: string) => void;
+}) {
+  const [filter, setFilter] = useState<"today" | "tomorrow" | "week" | "month" | "payment" | "todo" | "routine" | "list">("today");
+  const [editing, setEditing] = useState<EventItem | null>(null);
+
+  const range =
+    filter === "tomorrow"
+      ? { start: addDaysKey(todayKey(), 1), end: addDaysKey(todayKey(), 1) }
+      : filter === "week" || filter === "payment" || filter === "todo" || filter === "routine"
+        ? getWeekRange(0)
+        : filter === "month"
+          ? getMonthRange()
+          : { start: todayKey(), end: todayKey() };
+
+  const shown = events
+    .filter((event) => (filter === "list" ? true : inRange(event.event_date, range.start, range.end)))
+    .filter((event) => {
+      const text = `${event.title} ${event.note || ""}`;
+      if (filter === "payment") return /支払|請求|家賃|スマホ|サブスク|給料|引き落とし/.test(text);
+      if (filter === "todo") return /TODO|締切|提出|期限/.test(text);
+      if (filter === "routine") return /Routine|ルーティン|毎週|毎月|毎日/.test(text);
+      return true;
+    })
+    .slice(0, 20);
+
+  async function deleteEvent(event: EventItem) {
+    const ok = window.confirm(`「${event.title}」を削除しますか？`);
+    if (!ok) return;
+    const { error } = await supabase.from("calendar_events").delete().eq("id", event.id);
+    if (error) return alert("削除に失敗: " + error.message);
+    setGuideDraft("予定を削除したよ。");
+    await refreshSnapshot("カレンダー更新中...");
+  }
+
+  async function duplicateEvent(event: EventItem) {
+    const { error } = await supabase.from("calendar_events").insert({
+      title: `${event.title} コピー`,
+      event_date: event.event_date,
+      note: event.note || "",
+    });
+    if (error) return alert("複製に失敗: " + error.message);
+    setGuideDraft("予定を複製したよ。");
+    await refreshSnapshot("カレンダー更新中...");
+  }
+
+  async function eventToTodo(event: EventItem) {
+    const { error } = await supabase.from("todos").insert({
+      title: event.title,
+      priority: "normal",
+      due_date: event.event_date,
+      done: false,
+    });
+    if (error) return alert("TODO化に失敗: " + error.message);
+    setGuideDraft("予定をTODOに追加したよ。");
+    await refreshSnapshot("TODO同期中...");
+  }
+
+  async function eventToDiary(event: EventItem) {
+    const { error } = await supabase.from("diary_entries").insert({
+      entry_date: event.event_date,
+      mood: "普通",
+      title: `予定ログ: ${event.title}`,
+      content: `<p>${event.title}</p><p>${event.note || ""}</p>`,
+      image_url: null,
+    });
+    if (error) return alert("Diary化に失敗: " + error.message);
+    setGuideDraft("予定をDiaryへ送ったよ。");
+    await refreshSnapshot("Diary同期中...");
+  }
+
+  function eventToMindInbox(event: EventItem) {
+    writeMindInboxItems([
+      {
+        id: `mind-inbox-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        content: `予定候補: ${event.event_date} ${event.title}\n${event.note || ""}`,
+        originalCategory: "calendar" as MindCaptureCategory,
+        created_at: new Date().toISOString(),
+      },
+      ...readMindInboxItems(),
+    ]);
+    setGuideDraft("予定をMind Inboxへ送ったよ。");
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    const { error } = await supabase.from("calendar_events").update({
+      title: editing.title,
+      event_date: editing.event_date,
+      note: editing.note,
+    }).eq("id", editing.id);
+    if (error) return alert("編集保存に失敗: " + error.message);
+    setSelected(editing.event_date);
+    setEditing(null);
+    setGuideDraft("予定を編集したよ。");
+    await refreshSnapshot("カレンダー更新中...");
+  }
+
+  return (
+    <GlassCard className="calendar-ops-panel">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-black tracking-[0.28em] text-sky-100/55">CALENDAR OPS</p>
+          <h3 className="mt-1 text-2xl font-black">予定リスト / 編集・変換</h3>
+          <p className="mt-2 text-sm leading-6 text-white/60">
+            今日・明日・今週・支払い予定を切り替えて、予定をTODOやDiaryにも送れるよ。
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[
+            ["today", "今日"],
+            ["tomorrow", "明日"],
+            ["week", "今週"],
+            ["month", "今月"],
+            ["payment", "支払い"],
+            ["todo", "TODO期限"],
+            ["routine", "ルーティン"],
+            ["list", "一覧"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key as typeof filter)}
+              className={`rounded-full px-3 py-2 text-xs font-black ${filter === key ? "bg-white text-black" : "bg-white/10 text-white/72"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {shown.map((event) => (
+          <div key={event.id} className="rounded-3xl border border-white/10 bg-black/24 p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-xs text-sky-100/55">{event.event_date} {event.start_time || ""}</p>
+                <h4 className="mt-1 text-lg font-black">{event.title}</h4>
+                <p className="mt-1 line-clamp-2 text-sm text-white/55">{event.note || "メモなし"}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <button onClick={() => setEditing(event)} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black">編集</button>
+                <button onClick={() => duplicateEvent(event)} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black">複製</button>
+                <button onClick={() => eventToTodo(event)} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black">TODO</button>
+                <button onClick={() => eventToDiary(event)} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black">Diary</button>
+                <button onClick={() => deleteEvent(event)} className="rounded-xl bg-red-500/80 px-3 py-2 text-xs font-black">削除</button>
+              </div>
+            </div>
+            <button onClick={() => eventToMindInbox(event)} className="mt-3 rounded-xl bg-white/5 px-3 py-2 text-xs font-black">
+              Mind Inboxへ送る
+            </button>
+          </div>
+        ))}
+        {!shown.length && <Empty text="この条件の予定はまだないよ。" />}
+      </div>
+
+      {editing && (
+        <Modal title="予定を編集" onClose={() => setEditing(null)}>
+          <div className="space-y-3">
+            <Field value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} />
+            <DateField label="日付" value={editing.event_date} onChange={(e) => setEditing({ ...editing, event_date: e.target.value })} />
+            <TextArea value={editing.note || ""} onChange={(e) => setEditing({ ...editing, note: e.target.value })} />
+            <button onClick={saveEdit} className="w-full rounded-2xl bg-white px-4 py-3 font-black text-black">保存する</button>
+          </div>
+        </Modal>
+      )}
+    </GlassCard>
+  );
+}
+
+
 function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
   const [settings, setSettings] = useState(readMailSettings);
   const [items, setItems] = useState<MailItem[]>(() => readMailItems());
@@ -11154,6 +11481,8 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
           Gmail / Outlook連携を見据えたメールMVP。今は安全優先で、手動取り込み・下書き・mailto送信・TODO/予定/家計簿候補化に対応しているよ。
         </p>
       </GlassCard>
+
+      <MailOAuthBridgePanel />
 
       <div className="grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
         <GlassCard>

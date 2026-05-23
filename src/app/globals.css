@@ -3204,3 +3204,24 @@ main {
     padding: 14px !important;
   }
 }
+
+
+/* ===== v26 Calendar Ops / Mail OAuth mobile polish ===== */
+@media (max-width: 767px) {
+  .calendar-ops-panel,
+  .calendar-ops-panel .rounded-3xl,
+  .mail-command-page .rounded-3xl {
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .calendar-ops-panel .grid,
+  .mail-command-page .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .calendar-ops-panel button,
+  .mail-command-page button {
+    min-height: 44px !important;
+  }
+}
