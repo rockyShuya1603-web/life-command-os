@@ -275,34 +275,34 @@ const navItems: { key: PageKey; label: string; icon: string }[] = [
   { key: "budget", label: "家計簿", icon: "👛" },
   { key: "shopping", label: "買い物", icon: "🛒" },
   { key: "belongings", label: "持ち物", icon: "🎒" },
-  { key: "routines", label: "Routine", icon: "🌅" },
+  { key: "routines", label: "ルーティン", icon: "🌅" },
   { key: "trash", label: "ゴミ", icon: "🗑️" },
   { key: "map", label: "地図", icon: "🗺️" },
   { key: "heatmap", label: "ヒートマップ", icon: "🔥" },
   { key: "lifehub", label: "生活OS", icon: "🧬" },
-  { key: "todaycommand", label: "Today Command", icon: "🧭" },
-  { key: "lowenergy", label: "Low Energy", icon: "🫧" },
-  { key: "outing", label: "Outing", icon: "🎒" },
-  { key: "shoppingmission", label: "Shopping Mission", icon: "🛒" },
+  { key: "todaycommand", label: "今日", icon: "🧭" },
+  { key: "lowenergy", label: "低エネ", icon: "🫧" },
+  { key: "outing", label: "外出", icon: "🎒" },
+  { key: "shoppingmission", label: "買物任務", icon: "🛒" },
   { key: "paymentcalendar", label: "支払いカレンダー", icon: "💳" },
-  { key: "subscriptions", label: "Subscription", icon: "🔁" },
-  { key: "decisionlog", label: "Decision Log", icon: "🧩" },
-  { key: "projectlab", label: "Project Lab", icon: "🧪" },
-  { key: "promptvault", label: "Prompt Vault", icon: "📦" },
-  { key: "bugcenter", label: "Bug Center", icon: "🐞" },
-  { key: "recovery", label: "Recovery", icon: "🛟" },
-  { key: "reset", label: "Reset", icon: "🔄" },
-  { key: "weeklyreview", label: "Weekly Review", icon: "📆" },
-  { key: "monthlyreview", label: "Monthly Review", icon: "🗓️" },
-  { key: "lifescore", label: "Life Score", icon: "🎮" },
-  { key: "skilltree", label: "Skill Tree", icon: "🌳" },
-  { key: "archive", label: "Archive", icon: "🏛️" },
-  { key: "futureletter", label: "Future Letter", icon: "✉️" },
-  { key: "emergencynote", label: "Emergency", icon: "🛡️" },
-  { key: "placelog", label: "Place Log", icon: "📍" },
-  { key: "sleepprep", label: "Sleep Prep", icon: "🌙" },
-  { key: "timeline", label: "Timeline", icon: "🕰️" },
-  { key: "braindump", label: "Mind Capture", icon: "🧠" },
+  { key: "subscriptions", label: "サブスク", icon: "🔁" },
+  { key: "decisionlog", label: "決断", icon: "🧩" },
+  { key: "projectlab", label: "開発", icon: "🧪" },
+  { key: "promptvault", label: "依頼文", icon: "📦" },
+  { key: "bugcenter", label: "バグ", icon: "🐞" },
+  { key: "recovery", label: "回復", icon: "🛟" },
+  { key: "reset", label: "リセット", icon: "🔄" },
+  { key: "weeklyreview", label: "週次", icon: "📆" },
+  { key: "monthlyreview", label: "月次", icon: "🗓️" },
+  { key: "lifescore", label: "生活点", icon: "🎮" },
+  { key: "skilltree", label: "スキル", icon: "🌳" },
+  { key: "archive", label: "保管庫", icon: "🏛️" },
+  { key: "futureletter", label: "未来手紙", icon: "✉️" },
+  { key: "emergencynote", label: "緊急", icon: "🛡️" },
+  { key: "placelog", label: "場所ログ", icon: "📍" },
+  { key: "sleepprep", label: "睡眠準備", icon: "🌙" },
+  { key: "timeline", label: "時系列", icon: "🕰️" },
+  { key: "braindump", label: "思考整理", icon: "🧠" },
   { key: "focus", label: "集中タイマー", icon: "⏱️" },
   { key: "search", label: "検索", icon: "🧠" },
   { key: "tags", label: "タグ", icon: "🏷️" },
@@ -314,7 +314,7 @@ const navItems: { key: PageKey; label: string; icon: string }[] = [
   { key: "ideals", label: "理想", icon: "🖼️" },
   { key: "users", label: "ユーザー", icon: "👤" },
   { key: "train", label: "電車", icon: "🚆" },
-  { key: "exp", label: "EXP", icon: "🎮" },
+  { key: "exp", label: "経験値", icon: "🎮" },
   { key: "night", label: "夜モード", icon: "🌙" },
   { key: "ainews", label: "AIニュース", icon: "📰" },
   { key: "settings", label: "設定", icon: "🎨" },
@@ -1465,7 +1465,7 @@ export default function Home() {
               <LifeModulePanel config={lifeModuleConfigsByKey.archive} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
             )}
             {page === "futureletter" && (
-              <LifeModulePanel config={lifeModuleConfigsByKey.futureletter} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+              <FutureLetterPanel snapshot={snapshot} setPage={setPage} />
             )}
             {page === "emergencynote" && (
               <LifeModulePanel config={lifeModuleConfigsByKey.emergencynote} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
@@ -2969,6 +2969,7 @@ function MemosPanel({ snapshot, refreshSnapshot }: PanelProps) {
   }
   return (
     <div className="budget-command-page space-y-4">
+      <MemoUpgradePanel memos={memos} refreshSnapshot={refreshSnapshot} onDraft={setContent} />
       <GlassCard className="bg-gradient-to-br from-cyan-400/10 to-fuchsia-400/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -3593,6 +3594,7 @@ function TodosPanel({ snapshot, refreshSnapshot }: PanelProps) {
 
   return (
     <div className="space-y-4">
+      <TodoUpgradePanel todos={todos} refreshSnapshot={refreshSnapshot} />
       <GlassCard>
         <h2 className="text-xl font-black">TODO</h2>
         <p className="mt-1 text-sm text-white/55">
@@ -4255,6 +4257,7 @@ function DiaryPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
 
   return (
     <div className="space-y-4">
+      <DiaryUpgradePanel snapshot={snapshot} diaries={diaries} setTitle={setTitle} setMood={setMood} setEditorMode={setEditorMode} setBlocks={setBlocks} setPage={setPage} />
       <GlassCard>
         <h2 className="text-2xl font-black">Diary</h2>
         <p className="mt-2 text-sm text-white/60">
@@ -9546,6 +9549,905 @@ function LifeModulePanel({
   );
 }
 
+
+
+type TodoBoostMeta = {
+  focus: "must" | "should" | "could";
+  energy: "low" | "mid" | "high";
+  minutes: number;
+  postpone: number;
+  steps: string[];
+};
+
+type MemoBoostMeta = {
+  kind: string;
+  tags: string[];
+  pinned: boolean;
+  favorite: boolean;
+  archived: boolean;
+  updated_at: string;
+};
+
+type FutureLetterItem = {
+  id: string;
+  title: string;
+  letterType: string;
+  openDate: string;
+  body: string;
+  currentMood: string;
+  futureLine: string;
+  source?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type AiNewsSavedItem = {
+  id: string;
+  title: string;
+  summary: string;
+  category: string;
+  importance: string;
+  relation: string;
+  source: string;
+  publishedAt: string;
+  readLater: boolean;
+  created_at: string;
+};
+
+const TODO_BOOST_KEY = "lifeTodoBoostMetaV1";
+const MEMO_BOOST_KEY = "lifeMemoBoostMetaV1";
+const FUTURE_LETTER_KEY = "lifeFutureLettersV1";
+const AI_NEWS_SAVED_KEY = "lifeAiNewsSavedItemsV1";
+
+function readLifeJson<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeLifeJson<T>(key: string, value: T) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function readTodoBoostMeta(): Record<string, TodoBoostMeta> {
+  return readLifeJson<Record<string, TodoBoostMeta>>(TODO_BOOST_KEY, {});
+}
+
+function writeTodoBoostMeta(value: Record<string, TodoBoostMeta>) {
+  writeLifeJson(TODO_BOOST_KEY, value);
+}
+
+function getTodoBoost(meta: Record<string, TodoBoostMeta>, id: string): TodoBoostMeta {
+  return meta[id] || { focus: "should", energy: "mid", minutes: 15, postpone: 0, steps: [] };
+}
+
+function readMemoBoostMeta(): Record<string, MemoBoostMeta> {
+  return readLifeJson<Record<string, MemoBoostMeta>>(MEMO_BOOST_KEY, {});
+}
+
+function writeMemoBoostMeta(value: Record<string, MemoBoostMeta>) {
+  writeLifeJson(MEMO_BOOST_KEY, value);
+}
+
+function getMemoBoost(meta: Record<string, MemoBoostMeta>, id: string): MemoBoostMeta {
+  return meta[id] || {
+    kind: "通常メモ",
+    tags: [],
+    pinned: false,
+    favorite: false,
+    archived: false,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function readFutureLetters(): FutureLetterItem[] {
+  return readLifeJson<FutureLetterItem[]>(FUTURE_LETTER_KEY, []);
+}
+
+function writeFutureLetters(items: FutureLetterItem[]) {
+  writeLifeJson(FUTURE_LETTER_KEY, items.slice(0, 300));
+}
+
+function addFutureLetter(input: Partial<FutureLetterItem>) {
+  const now = new Date().toISOString();
+  const item: FutureLetterItem = {
+    id: `future-letter-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title: input.title || "未来の自分への手紙",
+    letterType: input.letterType || "未来の自分へ",
+    openDate: input.openDate || dateMinus(todayKey(), -30),
+    body: input.body || "",
+    currentMood: input.currentMood || "普通",
+    futureLine: input.futureLine || "未来の自分へ、今の気持ちを忘れないでね。",
+    source: input.source || "manual",
+    created_at: now,
+    updated_at: now,
+  };
+  writeFutureLetters([item, ...readFutureLetters()]);
+  return item;
+}
+
+function readAiNewsSavedItems(): AiNewsSavedItem[] {
+  return readLifeJson<AiNewsSavedItem[]>(AI_NEWS_SAVED_KEY, []);
+}
+
+function writeAiNewsSavedItems(items: AiNewsSavedItem[]) {
+  writeLifeJson(AI_NEWS_SAVED_KEY, items.slice(0, 200));
+}
+
+function stripHtmlText(value: string) {
+  return String(value || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .trim();
+}
+
+function templateFutureLetterBody(templateName: string) {
+  const map: Record<string, string> = {
+    "今の自分の状態": "今の自分の状態：\n\n今の生活：\n\n今の気持ち：\n\n未来の自分へ残したいこと：",
+    "今頑張っていること": "今頑張っていること：\n\nなぜ頑張っているか：\n\n未来の自分に見てほしいところ：",
+    "未来の自分に聞きたいこと": "未来の自分に聞きたいこと：\n\n今の自分が迷っていること：\n\n答え合わせしたいこと：",
+    "忘れてほしくないこと": "忘れてほしくないこと：\n\n大事にしたい感覚：\n\n今の自分からの一言：",
+    "未来の自分への一言": "未来の自分へ。\n\n今の自分はここで踏ん張っているよ。\n\n開封した時、少しでも前に進めていたらうれしい。",
+    "今の悩み": "今の悩み：\n\n本当はどうしたいか：\n\n未来の自分に託したいこと：",
+    "今の目標": "今の目標：\n\n期限：\n\n小さな次の一歩：\n\n未来の自分へ：",
+    "開封した時に思い出してほしいこと": "開封した時に思い出してほしいこと：\n\nこの日の空気：\n\nこの時期の自分が大事にしていたこと：",
+  };
+  return map[templateName] || "";
+}
+
+function splitTags(value: string) {
+  return String(value || "")
+    .split(/[,\s、#]+/)
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function buildTodoSteps(title: string) {
+  const lower = title.toLowerCase();
+  if (/家計簿|money|hub|予算|支出/.test(lower)) {
+    return [
+      "現在の家計簿コードを確認",
+      "入力フォームを確認",
+      "支出履歴の表示を確認",
+      "保存処理を確認",
+      "スマホ表示を確認",
+      "npm run build を実行",
+    ];
+  }
+  if (/ui|gui|デザイン|スマホ|画面/.test(lower)) {
+    return [
+      "現実のスクショを確認",
+      "崩れている箇所を1つ選ぶ",
+      "CSSだけで直せるか確認",
+      "スマホ幅で表示確認",
+      "PC版が崩れていないか確認",
+    ];
+  }
+  return [
+    "目的を1行で書く",
+    "最初の5分でできる作業に分ける",
+    "必要なファイルや情報を確認",
+    "小さい修正を1つ実行",
+    "保存・表示・buildを確認",
+  ];
+}
+
+function parseAiNewsCards(result: string): AiNewsSavedItem[] {
+  const source = String(result || "").trim();
+  if (!source) {
+    return [
+      {
+        id: "sample-ai-news-1",
+        title: "AIニュースを取得するとここにカード化されます",
+        summary: "ニュース取得後、内容を3行要約カードとして保存・TODO化・Project Lab化できます。",
+        category: "AIツール",
+        importance: "中",
+        relation: "Life Command OSに関係あり",
+        source: "未取得",
+        publishedAt: todayKey(),
+        readLater: false,
+        created_at: new Date().toISOString(),
+      },
+    ];
+  }
+  const chunks = source
+    .split(/\n\s*\n|---+/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+  return chunks.map((chunk, index) => {
+    const lines = chunk.split("\n").map((line) => line.replace(/^[-*#\d.\s]+/, "").trim()).filter(Boolean);
+    const title = lines[0]?.slice(0, 90) || `AIニュース ${index + 1}`;
+    const body = lines.slice(1).join(" ") || chunk;
+    const category =
+      /ui|ux|デザイン/i.test(chunk) ? "UI/UX" :
+      /openai|chatgpt/i.test(chunk) ? "ChatGPT / OpenAI" :
+      /program|code|開発|typescript|next/i.test(chunk) ? "プログラミング" :
+      /image|画像/i.test(chunk) ? "画像生成" :
+      "生成AI";
+    const relation =
+      /ui|ux|app|アプリ|開発|code|コード/i.test(chunk)
+        ? "Life Command OSに関係あり"
+        : /fitness|筋トレ|health/i.test(chunk)
+          ? "筋トレアプリに関係あり"
+          : "今は関係薄い";
+    return {
+      id: `ai-news-card-${Date.now()}-${index}`,
+      title,
+      summary: body.slice(0, 220),
+      category,
+      importance: relation === "Life Command OSに関係あり" ? "高" : "中",
+      relation,
+      source: "AIニュース",
+      publishedAt: todayKey(),
+      readLater: false,
+      created_at: new Date().toISOString(),
+    };
+  });
+}
+
+function TodoUpgradePanel({
+  todos,
+  refreshSnapshot,
+}: {
+  todos: Todo[];
+  refreshSnapshot: (reason?: string) => Promise<void>;
+}) {
+  const [meta, setMeta] = useState<Record<string, TodoBoostMeta>>(() => readTodoBoostMeta());
+  const activeTodos = todos.filter((todo) => !todo.done).slice(0, 80);
+  const todayTodos = activeTodos.filter((todo) => !todo.due_date || todo.due_date <= todayKey()).slice(0, 30);
+
+  function saveMeta(next: Record<string, TodoBoostMeta>) {
+    setMeta(next);
+    writeTodoBoostMeta(next);
+  }
+
+  function updateTodoMeta(id: string, patch: Partial<TodoBoostMeta>) {
+    const current = getTodoBoost(meta, id);
+    saveMeta({ ...meta, [id]: { ...current, ...patch } });
+  }
+
+  async function postponeTodo(todo: Todo) {
+    const current = getTodoBoost(meta, todo.id);
+    updateTodoMeta(todo.id, { postpone: current.postpone + 1 });
+    const { error } = await supabase
+      .from("todos")
+      .update({ due_date: dateMinus(todayKey(), -1) })
+      .eq("id", todo.id);
+    if (error) return alert("先送り保存に失敗: " + error.message);
+    setGuideDraft("明日に回したよ。責めるためじゃなく、次に着手しやすくする記録だよ。");
+    await refreshSnapshot("TODO先送り中...");
+  }
+
+  async function addStepTodos(todo: Todo) {
+    const steps = getTodoBoost(meta, todo.id).steps.length
+      ? getTodoBoost(meta, todo.id).steps
+      : buildTodoSteps(todo.title);
+    const rows = steps.map((step) => ({
+      title: `${todo.title} / ${step}`,
+      priority: todo.priority || "normal",
+      due_date: todo.due_date || todayKey(),
+      done: false,
+    }));
+    const { error } = await supabase.from("todos").insert(rows);
+    if (error) return alert("分解TODOの保存に失敗: " + error.message);
+    setGuideDraft("大きいTODOを小さいステップに分解して追加したよ。");
+    await refreshSnapshot("TODO分解を同期中...");
+  }
+
+  const focusLabels: Record<TodoBoostMeta["focus"], string> = {
+    must: "絶対やる",
+    should: "できればやる",
+    could: "余裕があれば",
+  };
+  const energyLabels: Record<TodoBoostMeta["energy"], string> = {
+    low: "低エネルギー",
+    mid: "中エネルギー",
+    high: "高エネルギー",
+  };
+
+  return (
+    <GlassCard className="todo-command-upgrade">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-black tracking-[0.28em] text-sky-100/55">TODO COMMAND</p>
+          <h3 className="mt-2 text-2xl font-black">今日の3つ / エネルギー別TODO</h3>
+          <p className="mt-2 text-sm leading-6 text-white/60">
+            全部やる前提ではなく、今日の体力で選びやすい形に整理するカードだよ。
+          </p>
+        </div>
+        <div className="rounded-2xl bg-sky-300/10 px-4 py-3 text-sm font-black text-sky-50">
+          未完了 {activeTodos.length}件
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        {(["must", "should", "could"] as TodoBoostMeta["focus"][]).map((focus) => {
+          const bucket = todayTodos.filter((todo) => getTodoBoost(meta, todo.id).focus === focus).slice(0, 5);
+          return (
+            <div key={focus} className="rounded-3xl border border-white/10 bg-black/20 p-4">
+              <p className="font-black">{focusLabels[focus]}</p>
+              <div className="mt-3 space-y-2">
+                {bucket.map((todo) => {
+                  const itemMeta = getTodoBoost(meta, todo.id);
+                  return (
+                    <div key={todo.id} className="rounded-2xl bg-white/[0.06] p-3">
+                      <p className="text-sm font-black">{todo.title}</p>
+                      <p className="mt-1 text-xs text-white/48">
+                        {energyLabels[itemMeta.energy]} / {itemMeta.minutes}分 / 先送り{itemMeta.postpone}回
+                      </p>
+                    </div>
+                  );
+                })}
+                {!bucket.length && <p className="text-sm text-white/45">ここはまだ空だよ。</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {todayTodos.slice(0, 8).map((todo) => {
+          const itemMeta = getTodoBoost(meta, todo.id);
+          return (
+            <div key={todo.id} className="rounded-3xl border border-white/10 bg-black/20 p-4">
+              <p className="font-black">{todo.title}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <select
+                  value={itemMeta.focus}
+                  onChange={(e) => updateTodoMeta(todo.id, { focus: e.target.value as TodoBoostMeta["focus"] })}
+                  className="rounded-2xl border border-white/15 bg-slate-950/90 p-3 text-sm text-white"
+                >
+                  <option value="must">絶対</option>
+                  <option value="should">できれば</option>
+                  <option value="could">余裕</option>
+                </select>
+                <select
+                  value={itemMeta.energy}
+                  onChange={(e) => updateTodoMeta(todo.id, { energy: e.target.value as TodoBoostMeta["energy"] })}
+                  className="rounded-2xl border border-white/15 bg-slate-950/90 p-3 text-sm text-white"
+                >
+                  <option value="low">低</option>
+                  <option value="mid">中</option>
+                  <option value="high">高</option>
+                </select>
+                <select
+                  value={itemMeta.minutes}
+                  onChange={(e) => updateTodoMeta(todo.id, { minutes: Number(e.target.value) })}
+                  className="rounded-2xl border border-white/15 bg-slate-950/90 p-3 text-sm text-white"
+                >
+                  {[3, 5, 15, 30, 60].map((m) => <option key={m} value={m}>{m}分</option>)}
+                </select>
+                <button onClick={() => postponeTodo(todo)} className="rounded-2xl bg-white/10 px-3 py-3 text-sm font-black">
+                  明日へ
+                </button>
+              </div>
+              <div className="mt-3 rounded-2xl bg-sky-300/10 p-3">
+                <p className="text-xs font-black text-sky-100/60">分解ステップ</p>
+                <div className="mt-2 space-y-1 text-sm text-white/65">
+                  {(itemMeta.steps.length ? itemMeta.steps : buildTodoSteps(todo.title)).map((step) => (
+                    <p key={step}>・{step}</p>
+                  ))}
+                </div>
+                <button onClick={() => addStepTodos(todo)} className="mt-3 rounded-2xl bg-sky-200 px-4 py-2 text-sm font-black text-black">
+                  ステップをTODOに追加
+                </button>
+              </div>
+              {itemMeta.postpone >= 3 && (
+                <p className="mt-3 rounded-2xl bg-amber-300/10 p-3 text-sm text-amber-50/80">
+                  このTODOは{itemMeta.postpone}回先送りされています。小さく分解すると進めやすいかもしれません。
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </GlassCard>
+  );
+}
+
+function MemoUpgradePanel({
+  memos,
+  refreshSnapshot,
+  onDraft,
+}: {
+  memos: Memo[];
+  refreshSnapshot: (reason?: string) => Promise<void>;
+  onDraft: (text: string) => void;
+}) {
+  const [meta, setMeta] = useState<Record<string, MemoBoostMeta>>(() => readMemoBoostMeta());
+  const [query, setQuery] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const [kindInput, setKindInput] = useState("通常メモ");
+
+  function saveMeta(next: Record<string, MemoBoostMeta>) {
+    setMeta(next);
+    writeMemoBoostMeta(next);
+  }
+
+  function updateMemoMeta(id: string, patch: Partial<MemoBoostMeta>) {
+    const current = getMemoBoost(meta, id);
+    saveMeta({ ...meta, [id]: { ...current, ...patch, updated_at: new Date().toISOString() } });
+  }
+
+  async function convertMemo(memo: Memo, target: "todo" | "diary" | "future" | "project" | "bug" | "decision" | "inbox" | "prompt") {
+    const text = memo.content.trim();
+    if (!text) return;
+    if (target === "todo") {
+      const { error } = await supabase.from("todos").insert({
+        title: text.slice(0, 90),
+        priority: "normal",
+        due_date: todayKey(),
+        done: false,
+      });
+      if (error) return alert("TODO化に失敗: " + error.message);
+      await refreshSnapshot("メモをTODO化中...");
+      return;
+    }
+    if (target === "diary") {
+      const { error } = await supabase.from("diary_entries").insert({
+        entry_date: todayKey(),
+        mood: "普通",
+        title: "メモからDiary",
+        content: `<p>${text.replace(/\n/g, "<br />")}</p>`,
+        image_url: null,
+      });
+      if (error) return alert("Diary化に失敗: " + error.message);
+      await refreshSnapshot("メモをDiaryへ同期中...");
+      return;
+    }
+    if (target === "future") {
+      addFutureLetter({
+        title: `メモから未来の自分へ`,
+        body: text,
+        openDate: dateMinus(todayKey(), -30),
+        source: "memo",
+      });
+      setGuideDraft("メモからFuture Letterを作ったよ。");
+      return;
+    }
+    if (target === "project") addLifeModuleItem("projectlab", { title: text.slice(0, 80), note: text, category: "メモから", status: "未着手" });
+    if (target === "bug") addLifeModuleItem("bugcenter", { title: text.slice(0, 80), note: text, category: "メモから", status: "未修正" });
+    if (target === "decision") addLifeModuleItem("decisionlog", { title: text.slice(0, 80), note: text, category: "メモから", status: "検討中" });
+    if (target === "prompt") {
+      const promptText = `以下のメモをもとに、実装指示として整理してください。\n\n【目的】\n\n【守ること】\n- 既存機能を壊さない\n- 既存データを壊さない\n\n【元メモ】\n${text}`;
+      addLifeModuleItem("promptvault", { title: text.slice(0, 80), note: promptText, category: "AI依頼文", status: "使える" });
+      onDraft(promptText);
+    }
+    if (target === "inbox") {
+      const next = [
+        {
+          id: `mind-inbox-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          content: text,
+          originalCategory: "memo" as MindCaptureCategory,
+          created_at: new Date().toISOString(),
+        },
+        ...readMindInboxItems(),
+      ];
+      writeMindInboxItems(next);
+    }
+    setGuideDraft("メモを別ページへ送ったよ。");
+  }
+
+  const enhancedMemos = memos
+    .map((memo) => ({ memo, meta: getMemoBoost(meta, memo.id) }))
+    .filter(({ memo, meta }) => {
+      const haystack = `${memo.content} ${meta.kind} ${meta.tags.join(" ")}`.toLowerCase();
+      return !query.trim() || haystack.includes(query.toLowerCase());
+    })
+    .sort((a, b) => Number(b.meta.pinned) - Number(a.meta.pinned) || Number(b.meta.favorite) - Number(a.meta.favorite))
+    .slice(0, 18);
+
+  return (
+    <GlassCard className="memo-command-upgrade">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-black tracking-[0.28em] text-sky-100/55">MEMO COMMAND</p>
+          <h3 className="mt-2 text-2xl font-black">探せる・分類できるメモ</h3>
+          <p className="mt-2 text-sm leading-6 text-white/60">
+            タグ、種類、ピン留め、変換ボタンで、メモを生活OSの入口にするよ。
+          </p>
+        </div>
+        <Field placeholder="タグ・内容で検索" value={query} onChange={(e) => setQuery(e.target.value)} />
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {enhancedMemos.map(({ memo, meta }) => (
+          <div key={memo.id} className={`rounded-3xl border p-4 ${meta.archived ? "border-white/5 bg-black/10 opacity-60" : "border-white/10 bg-black/20"}`}>
+            <div className="flex items-center justify-between gap-2">
+              <select
+                value={meta.kind}
+                onChange={(e) => updateMemoMeta(memo.id, { kind: e.target.value })}
+                className="min-w-0 rounded-2xl border border-white/15 bg-slate-950/90 p-2 text-sm text-white"
+              >
+                {["通常メモ", "アイデア", "気づき", "買い物候補", "予定候補", "家計簿候補", "ルーティン候補", "AI依頼文", "バグメモ", "重要メモ", "後で読む", "開発メモ"].map((kind) => <option key={kind}>{kind}</option>)}
+              </select>
+              <div className="flex gap-1">
+                <button onClick={() => updateMemoMeta(memo.id, { pinned: !meta.pinned })} className="rounded-xl bg-white/10 px-2 py-1 text-xs">{meta.pinned ? "📌" : "ピン"}</button>
+                <button onClick={() => updateMemoMeta(memo.id, { favorite: !meta.favorite })} className="rounded-xl bg-white/10 px-2 py-1 text-xs">{meta.favorite ? "⭐" : "☆"}</button>
+              </div>
+            </div>
+            <p className="mt-3 line-clamp-5 whitespace-pre-wrap text-sm leading-6 text-white/70">{memo.content}</p>
+            <div className="mt-3 flex flex-wrap gap-1">
+              {meta.tags.map((tag) => (
+                <span key={tag} className="rounded-full bg-sky-300/10 px-2 py-1 text-[11px] font-black text-sky-100">#{tag}</span>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-[1fr_88px] gap-2">
+              <Field placeholder="#タグ追加" value={tagInput} onChange={(e) => setTagInput(e.target.value)} />
+              <button
+                onClick={() => {
+                  const tags = Array.from(new Set([...meta.tags, ...splitTags(tagInput)]));
+                  updateMemoMeta(memo.id, { tags });
+                  setTagInput("");
+                }}
+                className="rounded-2xl bg-white/10 px-3 py-2 text-xs font-black"
+              >
+                追加
+              </button>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {[
+                ["todo", "TODO"],
+                ["diary", "Diary"],
+                ["future", "手紙"],
+                ["prompt", "AI依頼文"],
+                ["project", "開発"],
+                ["bug", "バグ"],
+                ["decision", "決断"],
+                ["inbox", "Inbox"],
+              ].map(([target, label]) => (
+                <button key={target} onClick={() => convertMemo(memo, target as any)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">
+                  {label}へ
+                </button>
+              ))}
+            </div>
+            <button onClick={() => updateMemoMeta(memo.id, { archived: !meta.archived })} className="mt-2 w-full rounded-xl bg-white/5 px-2 py-2 text-xs font-black">
+              {meta.archived ? "アーカイブ解除" : "アーカイブ"}
+            </button>
+          </div>
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
+function DiaryUpgradePanel({
+  snapshot,
+  diaries,
+  setTitle,
+  setMood,
+  setEditorMode,
+  setBlocks,
+  setPage,
+}: {
+  snapshot: Snapshot | null;
+  diaries: Diary[];
+  setTitle: (value: string) => void;
+  setMood: (value: string) => void;
+  setEditorMode: (value: "blocks" | "html") => void;
+  setBlocks: (value: any) => void;
+  setPage: (page: PageKey) => void;
+}) {
+  const today = todayKey();
+  const todayEvents = (snapshot?.events || []).filter((e) => e.event_date === today).length;
+  const todayTodos = (snapshot?.todos || []).filter((t) => t.due_date === today);
+  const doneTodos = todayTodos.filter((t) => t.done).length;
+  const todayExpense = (snapshot?.budget || []).filter((b) => b.spend_date === today && b.type === "expense").reduce((sum, b) => sum + Number(b.amount || 0), 0);
+  const todayMemos = (snapshot?.memos || []).filter((m) => getCreatedDateKey(m.created_at) === today).length;
+  const routines = (snapshot?.routines || []).filter((r) => r.active);
+  const morning = routines.filter((r) => classifyRoutineSlot(r) === "morning");
+  const night = routines.filter((r) => classifyRoutineSlot(r) === "night");
+  const checks = snapshot?.routineChecks || [];
+  const morningRate = morning.length ? Math.round((morning.filter((r) => checks.some((c) => c.routine_id === r.id && c.check_date === today)).length / morning.length) * 100) : 0;
+  const nightRate = night.length ? Math.round((night.filter((r) => checks.some((c) => c.routine_id === r.id && c.check_date === today)).length / night.length) * 100) : 0;
+
+  function applyTemplate(name: string) {
+    const templates: Record<string, string[]> = {
+      "今日のまとめ": ["今日よかったこと：", "今日しんどかったこと：", "今日進んだこと：", "明日に回すこと：", "明日の自分へ："],
+      "生活ログ": [`予定：${todayEvents}件`, `TODO完了：${doneTodos}件`, `支出：${yen(todayExpense)}`, `朝ルーティン：${morningRate}%`, `夜ルーティン：${nightRate}%`, "今日の一言："],
+      "次に活かす": ["今日の反省ではなく、次に活かすこと：", "小さく変えること：", "明日の最初の一手："],
+    };
+    setTitle(name);
+    setEditorMode("blocks");
+    setBlocks((templates[name] || templates["今日のまとめ"]).map((text, index) => ({
+      id: `diary-template-${Date.now()}-${index}`,
+      kind: index === 0 ? "h2" : "p",
+      text,
+      color: "#f8fafc",
+      bold: index === 0,
+      size: index === 0 ? "lg" : "base",
+    })));
+  }
+
+  function latestDiaryToFutureLetter() {
+    const latest = diaries[0];
+    if (!latest) return alert("Future LetterにするDiaryがまだないよ。");
+    addFutureLetter({
+      title: `${latest.entry_date}の自分から`,
+      letterType: "未来の自分へ",
+      openDate: dateMinus(todayKey(), -30),
+      body: stripHtmlText(latest.content),
+      currentMood: latest.mood || "普通",
+      futureLine: "この日の自分の気持ちを、未来の自分に届ける。",
+      source: "diary",
+    });
+    setGuideDraft("DiaryからFuture Letterを作ったよ。");
+    setPage("futureletter");
+  }
+
+  return (
+    <GlassCard className="diary-command-upgrade">
+      <h3 className="text-2xl font-black">今日のまとめカード</h3>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          ["予定", `${todayEvents}件`],
+          ["TODO完了", `${doneTodos}件`],
+          ["支出", yen(todayExpense)],
+          ["朝Routine", `${morningRate}%`],
+          ["夜Routine", night.length ? `${nightRate}%` : "未設定"],
+          ["Mind Capture", `${readMindInboxItems().length}件`],
+          ["メモ", `${todayMemos}件`],
+          ["気分", "記録待ち"],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-2xl bg-black/25 p-3">
+            <p className="text-xs font-black text-sky-100/50">{label}</p>
+            <p className="mt-1 text-xl font-black">{value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-4">
+        {["今日のまとめ", "生活ログ", "次に活かす"].map((name) => (
+          <button key={name} onClick={() => applyTemplate(name)} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">
+            {name}テンプレ
+          </button>
+        ))}
+        <button onClick={latestDiaryToFutureLetter} className="rounded-2xl bg-sky-200 px-4 py-3 text-sm font-black text-black">
+          Diaryから手紙
+        </button>
+      </div>
+    </GlassCard>
+  );
+}
+
+function FutureLetterPanel({
+  snapshot,
+  setPage,
+}: {
+  snapshot: Snapshot | null;
+  setPage: (page: PageKey) => void;
+}) {
+  const [letters, setLetters] = useState<FutureLetterItem[]>(() => readFutureLetters());
+  const [title, setTitle] = useState("");
+  const [letterType, setLetterType] = useState("未来の自分へ");
+  const [openDate, setOpenDate] = useState(dateMinus(todayKey(), -30));
+  const [body, setBody] = useState("");
+  const [currentMood, setCurrentMood] = useState("普通");
+  const [futureLine, setFutureLine] = useState("");
+  const [editing, setEditing] = useState<FutureLetterItem | null>(null);
+
+  function saveLetters(next: FutureLetterItem[]) {
+    setLetters(next);
+    writeFutureLetters(next);
+  }
+
+  function add() {
+    if (!body.trim() && !title.trim()) return;
+    const item = addFutureLetter({ title: title || "未来の自分への手紙", letterType, openDate, body, currentMood, futureLine });
+    setLetters([item, ...letters]);
+    setTitle("");
+    setBody("");
+    setFutureLine("");
+  }
+
+  function update() {
+    if (!editing) return;
+    const next = letters.map((letter) =>
+      letter.id === editing.id ? { ...editing, updated_at: new Date().toISOString() } : letter,
+    );
+    saveLetters(next);
+    setEditing(null);
+  }
+
+  function remove(id: string) {
+    saveLetters(letters.filter((letter) => letter.id !== id));
+  }
+
+  function fromLatestDiary() {
+    const latest = snapshot?.diaries?.[0];
+    if (!latest) return alert("Diaryがまだないよ。");
+    const item = addFutureLetter({
+      title: `${latest.entry_date}の自分から`,
+      letterType: "Diaryから未来の自分へ",
+      openDate: dateMinus(todayKey(), -30),
+      body: stripHtmlText(latest.content),
+      currentMood: latest.mood || "普通",
+      futureLine: "この日を未来の自分に届ける。",
+      source: "diary",
+    });
+    setLetters([item, ...letters]);
+  }
+
+  const openable = letters.filter((letter) => letter.openDate <= todayKey()).length;
+
+  return (
+    <div className="future-letter-page space-y-4">
+      <GlassCard className="future-letter-hero">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-black tracking-[0.34em] text-sky-100/60">TIME CAPSULE</p>
+            <h2 className="mt-2 text-4xl font-black">Future Letter / 未来の自分への手紙</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/62">
+              未来の日付に向けて手紙を封印する時間カプセル。開封日になったら、過去の自分からの手紙として読めるよ。
+            </p>
+          </div>
+          <div className="rounded-3xl border border-sky-200/16 bg-sky-300/10 p-4">
+            <p className="text-xs font-black text-sky-100/55">開封できます</p>
+            <p className="mt-1 text-3xl font-black">{openable}通</p>
+          </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard>
+        <h3 className="text-2xl font-black">手紙を書く</h3>
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_220px_180px_180px]">
+          <Field placeholder="タイトル" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <select value={letterType} onChange={(e) => setLetterType(e.target.value)} className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white">
+            {["未来の自分へ", "落ち込んだ時の自分へ", "目標を達成した自分へ", "迷っている自分へ", "誕生日の自分へ", "年末の自分へ", "2028年8月12日の自分へ"].map((name) => <option key={name}>{name}</option>)}
+          </select>
+          <Field type="date" value={openDate} onChange={(e) => setOpenDate(e.target.value)} />
+          <select value={currentMood} onChange={(e) => setCurrentMood(e.target.value)} className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white">
+            {["良い", "普通", "疲れ気味", "不安あり", "達成感あり", "頭がごちゃついている", "落ち着いている", "眠い"].map((name) => <option key={name}>{name}</option>)}
+          </select>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {["今の自分の状態", "今頑張っていること", "未来の自分に聞きたいこと", "忘れてほしくないこと", "未来の自分への一言", "今の悩み", "今の目標", "開封した時に思い出してほしいこと"].map((name) => (
+            <button key={name} onClick={() => setBody(templateFutureLetterBody(name))} className="rounded-full bg-white/10 px-3 py-2 text-xs font-black">
+              {name}
+            </button>
+          ))}
+        </div>
+        <TextArea className="mt-3 min-h-56" placeholder="未来の自分に向けて書く" value={body} onChange={(e) => setBody(e.target.value)} />
+        <Field className="mt-3" placeholder="未来の自分への一言" value={futureLine} onChange={(e) => setFutureLine(e.target.value)} />
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <PrimaryButton onClick={add}>手紙を封印する</PrimaryButton>
+          <button onClick={fromLatestDiary} className="rounded-2xl bg-white/10 px-4 py-3 font-black">最新Diaryから作る</button>
+          <button onClick={() => setPage("diary")} className="rounded-2xl bg-white/10 px-4 py-3 font-black">Diaryへ</button>
+        </div>
+      </GlassCard>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        {letters.map((letter) => {
+          const open = letter.openDate <= todayKey();
+          const days = Math.max(0, Math.ceil((new Date(letter.openDate).getTime() - new Date(todayKey()).getTime()) / 86400000));
+          return (
+            <GlassCard key={letter.id} className={`future-letter-envelope ${open ? "future-letter-openable" : ""}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black text-sky-100/50">{letter.letterType}</p>
+                  <h3 className="mt-1 text-2xl font-black">{letter.title}</h3>
+                  <p className="mt-1 text-sm text-white/50">開封日 {letter.openDate} / {letter.currentMood}</p>
+                </div>
+                <span className={`rounded-full px-3 py-2 text-xs font-black ${open ? "bg-sky-200 text-black" : "bg-white/10 text-white/60"}`}>
+                  {open ? "開封できます" : `封印中 あと${days}日`}
+                </span>
+              </div>
+              <div className={`mt-4 rounded-3xl border p-4 ${open ? "border-sky-200/20 bg-sky-300/10" : "border-white/10 bg-black/25 blur-[1px]"}`}>
+                <p className="whitespace-pre-wrap text-sm leading-7 text-white/75">
+                  {open ? letter.body : "開封日まで内容は封印中です。"}
+                </p>
+                {open && letter.futureLine && <p className="mt-3 font-black text-sky-100">{letter.futureLine}</p>}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button onClick={() => setEditing(letter)} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">編集</button>
+                <button onClick={() => remove(letter.id)} className="rounded-2xl bg-red-500 px-4 py-3 text-sm font-black">削除</button>
+              </div>
+            </GlassCard>
+          );
+        })}
+        {!letters.length && <Empty text="まだ手紙はないよ。1通だけ未来の自分に残してみよう。" />}
+      </div>
+
+      {editing && (
+        <Modal title="Future Letterを編集" onClose={() => setEditing(null)}>
+          <div className="space-y-3">
+            <Field value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} />
+            <Field type="date" value={editing.openDate} onChange={(e) => setEditing({ ...editing, openDate: e.target.value })} />
+            <TextArea value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })} />
+            <Field value={editing.futureLine} onChange={(e) => setEditing({ ...editing, futureLine: e.target.value })} />
+            <button onClick={update} className="w-full rounded-2xl bg-white px-4 py-3 font-black text-black">保存する</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function AiNewsUpgradePanel({ result }: { result: string }) {
+  const [savedItems, setSavedItems] = useState<AiNewsSavedItem[]>(() => readAiNewsSavedItems());
+  const [cards, setCards] = useState<AiNewsSavedItem[]>(() => parseAiNewsCards(result));
+  useEffect(() => {
+    setCards(parseAiNewsCards(result));
+  }, [result]);
+
+  function saveSavedItems(next: AiNewsSavedItem[]) {
+    setSavedItems(next);
+    writeAiNewsSavedItems(next);
+  }
+
+  async function sendNews(card: AiNewsSavedItem, target: "memo" | "todo" | "project" | "prompt" | "future" | "decision" | "later") {
+    const text = `【AIニュース】${card.title}\nカテゴリ: ${card.category}\n重要度: ${card.importance}\n関係度: ${card.relation}\n\n${card.summary}`;
+    if (target === "memo") {
+      const { error } = await supabase.from("memos").insert({ content: text });
+      if (error) return alert("メモ保存に失敗: " + error.message);
+    }
+    if (target === "todo") {
+      const { error } = await supabase.from("todos").insert({ title: `AIニュース確認: ${card.title}`.slice(0, 100), priority: "normal", due_date: todayKey(), done: false });
+      if (error) return alert("TODO化に失敗: " + error.message);
+    }
+    if (target === "project") addLifeModuleItem("projectlab", { title: `AIニュース改善案: ${card.title}`.slice(0, 100), note: `${text}\n\n改善案:\n- Life Command OSに活かせる導線を検討\n- UI/AI検索/自動分類への応用を考える`, category: "AIニュース", status: "未着手" });
+    if (target === "prompt") addLifeModuleItem("promptvault", { title: `AIニュース依頼文: ${card.title}`.slice(0, 100), note: `次のAIニュースをLife Command OSの改善案に変換してください。\n\n${text}`, category: "AI依頼文", status: "使える" });
+    if (target === "future") addFutureLetter({ title: `AI時代の未来の自分へ`, body: text, openDate: dateMinus(todayKey(), -30), source: "ai-news" });
+    if (target === "decision") addLifeModuleItem("decisionlog", { title: `AIニュース判断: ${card.title}`.slice(0, 100), note: text, category: "AIニュース", status: "検討中" });
+    if (target === "later") {
+      saveSavedItems([{ ...card, id: `saved-ai-news-${Date.now()}`, readLater: true, created_at: new Date().toISOString() }, ...savedItems]);
+    }
+    setGuideDraft("AIニュースを指定先へ送ったよ。");
+  }
+
+  return (
+    <GlassCard className="ai-news-command-room">
+      <h3 className="text-2xl font-black">AIニュース室</h3>
+      <p className="mt-2 text-sm leading-6 text-white/60">
+        ニュースをカード化して、メモ・TODO・Project Lab・Prompt Vaultへ送れるようにしたよ。
+      </p>
+      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+        {cards.map((card) => (
+          <div key={card.id} className="rounded-3xl border border-white/10 bg-black/25 p-4">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-sky-300/10 px-3 py-1 text-xs font-black text-sky-100">{card.category}</span>
+              <span className="rounded-full bg-amber-300/10 px-3 py-1 text-xs font-black text-amber-100">重要度 {card.importance}</span>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/60">{card.relation}</span>
+            </div>
+            <h4 className="mt-3 text-xl font-black">{card.title}</h4>
+            <p className="mt-2 line-clamp-5 text-sm leading-7 text-white/68">{card.summary}</p>
+            <p className="mt-2 text-xs text-white/40">{card.source} / {card.publishedAt}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                ["memo", "メモ"],
+                ["todo", "TODO"],
+                ["project", "改善案"],
+                ["prompt", "依頼文"],
+                ["future", "手紙"],
+                ["decision", "決断"],
+                ["later", "あとで"],
+              ].map(([target, label]) => (
+                <button key={target} onClick={() => sendNews(card, target as any)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {savedItems.length > 0 && (
+        <div className="mt-4 rounded-3xl bg-white/[0.06] p-4">
+          <p className="font-black">あとで読む {savedItems.length}件</p>
+        </div>
+      )}
+    </GlassCard>
+  );
+}
+
+
 function QuickAddFab({
   open,
   onOpen,
@@ -11100,6 +12002,7 @@ function AiNewsPanel() {
         loading={loading}
         onRefresh={loadNews}
       />
+      <AiNewsUpgradePanel result={result} />
     </div>
   );
 }
