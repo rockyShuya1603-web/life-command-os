@@ -190,3 +190,52 @@ export function base64UrlEncode(input: string) {
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
 }
+
+
+export async function gmailApi(path: string, init?: RequestInit) {
+  const accessToken = await getValidAccessToken();
+  const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path.replace(/^\//, "")}`, {
+    ...init,
+    headers: {
+      ...(init?.headers || {}),
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(`Gmail API failed ${path}: ${JSON.stringify(json)}`);
+  }
+  return json;
+}
+
+export async function cacheGmailMessage(message: any) {
+  const supabase = getSupabaseAdmin();
+  const payload = {
+    gmail_id: message.id,
+    thread_id: message.threadId,
+    from_email: message.from || "",
+    to_email: message.to || "",
+    subject: message.subject || "",
+    snippet: message.snippet || "",
+    body: message.body || "",
+    received_at: message.date ? new Date(message.date).toISOString() : new Date().toISOString(),
+    unread: Boolean(message.unread),
+    important: Boolean(message.important),
+    has_attachment: Boolean(message.hasAttachment),
+    raw: message,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from("gmail_cached_messages").upsert(payload, { onConflict: "gmail_id" });
+  if (error) throw new Error(`gmail cache upsert failed: ${error.message}`);
+}
+
+export async function storePushEvent(input: { emailAddress?: string; historyId?: string; raw?: unknown }) {
+  const supabase = getSupabaseAdmin();
+  const { error } = await supabase.from("gmail_push_events").insert({
+    email: input.emailAddress || null,
+    history_id: input.historyId || null,
+    raw: input.raw || {},
+  });
+  if (error) throw new Error(`gmail push event insert failed: ${error.message}`);
+}

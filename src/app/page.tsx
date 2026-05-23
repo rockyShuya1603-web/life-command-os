@@ -10935,6 +10935,28 @@ function buildLifeSearchAnswer(snapshot: Snapshot | null, query: string) {
     };
   }
 
+  if (/横断|まとめて|全部|司令室|生活全体|メール含め/i.test(q)) {
+    const mailIntel = buildMailIntelligence(mail);
+    const activeTodos = todos.filter((t) => !t.done);
+    const activeEvents = range ? events.filter((e) => inRange(e.event_date, range.start, range.end)) : events.slice(0, 8);
+    const expenseRows = range ? budget.filter((b) => inRange(b.spend_date, range.start, range.end)) : budget;
+    return {
+      title: "本格横断AI検索まとめ",
+      page: "mail" as PageKey,
+      lines: [
+        `未完了TODO：${activeTodos.length}件`,
+        `予定：${activeEvents.length}件`,
+        `支出：${yen(sumExpense(expenseRows))}`,
+        `メール候補：返信${mailIntel.reply} / 支払い${mailIntel.payment} / 開発${mailIntel.dev}`,
+      ],
+      records: [
+        ...activeEvents.slice(0, 4).map((e) => `予定 ${e.event_date} ${e.title}`),
+        ...activeTodos.slice(0, 4).map((t) => `TODO ${t.due_date || "期限なし"} ${t.title}`),
+        ...mailIntel.priority.slice(0, 4).map(({ item, hints }) => `メール ${item.subject} / ${hints.summary.join("・")}`),
+      ],
+    };
+  }
+
   if (/メール|未返信|請求書|予約|添付|gmail|vercel|google|セキュリティ|支払いメール|重要メール/i.test(q)) {
     const selected = mail.filter((m) => {
       const hints = getMailActionHints(m);
@@ -11015,7 +11037,7 @@ function CalendarQuickAddPanel({
   const [saving, setSaving] = useState(false);
 
   function makeDraft(text = input) {
-    const next = parseQuickCalendarText(text);
+    const next = improveCalendarDraftFromText(text);
     setDraft(next);
     setSelected(next.event_date);
     setCursorMonth(next.event_date.slice(0, 7));
@@ -11408,6 +11430,73 @@ function matchesMailFilter(item: MailItem, filter: MailFilterKey) {
   return true;
 }
 
+
+
+type MailConversionKind = "todo" | "calendar" | "budget" | "subscription" | "bug" | "memo";
+
+function inferMailConversion(item: MailItem, preferred?: MailConversionKind) {
+  const hints = getMailActionHints(item);
+  const draft = parseQuickCalendarText(`${item.subject}\n${item.body}`);
+  const amount = hints.amount || extractYenAmount(`${item.subject}\n${item.body}`) || 0;
+  const defaultKind: MailConversionKind =
+    preferred ||
+    (hints.isBugOrDev ? "bug" :
+      hints.hasPayment ? "budget" :
+        hints.hasSubscription ? "subscription" :
+          hints.hasSchedule ? "calendar" :
+            hints.hasTodo ? "todo" : "memo");
+  return {
+    kind: defaultKind,
+    title:
+      defaultKind === "calendar" ? draft.title :
+      defaultKind === "budget" ? `メール支払い候補: ${item.subject}` :
+      defaultKind === "subscription" ? `メールサブスク候補: ${item.subject}` :
+      defaultKind === "bug" ? `メール由来バグ/通知: ${item.subject}` :
+      defaultKind === "todo" ? `メール対応: ${item.subject}` :
+      `メールメモ: ${item.subject}`,
+    note:
+      defaultKind === "calendar" ? `${draft.event_date} ${draft.start_time} ${draft.title}\n\n元メール:\n${item.body}` :
+      defaultKind === "budget" ? `支出候補 ${amount ? yen(amount) : "金額未確定"}\nカテゴリ未設定\n\n元メール:\n${item.body}` :
+      defaultKind === "subscription" ? `${amount ? `月額/支払い候補 ${yen(amount)}\n` : ""}更新日・使用頻度・解約検討メモを確認してから登録できる候補。\n\n元メール:\n${item.body}` :
+      `From: ${item.from}\n\n${item.body}`,
+    amount,
+    date: draft.event_date,
+    time: draft.start_time,
+    category:
+      defaultKind === "calendar" ? draft.category :
+      defaultKind === "budget" ? "請求書候補" :
+      defaultKind === "subscription" ? "メール候補" :
+      defaultKind === "bug" ? "メール通知" :
+      "メール候補",
+    status: defaultKind === "bug" ? "未修正" : "確認",
+  };
+}
+
+function improveCalendarDraftFromText(input: string) {
+  const draft = parseQuickCalendarText(input);
+  const text = input.trim();
+  const duration = text.match(/(\d+)\s*(分|時間)/);
+  if (duration && draft.start_time && duration[2] === "分") {
+    const [h, m] = draft.start_time.split(":").map(Number);
+    const d = new Date(`${draft.event_date}T${draft.start_time}:00`);
+    d.setMinutes(d.getMinutes() + Number(duration[1]));
+    draft.end_time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+  if (/場所|会場|駅|店|病院|クリニック|カフェ/.test(text)) {
+    const loc = text.match(/(?:場所|会場)[:：]?\s*([^\n。]+)/)?.[1];
+    if (loc) draft.location = loc.slice(0, 80);
+  }
+  if (/通知|リマインド/.test(text)) {
+    draft.notify = /前日/.test(text) ? "前日" : /1時間/.test(text) ? "1時間前" : /30分/.test(text) ? "30分前" : "10分前";
+  }
+  if (/終日/.test(text)) {
+    draft.allDay = true;
+    draft.start_time = "";
+  }
+  return draft;
+}
+
+
 function buildMailIntelligence(items: MailItem[]) {
   const rows = items.map((item) => ({ item, hints: getMailActionHints(item) }));
   return {
@@ -11609,6 +11698,9 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
   const [sending, setSending] = useState(false);
   const [gmailLiveStatus, setGmailLiveStatus] = useState<{ connected?: boolean; email?: string; message?: string }>({});
   const [mailFilter, setMailFilter] = useState<MailFilterKey>("all");
+  const [conversionDraft, setConversionDraft] = useState<ReturnType<typeof inferMailConversion> | null>(null);
+  const [conversionSource, setConversionSource] = useState<MailItem | null>(null);
+  const [aiReplyLoading, setAiReplyLoading] = useState(false);
   const [query, setQuery] = useState("");
 
   function persistItems(next: MailItem[]) {
@@ -11664,6 +11756,91 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
   function applyReplyAssist(style: "polite" | "short" | "soft" | "points") {
     setCompose((prev) => ({ ...prev, body: createReplyBody(style, prev.body, selected) }));
     setGuideDraft("返信文を整えたよ。送信前確認で内容をもう一度見られるよ。");
+  }
+
+  async function applyAiReply(style: "polite" | "short" | "soft" | "points") {
+    setAiReplyLoading(true);
+    try {
+      const res = await fetch("/api/mail/ai-reply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          style,
+          subject: selected?.subject || compose.subject,
+          from: selected?.from || compose.to,
+          originalBody: selected?.body || "",
+          draft: compose.body,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        alert(json.message || "AI返信生成に失敗しました。");
+        return;
+      }
+      setCompose((prev) => ({ ...prev, body: json.reply || prev.body }));
+      setGuideDraft(json.ai ? "AIで返信文を生成したよ。" : "AIキー未設定のためテンプレート返信を作ったよ。");
+    } finally {
+      setAiReplyLoading(false);
+    }
+  }
+
+  function startMailConversion(item: MailItem, kind: MailConversionKind) {
+    setConversionSource(item);
+    setConversionDraft(inferMailConversion(item, kind));
+  }
+
+  async function confirmMailConversion() {
+    if (!conversionDraft || !conversionSource) return;
+    const d = conversionDraft;
+    if (d.kind === "memo") {
+      await mailToMemo({ ...conversionSource, subject: d.title, body: d.note });
+    } else if (d.kind === "todo") {
+      const { error } = await supabase.from("todos").insert({
+        title: d.title.slice(0, 100),
+        priority: getMailActionHints(conversionSource).needsReply ? "high" : "normal",
+        due_date: d.date || todayKey(),
+        done: false,
+      });
+      if (error) return alert("TODO化に失敗: " + error.message);
+      await refreshSnapshot("メールをTODOへ保存中...");
+    } else if (d.kind === "calendar") {
+      const { error } = await supabase.from("calendar_events").insert({
+        title: d.title,
+        event_date: d.date || todayKey(),
+        note: d.note,
+      });
+      if (error) return alert("予定保存に失敗: " + error.message);
+      await refreshSnapshot("メールを予定へ保存中...");
+    } else if (d.kind === "budget") {
+      addLifeModuleItem("paymentcalendar", {
+        title: d.title,
+        note: d.note,
+        category: d.category,
+        status: d.status,
+        amount: d.amount,
+      });
+      setPage("paymentcalendar");
+    } else if (d.kind === "subscription") {
+      addLifeModuleItem("subscriptions", {
+        title: d.title,
+        note: d.note,
+        category: d.category,
+        status: d.status,
+        amount: d.amount,
+      });
+      setPage("subscriptions");
+    } else if (d.kind === "bug") {
+      addLifeModuleItem("bugcenter", {
+        title: d.title,
+        note: d.note,
+        category: d.category,
+        status: d.status,
+      });
+      setPage("bugcenter");
+    }
+    setGuideDraft("メール候補を確認して保存したよ。");
+    setConversionDraft(null);
+    setConversionSource(null);
   }
 
   function saveSettings() {
@@ -11768,7 +11945,7 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
   }
 
   function mailToCalendarCandidate(item: MailItem) {
-    const draft = parseQuickCalendarText(item.body);
+    const draft = improveCalendarDraftFromText(item.body);
     addLifeModuleItem("paymentcalendar", {
       title: `メール予定候補: ${item.subject}`,
       note: `${draft.event_date} ${draft.start_time} ${draft.title}\n\n元メール:\n${item.body}`,
@@ -11906,6 +12083,40 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
         )}
       </GlassCard>
 
+      <GlassCard className="mail-background-panel">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-black tracking-[0.28em] text-purple-100/55">BACKGROUND RECEIVE</p>
+            <h3 className="mt-1 text-2xl font-black">バックグラウンド受信</h3>
+            <p className="mt-2 text-sm leading-6 text-white/58">
+              完全バックグラウンド受信はGmail watch + Google Pub/Sub + webhook/cronで動かす設計。まずはwatch開始APIとsync APIを追加済み。
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              onClick={async () => {
+                const res = await fetch("/api/mail/gmail/watch/start", { method: "POST" });
+                const json = await res.json();
+                alert(json.message || (json.ok ? "watchを開始しました" : "watch開始に失敗しました"));
+              }}
+              className="rounded-2xl bg-white px-4 py-3 font-black text-black"
+            >
+              watch開始
+            </button>
+            <button
+              onClick={async () => {
+                const res = await fetch("/api/mail/gmail/sync", { method: "POST" });
+                const json = await res.json();
+                alert(json.ok ? `同期しました: ${json.cached || 0}件` : json.message || "同期に失敗しました");
+              }}
+              className="rounded-2xl bg-white/10 px-4 py-3 font-black"
+            >
+              今すぐ同期
+            </button>
+          </div>
+        </div>
+      </GlassCard>
+
       <div className="grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
         <GlassCard>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -12013,12 +12224,12 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <button onClick={() => mailToMemo(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">メモ保存</button>
-                <button onClick={() => mailToTodo(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">TODO化</button>
-                <button onClick={() => mailToCalendarCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">予定候補</button>
-                <button onClick={() => mailToBudgetCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">家計簿候補</button>
-                <button onClick={() => mailToSubscriptionCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">サブスク候補</button>
-                <button onClick={() => mailToBugCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">バグ/開発候補</button>
+                <button onClick={() => startMailConversion(selected, "memo")} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">メモ保存</button>
+                <button onClick={() => startMailConversion(selected, "todo")} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">TODO化</button>
+                <button onClick={() => startMailConversion(selected, "calendar")} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">予定候補</button>
+                <button onClick={() => startMailConversion(selected, "budget")} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">家計簿候補</button>
+                <button onClick={() => startMailConversion(selected, "subscription")} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">サブスク候補</button>
+                <button onClick={() => startMailConversion(selected, "bug")} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">バグ/開発候補</button>
               </div>
               <button onClick={() => createReplyDraft(selected)} className="w-full rounded-2xl bg-sky-200 px-4 py-3 font-black text-black">返信下書きを作る</button>
             </div>
@@ -12048,6 +12259,16 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
               {label}
             </button>
           ))}
+          {[
+            ["polite", "AI丁寧返信"],
+            ["short", "AI短文返信"],
+            ["soft", "AIやわらか返信"],
+            ["points", "AI要点返信"],
+          ].map(([style, label]) => (
+            <button key={`ai-${style}`} disabled={aiReplyLoading} onClick={() => applyAiReply(style as "polite" | "short" | "soft" | "points")} className="rounded-full bg-emerald-300/20 px-3 py-2 text-xs font-black text-emerald-50 disabled:opacity-50">
+              {aiReplyLoading ? "生成中" : label}
+            </button>
+          ))}
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <button onClick={() => saveDraft("draft")} className="rounded-2xl bg-white/10 px-4 py-3 font-black">下書き保存</button>
@@ -12066,6 +12287,37 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
           <button onClick={() => saveDraft("draft")} className="rounded-2xl bg-white/10 px-3 py-2 text-xs font-black">保存</button>
           <button onClick={() => setConfirmSend(true)} className="rounded-2xl bg-white px-4 py-2 text-sm font-black text-black">送信確認</button>
         </div>
+      )}
+
+      {conversionDraft && (
+        <Modal title="メール候補を確認して保存" onClose={() => { setConversionDraft(null); setConversionSource(null); }}>
+          <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <select value={conversionDraft.kind} onChange={(e) => setConversionDraft({ ...conversionDraft, ...inferMailConversion(conversionSource!, e.target.value as MailConversionKind), kind: e.target.value as MailConversionKind })} className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white">
+                <option value="memo">メモ</option>
+                <option value="todo">TODO</option>
+                <option value="calendar">予定</option>
+                <option value="budget">家計簿</option>
+                <option value="subscription">サブスク</option>
+                <option value="bug">バグ/開発</option>
+              </select>
+              <Field value={conversionDraft.category} onChange={(e) => setConversionDraft({ ...conversionDraft, category: e.target.value })} />
+            </div>
+            <Field value={conversionDraft.title} onChange={(e) => setConversionDraft({ ...conversionDraft, title: e.target.value })} />
+            {(conversionDraft.kind === "calendar" || conversionDraft.kind === "todo") && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DateField label="日付/期限" value={conversionDraft.date} onChange={(e) => setConversionDraft({ ...conversionDraft, date: e.target.value })} />
+                <Field placeholder="時間" value={conversionDraft.time} onChange={(e) => setConversionDraft({ ...conversionDraft, time: e.target.value })} />
+              </div>
+            )}
+            {(conversionDraft.kind === "budget" || conversionDraft.kind === "subscription") && (
+              <Field type="number" placeholder="金額" value={conversionDraft.amount} onChange={(e) => setConversionDraft({ ...conversionDraft, amount: Number(e.target.value) })} />
+            )}
+            <TextArea className="min-h-48" value={conversionDraft.note} onChange={(e) => setConversionDraft({ ...conversionDraft, note: e.target.value })} />
+            <p className="rounded-2xl bg-amber-300/10 p-3 text-sm text-amber-50/80">いきなり自動保存せず、ここで内容を確認してから保存する設計だよ。</p>
+            <button onClick={confirmMailConversion} className="w-full rounded-2xl bg-white px-4 py-3 font-black text-black">確認して保存</button>
+          </div>
+        </Modal>
       )}
 
       {confirmSend && (

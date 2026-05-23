@@ -3313,3 +3313,51 @@ main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
+/* ===== v30-34 Mail AI / Full Search / Mobile Mail ===== */
+.mail-background-panel,
+.mail-intelligence-panel {
+  position: relative;
+}
+
+.mail-background-panel::before,
+.mail-intelligence-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, .16), transparent 38%),
+    radial-gradient(circle at bottom left, rgba(168, 85, 247, .12), transparent 42%);
+}
+
+@media (max-width: 767px) {
+  .mail-command-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .mail-command-page h2 {
+    font-size: 2rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .mail-command-page h3 {
+    font-size: 1.2rem !important;
+  }
+
+  .mail-command-page .mail-intelligence-panel button,
+  .mail-command-page .mail-background-panel button {
+    min-height: 48px;
+  }
+
+  .mail-command-page .rounded-3xl {
+    border-radius: 1.35rem !important;
+  }
+
+  .mail-send-floating {
+    bottom: 5.9rem;
+  }
+}
