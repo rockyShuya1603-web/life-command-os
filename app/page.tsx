@@ -3940,6 +3940,18 @@ function CalendarPanel({ snapshot, refreshSnapshot }: { snapshot: Snapshot | nul
     setCursorMonth(next);
     setSelected(`${next}-01`);
   };
+  const calendarAgendaRange = getWeekRange(0);
+  const upcomingEvents = (snapshot?.events || [])
+    .filter((event) => event.event_date >= today)
+    .sort((a, b) => a.event_date.localeCompare(b.event_date))
+    .slice(0, 6);
+  const weekEvents = (snapshot?.events || []).filter((event) =>
+    inRange(event.event_date, calendarAgendaRange.start, calendarAgendaRange.end),
+  );
+  const weekTodos = (snapshot?.todos || []).filter((todo) =>
+    !todo.done && inRange(todo.due_date || today, calendarAgendaRange.start, calendarAgendaRange.end),
+  );
+
   const items = [
     ...(snapshot?.diaries || [])
       .filter((d) => d.entry_date === selected)
@@ -3963,6 +3975,30 @@ function CalendarPanel({ snapshot, refreshSnapshot }: { snapshot: Snapshot | nul
     <div className="space-y-4">
       <CalendarQuickAddPanel refreshSnapshot={refreshSnapshot} setSelected={setSelected} setCursorMonth={setCursorMonth} />
       <CalendarEventOpsPanel events={snapshot?.events || []} refreshSnapshot={refreshSnapshot} setSelected={setSelected} />
+      <GlassCard className="calendar-mobile-agenda">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-black tracking-[0.25em] text-cyan-100/55">MOBILE AGENDA</p>
+            <h2 className="mt-1 text-2xl font-black">見やすい予定リスト</h2>
+            <p className="mt-1 text-sm text-white/55">スマホでは月表示より、直近予定と今週のTODOを先に見られるようにしたよ。</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-2xl bg-white/10 p-3"><p className="text-xl font-black">{upcomingEvents.length}</p><p className="text-[11px] text-white/45">直近予定</p></div>
+            <div className="rounded-2xl bg-white/10 p-3"><p className="text-xl font-black">{weekEvents.length}</p><p className="text-[11px] text-white/45">今週予定</p></div>
+            <div className="rounded-2xl bg-white/10 p-3"><p className="text-xl font-black">{weekTodos.length}</p><p className="text-[11px] text-white/45">期限TODO</p></div>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 lg:grid-cols-2">
+          {upcomingEvents.slice(0, 4).map((event) => (
+            <button key={event.id} onClick={() => setSelected(event.event_date)} className="rounded-2xl border border-white/10 bg-black/20 p-3 text-left">
+              <p className="text-xs font-black text-sky-100/55">{event.event_date}</p>
+              <p className="mt-1 font-black">{event.title}</p>
+              <p className="mt-1 line-clamp-2 text-sm text-white/50">{event.note || "メモなし"}</p>
+            </button>
+          ))}
+          {!upcomingEvents.length && <Empty text="直近予定はまだないよ。上の手軽に予定追加から作れるよ。" />}
+        </div>
+      </GlassCard>
       <GlassCard>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -10468,16 +10504,43 @@ function QuickAddFab({
 }) {
   const [text, setText] = useState("");
   const [amount, setAmount] = useState(0);
+  const [quickMode, setQuickMode] = useState<"smart" | "money" | "plan" | "routine">("smart");
+  const [keepOpen, setKeepOpen] = useState(false);
 
-  async function save(category: MindCaptureCategory) {
+  const detected = useMemo(() => {
+    const source = text.trim();
+    const amountValue = amount || extractYenAmount(source) || 0;
+    const category: MindCaptureCategory =
+      amountValue || /円|支払|請求|買った|使った|交通費|カフェ|コンビニ/.test(source) ? "budget" :
+      /明日|今日|来週|予定|時|月\d{1,2}日|歯医者|病院|仕事|会議|予約|締切/.test(source) ? "calendar" :
+      /買う|購入|牛乳|卵|日用品|スーパー|コンビニ/.test(source) ? "shopping" :
+      /やる|TODO|タスク|確認|提出|返信|修正/.test(source) ? "todo" :
+      /寝る前|朝|夜|ルーティン|習慣|毎日|毎週/.test(source) ? "routine" :
+      "memo";
+    return { category, amountValue };
+  }, [text, amount]);
+
+  const categoryLabels: Record<string, string> = {
+    memo: "メモ",
+    todo: "TODO",
+    budget: "家計簿",
+    shopping: "買い物",
+    calendar: "予定",
+    routine: "Routine",
+    inbox: "Mind Inbox",
+    diary: "Diary",
+  };
+
+  async function save(category: MindCaptureCategory = detected.category) {
     if (!text.trim() && category !== "budget") return;
+    const content = text || `かんたん支出 ${yen(amount)}`;
     const message = await persistMindCaptureCandidate({
       id: `quick-${Date.now()}`,
       category,
-      content: text || `かんたん支出 ${yen(amount)}`,
+      content,
       save: true,
-      confidence: "確認が必要",
-      amount: amount || extractYenAmount(text),
+      confidence: detected.category === category ? "確定候補" : "確認が必要",
+      amount: detected.amountValue,
       date: todayKey(),
       source: "manual",
     });
@@ -10485,28 +10548,103 @@ function QuickAddFab({
     setAmount(0);
     await refreshSnapshot("Quick Add同期中...");
     setGuideDraft(message);
-    onClose();
+    if (!keepOpen) onClose();
   }
+
+  function applyTemplate(template: string, mode: typeof quickMode = "smart") {
+    setQuickMode(mode);
+    setText(template);
+    const detectedAmount = extractYenAmount(template);
+    if (detectedAmount) setAmount(detectedAmount);
+  }
+
+  const templates = [
+    ["明日14時に歯医者", "予定", "plan"],
+    ["牛乳と卵を買う", "買い物", "smart"],
+    ["カフェで500円使った", "支出", "money"],
+    ["Vercelエラーを確認する", "TODO", "smart"],
+    ["寝る前に5分片付け", "Routine", "routine"],
+    ["今日の気分を日記に残す", "Diary", "smart"],
+  ] as const;
+
+  const amountButtons = [100, 300, 500, 1000, 3000];
 
   return (
     <>
       <button
         onClick={onOpen}
-        className="quick-add-fab fixed bottom-24 right-4 z-[85] flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl font-black text-black shadow-2xl lg:bottom-6"
+        className="quick-add-fab rainbow-quick-add-fab fixed z-[85] flex items-center justify-center rounded-full text-3xl font-black text-white shadow-2xl"
         aria-label="Quick Add"
       >
         ＋
       </button>
       {open && (
         <Modal title="Quick Add / どこでも追加" onClose={onClose}>
-          <div className="space-y-3">
+          <div className="quick-add-panel space-y-4">
+            <div className="rounded-3xl border border-white/10 bg-white/8 p-3">
+              <p className="text-xs font-black tracking-[0.25em] text-sky-100/55">RAINBOW QUICK ADD</p>
+              <p className="mt-2 text-sm leading-6 text-white/65">
+                メモ・TODO・予定・家計簿・買い物・Routineをここから素早く追加。入力内容から候補カテゴリも自動推定するよ。
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {([
+                ["smart", "スマート"],
+                ["money", "支出"],
+                ["plan", "予定"],
+                ["routine", "Routine"],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => setQuickMode(mode)}
+                  className={`rounded-full px-4 py-2 text-xs font-black ${quickMode === mode ? "bg-white text-black" : "bg-white/10 text-white/75"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             <TextArea
-              className="min-h-28"
-              placeholder="すぐ記録したいこと。メモ、TODO、予定、家計簿、買い物、Routine候補など。"
+              className="min-h-32 text-base"
+              placeholder="例：明日14時に歯医者。カフェで500円使った。牛乳を買う。Vercelエラーを確認する。"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                const detectedAmount = extractYenAmount(e.target.value);
+                if (detectedAmount) setAmount(detectedAmount);
+              }}
             />
+
+            <div className="grid gap-3 sm:grid-cols-[1fr_1.2fr]">
+              <div className="rounded-3xl bg-black/20 p-3">
+                <p className="text-xs font-black text-white/45">推定カテゴリ</p>
+                <p className="mt-1 text-lg font-black">{categoryLabels[detected.category] || detected.category}</p>
+                <p className="mt-1 text-xs text-white/45">{detected.amountValue ? `金額候補 ${yen(detected.amountValue)}` : "金額候補なし"}</p>
+              </div>
+              <div className="rounded-3xl bg-black/20 p-3">
+                <p className="text-xs font-black text-white/45">金額クイック</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {amountButtons.map((value) => (
+                    <button key={value} onClick={() => setAmount(value)} className="rounded-full bg-white/10 px-3 py-2 text-xs font-black">
+                      {yen(value)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <Field type="number" placeholder="金額 任意" value={amount || ""} onChange={(e) => setAmount(Number(e.target.value))} />
+
+            <div className="quick-add-template-grid grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {templates.map(([template, label, mode]) => (
+                <button key={template} onClick={() => applyTemplate(template, mode as typeof quickMode)} className="rounded-2xl bg-white/10 px-3 py-3 text-left text-xs font-black">
+                  <span className="block text-white">{label}</span>
+                  <span className="mt-1 block line-clamp-2 text-white/50">{template}</span>
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {([
                 ["memo", "メモ"],
@@ -10515,22 +10653,41 @@ function QuickAddFab({
                 ["shopping", "買い物"],
                 ["calendar", "予定"],
                 ["routine", "Routine"],
+                ["diary", "Diary"],
                 ["inbox", "Mind Inbox"],
               ] as [MindCaptureCategory, string][]).map(([cat, label]) => (
-                <button key={cat} onClick={() => save(cat)} className="rounded-2xl bg-white/10 px-3 py-3 text-sm font-black">
+                <button
+                  key={cat}
+                  onClick={() => save(cat)}
+                  className={`rounded-2xl px-3 py-3 text-sm font-black ${detected.category === cat ? "bg-sky-200 text-black" : "bg-white/10 text-white"}`}
+                >
                   {label}
                 </button>
               ))}
             </div>
-            <button onClick={() => { setPage("braindump"); onClose(); }} className="w-full rounded-2xl bg-sky-200 px-4 py-3 font-black text-black">
-              Mind Captureを開く
-            </button>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <label className="flex items-center gap-2 rounded-2xl bg-white/10 px-3 py-3 text-sm font-black">
+                <input type="checkbox" checked={keepOpen} onChange={(e) => setKeepOpen(e.target.checked)} />
+                連続追加
+              </label>
+              <div className="grid flex-1 gap-2 sm:grid-cols-2">
+                <button onClick={() => save()} className="rounded-2xl bg-white px-4 py-3 font-black text-black">
+                  推定先へ追加
+                </button>
+                <button onClick={() => { setPage("braindump"); onClose(); }} className="rounded-2xl bg-sky-200 px-4 py-3 font-black text-black">
+                  Mind Captureを開く
+                </button>
+              </div>
+            </div>
           </div>
         </Modal>
       )}
     </>
   );
 }
+
+
 
 function CommandPaletteModal({
   snapshot,
@@ -11035,6 +11192,7 @@ function CalendarQuickAddPanel({
   const [input, setInput] = useState("");
   const [draft, setDraft] = useState<CalendarDraft | null>(null);
   const [saving, setSaving] = useState(false);
+  const [calendarMode, setCalendarMode] = useState<"quick" | "detail" | "repeat" | "pay">("quick");
 
   function makeDraft(text = input) {
     const next = improveCalendarDraftFromText(text);
@@ -11051,9 +11209,14 @@ function CalendarQuickAddPanel({
         title: draft.title,
         event_date: draft.event_date,
         note: [
-          draft.note,
+          draft.start_time ? `開始: ${draft.start_time}` : "",
+          draft.end_time ? `終了: ${draft.end_time}` : "",
+          draft.category ? `カテゴリ: ${draft.category}` : "",
+          draft.repeat !== "なし" ? `繰り返し: ${draft.repeat}` : "",
           draft.location ? `場所: ${draft.location}` : "",
           draft.notify !== "なし" ? `通知: ${draft.notify}` : "",
+          draft.allDay ? "終日予定" : "",
+          draft.note,
         ].filter(Boolean).join("\n"),
       });
       if (error) return alert("予定の保存に失敗: " + error.message);
@@ -11069,23 +11232,34 @@ function CalendarQuickAddPanel({
   const quicks = [
     ["明日14時に歯医者", "通院"],
     ["今日18時に買い物", "買い物"],
-    ["毎週金曜20時に家計簿チェック", "ルーティン"],
+    ["来週月曜9時に仕事", "仕事"],
+    ["毎週金曜20時に家計簿チェック", "毎週"],
+    ["毎月25日に給料日", "毎月"],
     ["3日後にスマホ代支払い", "支払い"],
   ];
 
   return (
-    <GlassCard className="calendar-command-upgrade">
+    <GlassCard className="calendar-command-upgrade calendar-mobile-upgrade">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-black tracking-[0.3em] text-sky-100/55">CALENDAR COMMAND</p>
           <h2 className="mt-2 text-2xl font-black">手軽に予定追加</h2>
           <p className="mt-2 text-sm leading-6 text-white/60">
-            自然な日本語から日付・時間・カテゴリ候補を作って、確認してから保存するよ。
+            自然な日本語から日付・時間・場所・通知・繰り返し候補を作って、確認してから保存するよ。
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {quicks.map(([text, label]) => (
-            <button key={text} onClick={() => { setInput(text); makeDraft(text); }} className="rounded-full bg-white/10 px-3 py-2 text-xs font-black">
+        <div className="calendar-mode-tabs flex flex-wrap gap-2">
+          {([
+            ["quick", "すぐ追加"],
+            ["detail", "詳細"],
+            ["repeat", "繰り返し"],
+            ["pay", "支払い"],
+          ] as const).map(([mode, label]) => (
+            <button
+              key={mode}
+              onClick={() => setCalendarMode(mode)}
+              className={`rounded-full px-3 py-2 text-xs font-black ${calendarMode === mode ? "bg-white text-black" : "bg-white/10 text-white/75"}`}
+            >
               {label}
             </button>
           ))}
@@ -11103,12 +11277,40 @@ function CalendarQuickAddPanel({
         </button>
       </div>
 
+      <div className="calendar-quick-chip-row mt-3 flex gap-2 overflow-x-auto pb-1">
+        {quicks.map(([text, label]) => (
+          <button key={text} onClick={() => { setInput(text); makeDraft(text); }} className="shrink-0 rounded-full bg-white/10 px-3 py-2 text-xs font-black">
+            {label}
+          </button>
+        ))}
+      </div>
+
       {draft && (
         <div className="mt-4 rounded-3xl border border-sky-200/16 bg-sky-300/10 p-4">
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="mb-3 grid gap-2 sm:grid-cols-4">
+            <div className="rounded-2xl bg-black/20 p-3">
+              <p className="text-xs text-white/45">日付</p>
+              <p className="font-black">{draft.event_date}</p>
+            </div>
+            <div className="rounded-2xl bg-black/20 p-3">
+              <p className="text-xs text-white/45">時間</p>
+              <p className="font-black">{draft.allDay ? "終日" : draft.start_time || "未設定"}</p>
+            </div>
+            <div className="rounded-2xl bg-black/20 p-3">
+              <p className="text-xs text-white/45">カテゴリ</p>
+              <p className="font-black">{draft.category}</p>
+            </div>
+            <div className="rounded-2xl bg-black/20 p-3">
+              <p className="text-xs text-white/45">判定</p>
+              <p className="font-black">{draft.confidence}</p>
+            </div>
+          </div>
+
+          <div className="calendar-draft-grid grid gap-3 md:grid-cols-3">
             <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
             <DateField label="日付" value={draft.event_date} onChange={(e) => setDraft({ ...draft, event_date: e.target.value })} />
             <Field placeholder="開始時間 例 14:00" value={draft.start_time} onChange={(e) => setDraft({ ...draft, start_time: e.target.value, allDay: !e.target.value })} />
+            <Field placeholder="終了時間 任意" value={draft.end_time} onChange={(e) => setDraft({ ...draft, end_time: e.target.value })} />
             <select value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white">
               {["仕事", "外出", "通院", "支払い", "締切", "ルーティン", "買い物", "休息", "アプリ開発", "その他"].map((c) => <option key={c}>{c}</option>)}
             </select>
@@ -11116,6 +11318,13 @@ function CalendarQuickAddPanel({
             <select value={draft.notify} onChange={(e) => setDraft({ ...draft, notify: e.target.value })} className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white">
               {["なし", "10分前", "30分前", "1時間前", "前日"].map((c) => <option key={c}>{c}</option>)}
             </select>
+            <select value={draft.repeat} onChange={(e) => setDraft({ ...draft, repeat: e.target.value })} className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white">
+              {["なし", "毎日", "毎週", "毎月"].map((c) => <option key={c}>{c}</option>)}
+            </select>
+            <label className="flex min-h-[52px] items-center gap-2 rounded-2xl border border-white/15 bg-slate-950/70 px-4 font-black">
+              <input type="checkbox" checked={draft.allDay} onChange={(e) => setDraft({ ...draft, allDay: e.target.checked, start_time: e.target.checked ? "" : draft.start_time })} />
+              終日
+            </label>
           </div>
           <TextArea className="mt-3 min-h-24" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -11123,7 +11332,7 @@ function CalendarQuickAddPanel({
               {draft.confidence}
             </span>
             {draft.confidence === "確認が必要" && <span className="text-sm text-white/55">曖昧な表現があるので、日付や時間を確認してから保存してね。</span>}
-            <button onClick={saveDraft} disabled={saving} className="ml-auto rounded-2xl bg-sky-200 px-4 py-3 font-black text-black disabled:opacity-50">
+            <button onClick={saveDraft} disabled={saving} className="calendar-save-button ml-auto rounded-2xl bg-sky-200 px-4 py-3 font-black text-black disabled:opacity-50">
               {saving ? "保存中" : "確認して保存"}
             </button>
           </div>
