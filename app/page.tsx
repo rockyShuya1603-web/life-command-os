@@ -10648,10 +10648,19 @@ function readMailSettings() {
     email: "",
     lastSync: "",
     syncLimit: 20,
+    autoFetch: true,
+    refreshMinutes: 5,
   });
 }
 
-function writeMailSettings(value: { provider: string; email: string; lastSync: string; syncLimit: number }) {
+function writeMailSettings(value: {
+  provider: string;
+  email: string;
+  lastSync: string;
+  syncLimit: number;
+  autoFetch?: boolean;
+  refreshMinutes?: number;
+}) {
   writeLifeJson(MAIL_SETTINGS_KEY, value);
 }
 
@@ -10926,20 +10935,28 @@ function buildLifeSearchAnswer(snapshot: Snapshot | null, query: string) {
     };
   }
 
-  if (/メール|未返信|請求書|予約|添付/.test(q)) {
-    const selected = mail.filter((m) =>
-      /未返信/.test(q)
-        ? /確認|返信|お願いします|要返信/.test(`${m.subject} ${m.body}`)
-        : /請求書/.test(q)
-          ? /請求|領収|ご利用金額|支払い|¥|円/.test(`${m.subject} ${m.body}`)
-          : /添付/.test(q)
-            ? m.hasAttachment
-            : true,
-    );
+  if (/メール|未返信|請求書|予約|添付|gmail|vercel|google|セキュリティ|支払いメール|重要メール/i.test(q)) {
+    const selected = mail.filter((m) => {
+      const hints = getMailActionHints(m);
+      const source = `${m.from} ${m.subject} ${m.body}`;
+      return /未返信/.test(q)
+        ? hints.needsReply
+        : /請求書|支払い|料金/.test(q)
+          ? hints.hasPayment || hints.hasSubscription
+          : /予定|予約/.test(q)
+            ? hints.hasSchedule
+            : /添付/.test(q)
+              ? m.hasAttachment
+              : /vercel|デプロイ|エラー/i.test(q)
+                ? hints.isBugOrDev || /vercel|deployment|failed/i.test(source)
+                : /google|セキュリティ|重要/i.test(q)
+                  ? hints.isSecurity || m.important
+                  : true;
+    });
     return {
       title: "メール検索結果",
       page: "mail" as PageKey,
-      lines: [`該当メール：${selected.length}件`, "メール本文は手動取り込み分だけ検索対象です"],
+      lines: [`該当メール：${selected.length}件`, "Gmail取得分と手動取り込み分を横断検索しています"],
       records: selected.slice(0, 8).map((m) => `${m.receivedAt} ${m.from}「${m.subject}」`),
     };
   }
@@ -11348,23 +11365,78 @@ function getMailActionHints(item: MailItem) {
   const text = `${item.subject}\n${item.body}`;
   const amount = extractYenAmount(text);
   const hasPayment = Boolean(amount && /請求|支払|支払い|料金|領収|明細|ご利用金額|決済|invoice|payment|receipt|billing/i.test(text));
+  const hasSubscription = Boolean(amount && /月額|年額|サブスク|subscription|更新日|renewal|定期|プラン/i.test(text));
   const hasSchedule = /(明日|今日|来週|今週|月曜|火曜|水曜|木曜|金曜|土曜|日曜|\d{1,2}月\d{1,2}日|\d{4}[\/-]\d{1,2}[\/-]\d{1,2}|\d{1,2}:\d{2}|予約|来店|面談|予定|締切|期限)/.test(text);
+  const isBugOrDev = /(vercel|deploy|deployment|failed|error|build|github|typescript|npm|api|エラー|失敗|ビルド|デプロイ|修正)/i.test(text);
+  const isSecurity = /(security|セキュリティ|ログイン|2 段階|2段階|認証|password|account)/i.test(text);
   const needsReply = /(返信|返答|回答|確認お願いします|ご確認|至急|対応|reply|respond|please confirm|action required)/i.test(text);
-  const hasTodo = needsReply || /(提出|確認|対応|登録|支払|支払い|予約|更新|手続き|download|verify|confirm)/i.test(text);
+  const hasTodo = needsReply || isBugOrDev || isSecurity || /(提出|確認|対応|登録|支払|支払い|予約|更新|手続き|download|verify|confirm)/i.test(text);
   return {
     amount,
     hasPayment,
+    hasSubscription,
     hasSchedule,
+    isBugOrDev,
+    isSecurity,
     needsReply,
     hasTodo,
     summary: [
       needsReply ? "返信/対応候補" : "",
+      isBugOrDev ? "開発/バグ候補" : "",
+      isSecurity ? "重要/セキュリティ" : "",
       hasSchedule ? "予定候補" : "",
+      hasSubscription ? `サブスク候補 ${yen(amount || 0)}` : "",
       hasPayment ? `支払い候補 ${yen(amount || 0)}` : "",
       item.hasAttachment ? "添付あり" : "",
       item.unread ? "未読" : "",
     ].filter(Boolean),
   };
+}
+
+type MailFilterKey = "all" | "unread" | "reply" | "schedule" | "payment" | "dev" | "security" | "attachment";
+
+function matchesMailFilter(item: MailItem, filter: MailFilterKey) {
+  const hints = getMailActionHints(item);
+  if (filter === "all") return true;
+  if (filter === "unread") return item.unread;
+  if (filter === "reply") return hints.needsReply;
+  if (filter === "schedule") return hints.hasSchedule;
+  if (filter === "payment") return hints.hasPayment || hints.hasSubscription;
+  if (filter === "dev") return hints.isBugOrDev;
+  if (filter === "security") return hints.isSecurity;
+  if (filter === "attachment") return item.hasAttachment;
+  return true;
+}
+
+function buildMailIntelligence(items: MailItem[]) {
+  const rows = items.map((item) => ({ item, hints: getMailActionHints(item) }));
+  return {
+    unread: rows.filter((r) => r.item.unread).length,
+    reply: rows.filter((r) => r.hints.needsReply).length,
+    schedule: rows.filter((r) => r.hints.hasSchedule).length,
+    payment: rows.filter((r) => r.hints.hasPayment || r.hints.hasSubscription).length,
+    dev: rows.filter((r) => r.hints.isBugOrDev).length,
+    security: rows.filter((r) => r.hints.isSecurity).length,
+    attachment: rows.filter((r) => r.item.hasAttachment).length,
+    priority: rows
+      .filter((r) => r.item.unread || r.item.important || r.hints.needsReply || r.hints.hasPayment || r.hints.isBugOrDev || r.hints.isSecurity)
+      .slice(0, 8),
+  };
+}
+
+function createReplyBody(style: "polite" | "short" | "soft" | "points", current: string, selected?: MailItem | null) {
+  const baseSubject = selected ? `「${selected.subject}」` : "ご連絡";
+  const source = current.trim();
+  if (style === "short") {
+    return `お世話になっております。\n\n${baseSubject}について確認しました。\n必要事項を確認のうえ、対応いたします。\n\nよろしくお願いいたします。`;
+  }
+  if (style === "soft") {
+    return `お世話になっております。\n\nご連絡ありがとうございます。\n${baseSubject}について、内容を確認しました。\n無理のない範囲で順に対応いたします。\n\n引き続きよろしくお願いいたします。`;
+  }
+  if (style === "points") {
+    return `お世話になっております。\n\n${baseSubject}について、以下の通り確認しました。\n\n・確認事項：\n・対応内容：\n・期限：\n\nよろしくお願いいたします。`;
+  }
+  return source || `お世話になっております。\n\nご連絡ありがとうございます。\n${baseSubject}について、内容を確認しました。\n確認のうえ、対応いたします。\n\nよろしくお願いいたします。`;
 }
 
 
@@ -11374,12 +11446,20 @@ function GmailLivePanel({
   setCompose,
   setSelected,
   onLiveStatus,
+  onInboxSynced,
+  autoFetch,
+  refreshMinutes,
+  syncLimit,
 }: {
   items: MailItem[];
   persistItems: (next: MailItem[]) => void;
   setCompose: (next: { to: string; cc: string; bcc: string; subject: string; body: string }) => void;
   setSelected: (item: MailItem) => void;
   onLiveStatus: (next: { connected?: boolean; email?: string; message?: string }) => void;
+  onInboxSynced: (count: number) => void;
+  autoFetch: boolean;
+  refreshMinutes: number;
+  syncLimit: number;
 }) {
   const [status, setStatus] = useState<{ connected?: boolean; email?: string; message?: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -11402,10 +11482,10 @@ function GmailLivePanel({
     }
   }
 
-  async function loadMessages() {
-    setLoading(true);
+  async function loadMessages(silent = false) {
+    if (!silent) setLoading(true);
     try {
-      const params = new URLSearchParams({ maxResults: "10" });
+      const params = new URLSearchParams({ maxResults: String(Math.max(1, Math.min(Number(syncLimit || 10), 25))) });
       if (q.trim()) params.set("q", q.trim());
       const res = await fetch(`/api/mail/gmail/messages?${params.toString()}`);
       const json = await res.json();
@@ -11429,20 +11509,30 @@ function GmailLivePanel({
         source: "gmail-ready",
       }));
       setRemoteMessages(mapped);
-      const known = new Set(items.map((item) => item.id));
-      const merged = [...mapped.filter((item) => !known.has(item.id)), ...items].slice(0, 300);
+      const currentItems = readMailItems();
+      const known = new Set(currentItems.map((item) => item.id));
+      const merged = [...mapped.filter((item) => !known.has(item.id)), ...currentItems].slice(0, 300);
       persistItems(merged);
-      setGuideDraft(`Gmailから${mapped.length}件読み込んだよ。`);
+      onInboxSynced(mapped.length);
+      if (!silent) setGuideDraft(`Gmailから${mapped.length}件読み込んだよ。`);
     } catch {
       alert("Gmail受信箱の取得に失敗しました。");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
   useEffect(() => {
     loadStatus();
   }, []);
+
+  useEffect(() => {
+    if (!status?.connected || !autoFetch) return;
+    loadMessages(true);
+    const minutes = Math.max(1, Number(refreshMinutes || 5));
+    const timer = window.setInterval(() => loadMessages(true), minutes * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [status?.connected, autoFetch, refreshMinutes, syncLimit]);
 
   return (
     <div className="rounded-3xl border border-emerald-200/18 bg-emerald-300/10 p-4">
@@ -11451,10 +11541,10 @@ function GmailLivePanel({
           <p className="text-xs font-black tracking-[0.28em] text-emerald-100/60">GMAIL LIVE</p>
           <h3 className="mt-1 text-xl font-black">Gmail本格連携</h3>
           <p className="mt-2 text-sm leading-6 text-white/62">
-            OAuth token交換後、Gmail受信箱を安全にサーバー経由で取得するよ。送信も確認画面からだけ行う設計。
+            OAuth token交換後、Gmail受信箱を安全にサーバー経由で取得。自動受信ONならアプリ表示中に定期取得するよ。
           </p>
           <p className="mt-2 text-sm font-black text-emerald-50/85">
-            状態: {status?.connected ? `連携済み ${status.email || ""}` : status?.message || "確認中"}
+            状態: {status?.connected ? `連携済み ${status.email || ""}` : status?.message || "確認中"} / 自動受信: {autoFetch ? `${refreshMinutes}分ごと` : "OFF"}
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
@@ -11464,14 +11554,14 @@ function GmailLivePanel({
           <button onClick={loadStatus} disabled={loading} className="rounded-2xl bg-white/10 px-4 py-3 font-black disabled:opacity-50">
             状態確認
           </button>
-          <button onClick={loadMessages} disabled={loading || !status?.connected} className="rounded-2xl bg-emerald-200 px-4 py-3 font-black text-black disabled:opacity-50">
+          <button onClick={() => loadMessages(false)} disabled={loading || !status?.connected} className="rounded-2xl bg-emerald-200 px-4 py-3 font-black text-black disabled:opacity-50">
             受信箱取得
           </button>
         </div>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_140px]">
         <Field placeholder="Gmail検索 例: newer_than:7d invoice / from:xxx" value={q} onChange={(e) => setQ(e.target.value)} />
-        <button onClick={loadMessages} disabled={loading || !status?.connected} className="rounded-2xl bg-white/10 px-4 py-3 font-black disabled:opacity-50">
+        <button onClick={() => loadMessages(false)} disabled={loading || !status?.connected} className="rounded-2xl bg-white/10 px-4 py-3 font-black disabled:opacity-50">
           検索取得
         </button>
       </div>
@@ -11518,6 +11608,7 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
   const [confirmSend, setConfirmSend] = useState(false);
   const [sending, setSending] = useState(false);
   const [gmailLiveStatus, setGmailLiveStatus] = useState<{ connected?: boolean; email?: string; message?: string }>({});
+  const [mailFilter, setMailFilter] = useState<MailFilterKey>("all");
   const [query, setQuery] = useState("");
 
   function persistItems(next: MailItem[]) {
@@ -11544,6 +11635,20 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
     }
   }
 
+  function handleInboxSynced(count: number) {
+    const synced = {
+      ...settings,
+      provider: gmailLiveStatus.connected ? "Gmail連携済み" : settings.provider,
+      email: gmailLiveStatus.email || settings.email,
+      lastSync: new Date().toLocaleString(),
+      autoFetch: settings.autoFetch,
+      refreshMinutes: settings.refreshMinutes,
+    };
+    setSettings(synced);
+    writeMailSettings(synced);
+    if (count > 0) setGuideDraft(`Gmail自動/手動受信で${count}件確認したよ。`);
+  }
+
   function createReplyDraft(item: MailItem) {
     setSelected(item);
     setCompose({
@@ -11553,7 +11658,12 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
       subject: item.subject.startsWith("Re:") ? item.subject : `Re: ${item.subject}`,
       body: `\n\n--- 元メール ---\nFrom: ${item.from}\nDate: ${item.receivedAt}\n\n${item.body}`,
     });
-    setGuideDraft("返信下書きを作ったよ。下の送信前確認で内容を確認してから送れるよ。");
+    setGuideDraft("返信下書きを作ったよ。画面下の固定バーから送信確認へ進めるよ。");
+  }
+
+  function applyReplyAssist(style: "polite" | "short" | "soft" | "points") {
+    setCompose((prev) => ({ ...prev, body: createReplyBody(style, prev.body, selected) }));
+    setGuideDraft("返信文を整えたよ。送信前確認で内容をもう一度見られるよ。");
   }
 
   function saveSettings() {
@@ -11683,9 +11793,34 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
     setPage("paymentcalendar");
   }
 
-  const filtered = items.filter((item) =>
-    !query.trim() || `${item.from} ${item.subject} ${item.body}`.toLowerCase().includes(query.toLowerCase())
-  );
+  function mailToSubscriptionCandidate(item: MailItem) {
+    const amount = extractYenAmount(`${item.subject}\n${item.body}`) || 0;
+    addLifeModuleItem("subscriptions", {
+      title: `メールサブスク候補: ${item.subject}`,
+      note: `${amount ? `月額/支払い候補 ${yen(amount)}\n` : ""}更新日・使用頻度・解約検討メモを確認してから登録できる候補。\n\n元メール:\n${item.body}`,
+      category: "メール候補",
+      status: "確認",
+      amount,
+    });
+    setGuideDraft("メールからサブスク候補を作ったよ。確認してから保存できるよ。");
+    setPage("subscriptions");
+  }
+
+  function mailToBugCandidate(item: MailItem) {
+    addLifeModuleItem("bugcenter", {
+      title: `メール由来バグ/通知: ${item.subject}`,
+      note: `From: ${item.from}\n\n${item.body}`,
+      category: "メール通知",
+      status: "未修正",
+    });
+    setGuideDraft("メールからBug Report候補を作ったよ。");
+    setPage("bugcenter");
+  }
+
+  const intelligence = buildMailIntelligence(items);
+  const filtered = items
+    .filter((item) => !query.trim() || `${item.from} ${item.subject} ${item.body}`.toLowerCase().includes(query.toLowerCase()))
+    .filter((item) => matchesMailFilter(item, mailFilter));
 
   return (
     <div className="mail-command-page space-y-4">
@@ -11698,7 +11833,78 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
       </GlassCard>
 
       <MailOAuthBridgePanel />
-      <GmailLivePanel items={items} persistItems={persistItems} setCompose={setCompose} setSelected={setSelected} onLiveStatus={handleGmailLiveStatus} />
+      <GmailLivePanel
+        items={items}
+        persistItems={persistItems}
+        setCompose={setCompose}
+        setSelected={setSelected}
+        onLiveStatus={handleGmailLiveStatus}
+        onInboxSynced={handleInboxSynced}
+        autoFetch={Boolean(settings.autoFetch)}
+        refreshMinutes={Number(settings.refreshMinutes || 5)}
+        syncLimit={Number(settings.syncLimit || 10)}
+      />
+
+      <GlassCard className="mail-intelligence-panel">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-black tracking-[0.28em] text-cyan-100/55">MAIL INTELLIGENCE</p>
+            <h3 className="mt-1 text-2xl font-black">メール知能化ダッシュボード</h3>
+            <p className="mt-2 text-sm leading-6 text-white/58">
+              Gmail本文から返信・予定・支払い・開発通知・セキュリティ候補を抽出して、各ページへ送れるようにしたよ。
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {[
+              ["未読", intelligence.unread],
+              ["返信", intelligence.reply],
+              ["予定", intelligence.schedule],
+              ["支払い", intelligence.payment],
+              ["開発", intelligence.dev],
+              ["重要", intelligence.security],
+            ].map(([label, value]) => (
+              <button
+                key={label}
+                onClick={() => setMailFilter(label === "未読" ? "unread" : label === "返信" ? "reply" : label === "予定" ? "schedule" : label === "支払い" ? "payment" : label === "開発" ? "dev" : "security")}
+                className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-center"
+              >
+                <p className="text-lg font-black">{value}</p>
+                <p className="text-[11px] text-white/45">{label}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {[
+            ["all", "すべて"],
+            ["unread", "未読"],
+            ["reply", "返信必要"],
+            ["schedule", "予定候補"],
+            ["payment", "支払い/サブスク"],
+            ["dev", "開発/バグ"],
+            ["security", "重要/セキュリティ"],
+            ["attachment", "添付"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setMailFilter(key as MailFilterKey)}
+              className={`rounded-full px-3 py-2 text-xs font-black ${mailFilter === key ? "bg-white text-black" : "bg-white/10 text-white/75"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {intelligence.priority.length > 0 && (
+          <div className="mt-3 grid gap-2 lg:grid-cols-2">
+            {intelligence.priority.slice(0, 4).map(({ item, hints }) => (
+              <button key={item.id} onClick={() => setSelected(item)} className="rounded-2xl bg-black/22 p-3 text-left">
+                <p className="truncate font-black">{item.subject}</p>
+                <p className="mt-1 truncate text-xs text-white/45">{hints.summary.join(" / ") || "候補なし"}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </GlassCard>
 
       <div className="grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
         <GlassCard>
@@ -11732,6 +11938,11 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
               onChange={(e) => setSettings({ ...settings, email: e.target.value })}
             />
             <Field type="number" placeholder="同期件数" value={settings.syncLimit} onChange={(e) => setSettings({ ...settings, syncLimit: Number(e.target.value) })} />
+            <Field type="number" placeholder="自動受信間隔（分）" value={settings.refreshMinutes || 5} onChange={(e) => setSettings({ ...settings, refreshMinutes: Number(e.target.value) })} />
+            <label className="flex min-h-[52px] items-center gap-3 rounded-2xl border border-white/15 bg-slate-950/70 px-4 font-black">
+              <input type="checkbox" checked={Boolean(settings.autoFetch)} onChange={(e) => setSettings({ ...settings, autoFetch: e.target.checked })} />
+              自動受信ON
+            </label>
             <button onClick={saveSettings} className="rounded-2xl bg-white px-4 py-3 font-black text-black">状態を同期/保存</button>
           </div>
           <p className="mt-3 rounded-2xl bg-emerald-300/10 p-3 text-sm leading-6 text-emerald-50/80">
@@ -11750,7 +11961,7 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
       <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
         <GlassCard>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h3 className="text-xl font-black">受信箱</h3>
+            <h3 className="text-xl font-black">受信箱 <span className="text-sm text-white/45">/ {mailFilter === "all" ? "すべて" : mailFilter}</span></h3>
             <Field placeholder="メール検索" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           <div className="mt-4 space-y-2">
@@ -11782,7 +11993,7 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
                 </div>
               );
             })}
-            {!filtered.length && <Empty text="メールはまだないよ。手動取り込みから始められるよ。" />}
+            {!filtered.length && <Empty text="該当メールはまだないよ。Gmail Liveの受信箱取得か、フィルター解除で確認できるよ。" />}
           </div>
         </GlassCard>
 
@@ -11801,11 +12012,13 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
                   )) : <span className="text-sm text-white/50">強い候補はまだないよ。必要なら手動でメモ/TODO化できるよ。</span>}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <button onClick={() => mailToMemo(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">メモ保存</button>
                 <button onClick={() => mailToTodo(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">TODO化</button>
                 <button onClick={() => mailToCalendarCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">予定候補</button>
                 <button onClick={() => mailToBudgetCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">家計簿候補</button>
+                <button onClick={() => mailToSubscriptionCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">サブスク候補</button>
+                <button onClick={() => mailToBugCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">バグ/開発候補</button>
               </div>
               <button onClick={() => createReplyDraft(selected)} className="w-full rounded-2xl bg-sky-200 px-4 py-3 font-black text-black">返信下書きを作る</button>
             </div>
@@ -11824,6 +12037,18 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
         </div>
         <Field className="mt-3" placeholder="件名" value={compose.subject} onChange={(e) => setCompose({ ...compose, subject: e.target.value })} />
         <TextArea className="mt-3 min-h-48" placeholder="本文" value={compose.body} onChange={(e) => setCompose({ ...compose, body: e.target.value })} />
+        <div className="mt-3 flex flex-wrap gap-2">
+          {[
+            ["polite", "丁寧に整える"],
+            ["short", "短くする"],
+            ["soft", "やわらかくする"],
+            ["points", "要点テンプレ"],
+          ].map(([style, label]) => (
+            <button key={style} onClick={() => applyReplyAssist(style as "polite" | "short" | "soft" | "points")} className="rounded-full bg-white/10 px-3 py-2 text-xs font-black text-white/75">
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <button onClick={() => saveDraft("draft")} className="rounded-2xl bg-white/10 px-4 py-3 font-black">下書き保存</button>
           <button onClick={() => setConfirmSend(true)} className="rounded-2xl bg-white px-4 py-3 font-black text-black">送信確認</button>
@@ -11831,6 +12056,17 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
         </div>
         {drafts.length > 0 && <p className="mt-3 text-sm text-white/50">保存済み下書き/送信ログ: {drafts.length}件</p>}
       </GlassCard>
+
+      {(compose.to || compose.subject || compose.body) && (
+        <div className="mail-send-floating">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black">{compose.subject || "メール下書き中"}</p>
+            <p className="truncate text-xs text-white/55">To: {compose.to || "宛先未入力"}</p>
+          </div>
+          <button onClick={() => saveDraft("draft")} className="rounded-2xl bg-white/10 px-3 py-2 text-xs font-black">保存</button>
+          <button onClick={() => setConfirmSend(true)} className="rounded-2xl bg-white px-4 py-2 text-sm font-black text-black">送信確認</button>
+        </div>
+      )}
 
       {confirmSend && (
         <Modal title="送信前確認" onClose={() => setConfirmSend(false)}>
@@ -12201,7 +12437,7 @@ function GlobalSearchModal({
           </button>
         </div>
         <div className="flex flex-wrap gap-2">
-          {["先週の支出", "明日の予定", "未完了TODO", "カフェ代", "開封できる手紙", "未整理メモ", "今月のサブスク", "未返信メール"].map((chip) => (
+          {["先週の支出", "明日の予定", "未完了TODO", "カフェ代", "開封できる手紙", "未整理メモ", "今月のサブスク", "未返信メール", "支払いメール", "Vercelエラー", "Google重要メール"].map((chip) => (
             <button key={chip} onClick={() => setQuery(chip)} className="rounded-full bg-white/10 px-3 py-2 text-xs font-black text-white/75">
               {chip}
             </button>

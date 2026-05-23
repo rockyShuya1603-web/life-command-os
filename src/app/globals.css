@@ -3272,3 +3272,44 @@ main {
     min-height: 44px;
   }
 }
+
+
+/* ===== v29 Mail Intelligence + Auto Receive ===== */
+.mail-intelligence-panel {
+  overflow: hidden;
+}
+
+.mail-send-floating {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 70;
+  display: flex;
+  max-width: min(92vw, 560px);
+  align-items: center;
+  gap: .65rem;
+  border: 1px solid rgba(186, 230, 253, .32);
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, rgba(2, 8, 23, .88), rgba(14, 116, 144, .42));
+  padding: .7rem;
+  color: white;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .45), 0 0 32px rgba(125, 211, 252, .16);
+  backdrop-filter: blur(18px);
+}
+
+@media (max-width: 767px) {
+  .mail-send-floating {
+    left: .75rem;
+    right: .75rem;
+    bottom: 5.75rem;
+    max-width: none;
+  }
+
+  .mail-send-floating button {
+    min-width: 72px;
+  }
+
+  .mail-intelligence-panel .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
