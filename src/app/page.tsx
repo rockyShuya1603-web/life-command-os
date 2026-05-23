@@ -10590,6 +10590,9 @@ type MailItem = {
   unread: boolean;
   important: boolean;
   hasAttachment: boolean;
+  attachmentCount?: number;
+  gmailId?: string;
+  threadId?: string;
   source: "manual" | "gmail-ready" | "outlook-ready";
 };
 
@@ -11335,14 +11338,48 @@ function CalendarEventOpsPanel({
 
 
 
+
+function normalizeEmailAddress(raw: string) {
+  const match = String(raw || "").match(/<([^>]+)>/);
+  return (match?.[1] || String(raw || "")).replace(/^mailto:/i, "").trim();
+}
+
+function getMailActionHints(item: MailItem) {
+  const text = `${item.subject}\n${item.body}`;
+  const amount = extractYenAmount(text);
+  const hasPayment = Boolean(amount && /請求|支払|支払い|料金|領収|明細|ご利用金額|決済|invoice|payment|receipt|billing/i.test(text));
+  const hasSchedule = /(明日|今日|来週|今週|月曜|火曜|水曜|木曜|金曜|土曜|日曜|\d{1,2}月\d{1,2}日|\d{4}[\/-]\d{1,2}[\/-]\d{1,2}|\d{1,2}:\d{2}|予約|来店|面談|予定|締切|期限)/.test(text);
+  const needsReply = /(返信|返答|回答|確認お願いします|ご確認|至急|対応|reply|respond|please confirm|action required)/i.test(text);
+  const hasTodo = needsReply || /(提出|確認|対応|登録|支払|支払い|予約|更新|手続き|download|verify|confirm)/i.test(text);
+  return {
+    amount,
+    hasPayment,
+    hasSchedule,
+    needsReply,
+    hasTodo,
+    summary: [
+      needsReply ? "返信/対応候補" : "",
+      hasSchedule ? "予定候補" : "",
+      hasPayment ? `支払い候補 ${yen(amount || 0)}` : "",
+      item.hasAttachment ? "添付あり" : "",
+      item.unread ? "未読" : "",
+    ].filter(Boolean),
+  };
+}
+
+
 function GmailLivePanel({
   items,
   persistItems,
   setCompose,
+  setSelected,
+  onLiveStatus,
 }: {
   items: MailItem[];
   persistItems: (next: MailItem[]) => void;
   setCompose: (next: { to: string; cc: string; bcc: string; subject: string; body: string }) => void;
+  setSelected: (item: MailItem) => void;
+  onLiveStatus: (next: { connected?: boolean; email?: string; message?: string }) => void;
 }) {
   const [status, setStatus] = useState<{ connected?: boolean; email?: string; message?: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -11355,8 +11392,11 @@ function GmailLivePanel({
       const res = await fetch("/api/mail/gmail/status");
       const json = await res.json();
       setStatus(json);
+      onLiveStatus(json);
     } catch {
-      setStatus({ connected: false, message: "Gmail連携状態の確認に失敗しました。" });
+      const failed = { connected: false, message: "Gmail連携状態の確認に失敗しました。" };
+      setStatus(failed);
+      onLiveStatus(failed);
     } finally {
       setLoading(false);
     }
@@ -11375,6 +11415,8 @@ function GmailLivePanel({
       }
       const mapped: MailItem[] = (json.messages || []).map((m: any) => ({
         id: `gmail-${m.id}`,
+        gmailId: m.id,
+        threadId: m.threadId,
         from: m.from || "Gmail",
         to: m.to || "",
         subject: m.subject || "(件名なし)",
@@ -11383,6 +11425,7 @@ function GmailLivePanel({
         unread: Boolean(m.unread),
         important: Boolean(m.important),
         hasAttachment: Boolean(m.hasAttachment),
+        attachmentCount: Number(m.attachmentCount || 0),
         source: "gmail-ready",
       }));
       setRemoteMessages(mapped);
@@ -11434,22 +11477,30 @@ function GmailLivePanel({
       </div>
       {remoteMessages.length > 0 && (
         <div className="mt-3 grid gap-2">
-          {remoteMessages.slice(0, 5).map((mail) => (
-            <div key={mail.id} className="rounded-2xl bg-black/22 p-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="truncate font-black">{mail.subject}</p>
-                  <p className="truncate text-xs text-white/45">From: {mail.from}</p>
+          {remoteMessages.slice(0, 6).map((mail) => {
+            const hints = getMailActionHints(mail);
+            return (
+              <div key={mail.id} className="rounded-2xl border border-white/10 bg-black/24 p-3">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                  <button onClick={() => setSelected(mail)} className="min-w-0 text-left">
+                    <p className="truncate font-black">{mail.unread ? "● " : ""}{mail.subject}</p>
+                    <p className="truncate text-xs text-white/45">From: {mail.from}</p>
+                  </button>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {hints.summary.slice(0, 3).map((tag) => (
+                      <span key={tag} className="rounded-full bg-sky-200/12 px-2 py-1 text-[11px] font-black text-sky-50/80">{tag}</span>
+                    ))}
+                    <button
+                      onClick={() => setCompose({ to: normalizeEmailAddress(mail.from), cc: "", bcc: "", subject: mail.subject.startsWith("Re:") ? mail.subject : `Re: ${mail.subject}`, body: `\n\n--- 元メール ---\n${mail.body}` })}
+                      className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black"
+                    >
+                      返信下書き
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => setCompose({ to: mail.from, cc: "", bcc: "", subject: `Re: ${mail.subject}`, body: `\n\n--- 元メール ---\n${mail.body}` })}
-                  className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black"
-                >
-                  返信下書き
-                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -11465,6 +11516,8 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
   const [paste, setPaste] = useState("");
   const [compose, setCompose] = useState({ to: "", cc: "", bcc: "", subject: "", body: "" });
   const [confirmSend, setConfirmSend] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [gmailLiveStatus, setGmailLiveStatus] = useState<{ connected?: boolean; email?: string; message?: string }>({});
   const [query, setQuery] = useState("");
 
   function persistItems(next: MailItem[]) {
@@ -11477,11 +11530,42 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
     writeMailDrafts(next);
   }
 
+  function handleGmailLiveStatus(next: { connected?: boolean; email?: string; message?: string }) {
+    setGmailLiveStatus(next);
+    if (next.connected && next.email) {
+      const synced = {
+        ...settings,
+        provider: "Gmail連携済み",
+        email: next.email,
+        lastSync: new Date().toLocaleString(),
+      };
+      setSettings(synced);
+      writeMailSettings(synced);
+    }
+  }
+
+  function createReplyDraft(item: MailItem) {
+    setSelected(item);
+    setCompose({
+      to: normalizeEmailAddress(item.from),
+      cc: "",
+      bcc: "",
+      subject: item.subject.startsWith("Re:") ? item.subject : `Re: ${item.subject}`,
+      body: `\n\n--- 元メール ---\nFrom: ${item.from}\nDate: ${item.receivedAt}\n\n${item.body}`,
+    });
+    setGuideDraft("返信下書きを作ったよ。下の送信前確認で内容を確認してから送れるよ。");
+  }
+
   function saveSettings() {
-    const next = { ...settings, lastSync: new Date().toLocaleString(), provider: settings.provider || "Gmail準備中" };
+    const next = {
+      ...settings,
+      provider: gmailLiveStatus.connected ? "Gmail連携済み" : settings.provider || "未連携",
+      email: gmailLiveStatus.email || settings.email,
+      lastSync: new Date().toLocaleString(),
+    };
     setSettings(next);
     writeMailSettings(next);
-    setGuideDraft("メール連携設定を保存したよ。OAuthトークンはlocalStorageに保存しない設計メモとして扱っているよ。");
+    setGuideDraft(gmailLiveStatus.connected ? "Gmail Liveの連携状態を設定欄へ同期したよ。" : "メール連携設定を保存したよ。");
   }
 
   function importMail() {
@@ -11517,7 +11601,7 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
       status,
     };
     persistDrafts([item, ...drafts]);
-    setGuideDraft(status === "sent-log" ? "送信ログとして保存したよ。実送信はメールアプリで確認してね。" : "メール下書きを保存したよ。");
+    setGuideDraft(status === "sent-log" ? "送信ログとして保存したよ。" : "メール下書きを保存したよ。");
   }
 
   function openMailto() {
@@ -11532,19 +11616,28 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
   }
 
   async function sendViaGmailApi() {
-    const res = await fetch("/api/mail/gmail/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(compose),
-    });
-    const json = await res.json();
-    if (!res.ok || !json.ok) {
-      alert(json.message || "Gmail送信に失敗しました。");
+    if (!compose.to.trim() || !compose.subject.trim() || !compose.body.trim()) {
+      alert("宛先・件名・本文を確認してね。");
       return;
     }
-    saveDraft("sent-log");
-    setConfirmSend(false);
-    setGuideDraft("Gmailからメールを送信したよ。");
+    setSending(true);
+    try {
+      const res = await fetch("/api/mail/gmail/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(compose),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        alert(json.message || "Gmail送信に失敗しました。");
+        return;
+      }
+      saveDraft("sent-log");
+      setConfirmSend(false);
+      setGuideDraft("Gmailからメールを送信したよ。");
+    } finally {
+      setSending(false);
+    }
   }
 
   async function mailToMemo(item: MailItem) {
@@ -11600,28 +11693,49 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
         <p className="text-xs font-black tracking-[0.32em] text-sky-100/55">LIFE COMMAND OS / MAIL</p>
         <h2 className="mt-2 text-4xl font-black">Mail / メール</h2>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-white/62">
-          Gmail / Outlook連携を見据えたメールMVP。今は安全優先で、手動取り込み・下書き・mailto送信・TODO/予定/家計簿候補化に対応しているよ。
+          Gmail Live連携で受信箱取得・返信下書き・送信前確認・TODO/予定/家計簿候補化まで扱えるメール司令室だよ。
         </p>
       </GlassCard>
 
       <MailOAuthBridgePanel />
-      <GmailLivePanel items={items} persistItems={persistItems} setCompose={setCompose} />
+      <GmailLivePanel items={items} persistItems={persistItems} setCompose={setCompose} setSelected={setSelected} onLiveStatus={handleGmailLiveStatus} />
 
       <div className="grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
         <GlassCard>
-          <h3 className="text-xl font-black">メール連携設定</h3>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-xl font-black">接続状態 / 手動取り込み設定</h3>
+              <p className="mt-2 text-sm text-white/58">
+                Gmail Liveが連携済みなら、下の表示も自動で同期されるよ。旧UIの「未連携」と混ざらないように整理したよ。
+              </p>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-xs font-black ${gmailLiveStatus.connected ? "bg-emerald-300/20 text-emerald-50" : "bg-white/10 text-white/60"}`}>
+              {gmailLiveStatus.connected ? "Gmail Live連携済み" : "手動モード"}
+            </span>
+          </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <select value={settings.provider} onChange={(e) => setSettings({ ...settings, provider: e.target.value })} className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white">
+            <select
+              value={gmailLiveStatus.connected ? "Gmail連携済み" : settings.provider}
+              onChange={(e) => setSettings({ ...settings, provider: e.target.value })}
+              disabled={Boolean(gmailLiveStatus.connected)}
+              className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white disabled:opacity-75"
+            >
               <option>未連携</option>
+              <option>Gmail連携済み</option>
               <option>Gmail準備中</option>
               <option>Outlook準備中</option>
             </select>
-            <Field placeholder="接続中メールアドレス表示用" value={settings.email} onChange={(e) => setSettings({ ...settings, email: e.target.value })} />
+            <Field
+              placeholder="接続中メールアドレス"
+              value={gmailLiveStatus.email || settings.email}
+              disabled={Boolean(gmailLiveStatus.connected)}
+              onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+            />
             <Field type="number" placeholder="同期件数" value={settings.syncLimit} onChange={(e) => setSettings({ ...settings, syncLimit: Number(e.target.value) })} />
-            <button onClick={saveSettings} className="rounded-2xl bg-white px-4 py-3 font-black text-black">設定を保存</button>
+            <button onClick={saveSettings} className="rounded-2xl bg-white px-4 py-3 font-black text-black">状態を同期/保存</button>
           </div>
-          <p className="mt-3 rounded-2xl bg-amber-300/10 p-3 text-sm leading-6 text-amber-50/80">
-            Gmail本格連携にはGoogle OAuth、サーバー側トークン保管、必要最小限スコープが必要です。トークンをlocalStorageへ平文保存しない設計にしているよ。
+          <p className="mt-3 rounded-2xl bg-emerald-300/10 p-3 text-sm leading-6 text-emerald-50/80">
+            GmailのtokenはlocalStorageへ保存せず、サーバー側APIとSupabaseの専用テーブルで扱う設計。送信は必ず確認画面を挟むよ。
           </p>
           <p className="mt-2 text-xs text-white/45">最終同期: {settings.lastSync || "未同期"}</p>
         </GlassCard>
@@ -11640,16 +11754,34 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
             <Field placeholder="メール検索" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           <div className="mt-4 space-y-2">
-            {filtered.map((item) => (
-              <button key={item.id} onClick={() => { setSelected(item); persistItems(items.map((m) => m.id === item.id ? { ...m, unread: false } : m)); }} className="w-full rounded-2xl border border-white/10 bg-black/24 p-3 text-left">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="min-w-0 truncate font-black">{item.subject}</p>
-                  <span className="shrink-0 text-xs text-white/45">{item.receivedAt}</span>
+            {filtered.map((item) => {
+              const hints = getMailActionHints(item);
+              return (
+                <div key={item.id} className={`rounded-2xl border p-3 ${item.unread ? "border-sky-200/35 bg-sky-300/10" : "border-white/10 bg-black/24"}`}>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <button
+                      onClick={() => { setSelected(item); persistItems(items.map((m) => m.id === item.id ? { ...m, unread: false } : m)); }}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        {item.unread && <span className="rounded-full bg-sky-300 px-2 py-1 text-[10px] font-black text-slate-950">未読</span>}
+                        {item.important && <span className="rounded-full bg-amber-300/20 px-2 py-1 text-[10px] font-black text-amber-50">重要</span>}
+                        {item.hasAttachment && <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black text-white/75">添付 {item.attachmentCount || ""}</span>}
+                      </div>
+                      <p className="mt-2 truncate text-base font-black">{item.subject}</p>
+                      <p className="mt-1 truncate text-xs text-sky-100/55">From: {item.from}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-white/55">{item.body}</p>
+                    </button>
+                    <div className="flex shrink-0 flex-wrap gap-2 lg:justify-end">
+                      {hints.summary.slice(0, 2).map((tag) => (
+                        <span key={tag} className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black text-white/70">{tag}</span>
+                      ))}
+                      <button onClick={() => createReplyDraft(item)} className="rounded-xl bg-sky-200 px-3 py-2 text-xs font-black text-black">返信下書き</button>
+                    </div>
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-sky-100/55">From: {item.from} {item.unread ? " / 未読" : ""} {item.hasAttachment ? " / 添付あり" : ""}</p>
-                <p className="mt-1 line-clamp-2 text-sm text-white/55">{item.body}</p>
-              </button>
-            ))}
+              );
+            })}
             {!filtered.length && <Empty text="メールはまだないよ。手動取り込みから始められるよ。" />}
           </div>
         </GlassCard>
@@ -11661,13 +11793,21 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
               <p className="text-xs text-white/45">{selected.receivedAt} / From: {selected.from}</p>
               <h4 className="text-2xl font-black">{selected.subject}</h4>
               <p className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-3xl bg-black/25 p-4 text-sm leading-7 text-white/72">{selected.body}</p>
+              <div className="rounded-3xl border border-sky-200/15 bg-sky-300/10 p-3">
+                <p className="text-xs font-black tracking-[0.22em] text-sky-100/55">AI / RULE HINTS</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {getMailActionHints(selected).summary.length ? getMailActionHints(selected).summary.map((tag) => (
+                    <span key={tag} className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/78">{tag}</span>
+                  )) : <span className="text-sm text-white/50">強い候補はまだないよ。必要なら手動でメモ/TODO化できるよ。</span>}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <button onClick={() => mailToMemo(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">メモ</button>
-                <button onClick={() => mailToTodo(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">TODO</button>
+                <button onClick={() => mailToMemo(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">メモ保存</button>
+                <button onClick={() => mailToTodo(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">TODO化</button>
                 <button onClick={() => mailToCalendarCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">予定候補</button>
                 <button onClick={() => mailToBudgetCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">家計簿候補</button>
               </div>
-              <button onClick={() => setCompose({ ...compose, to: selected.from, subject: `Re: ${selected.subject}`, body: `\n\n--- 元メール ---\n${selected.body}` })} className="w-full rounded-2xl bg-sky-200 px-4 py-3 font-black text-black">返信下書きを作る</button>
+              <button onClick={() => createReplyDraft(selected)} className="w-full rounded-2xl bg-sky-200 px-4 py-3 font-black text-black">返信下書きを作る</button>
             </div>
           ) : (
             <Empty text="メールを選ぶと本文を表示するよ。" />
@@ -11696,12 +11836,15 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
         <Modal title="送信前確認" onClose={() => setConfirmSend(false)}>
           <div className="space-y-3">
             <p className="text-sm text-white/70">この内容で送信しますか？Gmail APIで送る場合も、この確認画面からだけ送信できる設計です。</p>
-            <div className="rounded-2xl bg-black/25 p-3 text-sm">
-              <p>宛先: {compose.to}</p>
-              <p>件名: {compose.subject}</p>
+            <div className="space-y-2 rounded-2xl bg-black/25 p-3 text-sm">
+              <p>宛先: {compose.to || "未入力"}</p>
+              <p>件名: {compose.subject || "未入力"}</p>
+              <p className="max-h-40 overflow-y-auto whitespace-pre-wrap border-t border-white/10 pt-2 text-white/60">{compose.body || "本文未入力"}</p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              <button onClick={sendViaGmailApi} className="rounded-2xl bg-emerald-200 px-4 py-3 font-black text-black">Gmail APIで送信</button>
+              <button disabled={sending} onClick={sendViaGmailApi} className="rounded-2xl bg-emerald-200 px-4 py-3 font-black text-black disabled:opacity-50">
+                {sending ? "送信中..." : "Gmail APIで送信"}
+              </button>
               <button onClick={openMailto} className="rounded-2xl bg-white/10 px-4 py-3 font-black">メールアプリで確認</button>
             </div>
           </div>

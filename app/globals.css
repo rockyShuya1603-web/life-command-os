@@ -3240,3 +3240,35 @@ main {
     font-size: 16px !important;
   }
 }
+
+
+/* ===== v28 mail polish ===== */
+.mail-command-page button,
+.mail-command-page a {
+  touch-action: manipulation;
+}
+
+.mail-command-page .line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  .mail-command-page {
+    padding-bottom: 7rem;
+  }
+
+  .mail-command-page .grid {
+    min-width: 0;
+  }
+
+  .mail-command-page button,
+  .mail-command-page a,
+  .mail-command-page input,
+  .mail-command-page textarea,
+  .mail-command-page select {
+    min-height: 44px;
+  }
+}

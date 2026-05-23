@@ -7,6 +7,39 @@ function headerValue(headers: any[] | undefined, name: string) {
   return headers?.find((h) => String(h.name || "").toLowerCase() === name.toLowerCase())?.value || "";
 }
 
+
+function partHeaderValue(headers: any[] | undefined, name: string) {
+  return headers?.find((h) => String(h.name || "").toLowerCase() === name.toLowerCase())?.value || "";
+}
+
+function countRealAttachments(payload: any): number {
+  let count = 0;
+  function walk(part: any) {
+    if (!part) return;
+    const filename = String(part.filename || "").trim();
+    const mimeType = String(part.mimeType || "").toLowerCase();
+    const disposition = partHeaderValue(part.headers, "Content-Disposition").toLowerCase();
+    const attachmentId = part.body?.attachmentId;
+
+    // Inline tracking/logo images often have filename-like metadata.
+    // Treat as a real attachment only when Gmail marks it as attachment,
+    // or when it is a non-image file with an attachment id.
+    const looksReal =
+      Boolean(filename && attachmentId && disposition.includes("attachment")) ||
+      Boolean(filename && attachmentId && !mimeType.startsWith("image/"));
+
+    if (looksReal) count += 1;
+    if (Array.isArray(part.parts)) part.parts.forEach(walk);
+  }
+  walk(payload);
+  return count;
+}
+
+function hasRealAttachment(payload: any) {
+  return countRealAttachments(payload) > 0;
+}
+
+
 function toTextFromPayload(payload: any): string {
   const chunks: string[] = [];
 
@@ -68,7 +101,8 @@ export async function GET(request: NextRequest) {
           labelIds: detail.labelIds || [],
           unread: (detail.labelIds || []).includes("UNREAD"),
           important: (detail.labelIds || []).includes("IMPORTANT"),
-          hasAttachment: JSON.stringify(detail.payload || {}).includes("filename"),
+          hasAttachment: hasRealAttachment(detail.payload),
+          attachmentCount: countRealAttachments(detail.payload),
         };
       }),
     );
