@@ -2279,3 +2279,63 @@ body {
     min-width: 0 !important;
   }
 }
+
+
+/* ===== v21 Money Hub / Life OS polish ===== */
+.money-hub-page,
+.money-hub-page * {
+  min-width: 0;
+}
+.money-hub-kpi-grid > .matsuri-card,
+.future-launch-card,
+.money-quick-input {
+  contain: layout paint;
+}
+.future-money-kpi-card {
+  padding: 18px !important;
+  border-color: rgba(186,224,255,.16) !important;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(125,211,252,.10), transparent 38%),
+    linear-gradient(135deg, rgba(8,28,68,.34), rgba(2,8,28,.58)) !important;
+}
+.future-launch-card {
+  border-color: rgba(186,224,255,.18) !important;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(125,211,252,.13), transparent 34%),
+    radial-gradient(circle at 90% 0%, rgba(129,140,248,.10), transparent 32%),
+    linear-gradient(135deg, rgba(8,28,68,.40), rgba(2,8,28,.62)) !important;
+}
+.money-hub-page input,
+.money-hub-page select,
+.money-hub-page textarea {
+  max-width: 100%;
+}
+.money-hub-page button,
+.future-launch-card button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+@supports (content-visibility: auto) {
+  .money-hub-page .money-hub-kpi-grid > .matsuri-card,
+  .money-hub-page .grid > .rounded-2xl,
+  .money-hub-page .grid > .rounded-\[1\.6rem\] {
+    content-visibility: auto;
+    contain-intrinsic-size: 180px;
+  }
+}
+@media (max-width: 767px) {
+  .money-hub-kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .money-hub-kpi-grid > .matsuri-card:first-child {
+    grid-column: 1 / -1;
+  }
+  .future-launch-card .xl\:grid-cols-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .money-hub-page .lg\:grid-cols-\[1fr_140px_140px_150px_140px_1fr_130px\],
+  .money-hub-page .lg\:grid-cols-6,
+  .money-hub-page .lg\:grid-cols-5 {
+    grid-template-columns: 1fr !important;
+  }
+}

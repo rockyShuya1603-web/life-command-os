@@ -163,6 +163,25 @@ type BudgetAccount = {
   note: string | null;
   created_at: string;
 };
+
+type MoneyBudgetSetting = {
+  id: string;
+  category: string;
+  limit: number;
+  created_at: string;
+};
+
+type MoneySubscription = {
+  id: string;
+  name: string;
+  amount: number;
+  wallet: string;
+  nextDate: string;
+  frequency: "monthly" | "yearly";
+  usage: string;
+  memo: string;
+  created_at: string;
+};
 type IdealItem = {
   id: string;
   title: string;
@@ -2020,6 +2039,23 @@ function HomePanel({
     .filter((b) => b.type === "expense")
     .reduce((s, b) => s + Number(b.amount || 0), 0);
   const balance = income - expense;
+  const todayExpense = monthLogs
+    .filter((b) => b.type === "expense" && b.spend_date === today)
+    .reduce((s, b) => s + Number(b.amount || 0), 0);
+  const fixedMonthlyForHome = (snapshot?.budgetFixedTemplates || [])
+    .filter((t) => t.active !== false)
+    .reduce((s, t) => s + Number(t.amount || 0), 0);
+  const remainingForHome = Math.max(0, income - expense - fixedMonthlyForHome);
+  const dailyBudgetForHome = Math.floor(remainingForHome / daysLeftInMonth());
+  const mindInboxCount = readMindInboxItems().length;
+  const morningRoutinesForHome = (snapshot?.routines || []).filter((r) => r.active && classifyRoutineSlot(r) === "morning");
+  const morningDoneForHome = morningRoutinesForHome.filter((r) =>
+    (snapshot?.routineChecks || []).some((c) => c.routine_id === r.id && c.check_date === today),
+  ).length;
+  const morningRateForHome = morningRoutinesForHome.length
+    ? Math.round((morningDoneForHome / morningRoutinesForHome.length) * 100)
+    : 0;
+  const topTodoForHome = todayTodos[0]?.title || undoneTodos[0]?.title || "Mind Captureで今日の最重要を決める";
   const todayEvents = (snapshot?.events || []).filter((e) => e.event_date === today).slice(0, 6);
   const todayMemos = (snapshot?.memos || [])
     .filter((m) => getCreatedDateKey(m.created_at) === today)
@@ -2113,6 +2149,53 @@ function HomePanel({
       </div>
 
       <HomeMindCaptureCard refreshSnapshot={refreshSnapshot} setPage={setPage} />
+
+      <GlassCard className="future-launch-card p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-black tracking-[0.28em] text-sky-100/58">TODAY BOOT CARD</p>
+            <h3 className="mt-2 text-2xl font-black">今日の起動</h3>
+            <p className="mt-2 text-sm leading-6 text-white/62">
+              朝ルーティン、予定、お金、未整理メモをまとめて見るカードだよ。
+            </p>
+          </div>
+          <button onClick={() => setPage("braindump")} className="rounded-2xl border border-sky-200/18 bg-sky-300/12 px-4 py-3 text-sm font-black text-sky-50">
+            Mind Captureを開く
+          </button>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          {[
+            ["朝ルーティン", `${morningRateForHome}%`],
+            ["今日の予定", `${todayEvents.length}件`],
+            ["未整理メモ", `${mindInboxCount}件`],
+            ["今日使える目安", yen(Math.max(0, dailyBudgetForHome - todayExpense))],
+            ["今日の支出", yen(todayExpense)],
+            ["最重要タスク", topTodoForHome],
+          ].map(([label, value]) => (
+            <button
+              key={label}
+              onClick={() =>
+                label === "朝ルーティン" ? setPage("routines") :
+                label === "今日の予定" ? setPage("calendar") :
+                label === "未整理メモ" ? setPage("braindump") :
+                label === "今日使える目安" || label === "今日の支出" ? setPage("budget") :
+                setPage("todos")
+              }
+              className="rounded-2xl border border-sky-200/12 bg-black/24 p-3 text-left"
+            >
+              <p className="text-[11px] font-black text-sky-100/48">{label}</p>
+              <p className="mt-1 truncate text-lg font-black text-white">{value}</p>
+            </button>
+          ))}
+        </div>
+        <p className="mt-4 rounded-2xl bg-sky-300/10 px-4 py-3 text-sm leading-6 text-sky-50/78">
+          {todayEvents.length >= 4
+            ? "今日は予定が多めだよ。朝ルーティンは短縮版でも、流れを作れれば十分そう。"
+            : todayExpense > dailyBudgetForHome
+              ? "今日の支出は少し進んでるよ。次の支出だけ軽めにできると月末予測が安定しそう。"
+              : "今日はまだ余白があるよ。Mind Captureで頭の中を一度外に出すと、動き出しが楽になりそう。"}
+        </p>
+      </GlassCard>
 
       <div className="future-middle-grid">
         <GlassCard className="future-panel-card p-5">
@@ -4443,7 +4526,7 @@ function CoffeePanel({ snapshot, refreshSnapshot }: PanelProps) {
         </div>
       </GlassCard>
       <div className="grid gap-3">
-        {logs.map((l) => (
+        {logs.slice(0, 120).map((l) => (
           <GlassCard key={l.id}>
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -4468,6 +4551,47 @@ function CoffeePanel({ snapshot, refreshSnapshot }: PanelProps) {
     </div>
   );
 }
+
+
+function readMoneyBudgetSettings(): MoneyBudgetSetting[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("lifeMoneyBudgetsV1") || "[]") as MoneyBudgetSetting[];
+  } catch {
+    return [];
+  }
+}
+
+function writeMoneyBudgetSettings(items: MoneyBudgetSetting[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("lifeMoneyBudgetsV1", JSON.stringify(items.slice(0, 80)));
+}
+
+function readMoneySubscriptions(): MoneySubscription[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("lifeMoneySubscriptionsV1") || "[]") as MoneySubscription[];
+  } catch {
+    return [];
+  }
+}
+
+function writeMoneySubscriptions(items: MoneySubscription[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("lifeMoneySubscriptionsV1", JSON.stringify(items.slice(0, 120)));
+}
+
+function daysUntilMonthlyDue(day: number) {
+  const now = new Date();
+  const safeDay = Math.min(28, Math.max(1, Number(day || 1)));
+  let due = new Date(now.getFullYear(), now.getMonth(), safeDay);
+  if (due < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+    due = new Date(now.getFullYear(), now.getMonth() + 1, safeDay);
+  }
+  const diff = due.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.max(0, Math.ceil(diff / 86400000));
+}
+
 
 function BudgetPanel({
   snapshot,
@@ -4503,6 +4627,20 @@ function BudgetPanel({
   const [receiptMessage, setReceiptMessage] = useState("");
   const [budgetAiMessage, setBudgetAiMessage] = useState("");
   const [budgetAiLoading, setBudgetAiLoading] = useState(false);
+  const [moneyBudgets, setMoneyBudgets] = useState<MoneyBudgetSetting[]>(() =>
+    readMoneyBudgetSettings(),
+  );
+  const [subscriptions, setSubscriptions] = useState<MoneySubscription[]>(() =>
+    readMoneySubscriptions(),
+  );
+  const [subName, setSubName] = useState("");
+  const [subAmount, setSubAmount] = useState(0);
+  const [subWallet, setSubWallet] = useState("銀行");
+  const [subNextDate, setSubNextDate] = useState(todayKey());
+  const [subUsage, setSubUsage] = useState("普通");
+  const [subMemo, setSubMemo] = useState("");
+  const [subFrequency, setSubFrequency] = useState<"monthly" | "yearly">("monthly");
+  const [editLog, setEditLog] = useState<BudgetLog | null>(null);
   const logs = snapshot?.budget || [];
   const accounts = snapshot?.budgetAccounts || [];
   const templates = snapshot?.budgetFixedTemplates || [];
@@ -4519,17 +4657,19 @@ function BudgetPanel({
   const expenseCats = [
     "食費",
     "カフェ",
-    "交通",
+    "交通費",
     "日用品",
-    "娯楽",
-    "医療",
-    "服",
-    "学習",
     "サブスク",
+    "美容/服",
+    "趣味",
+    "本/学習",
+    "医療",
+    "交際",
+    "筋トレ/健康",
     "家賃",
-    "水道光熱",
-    "通信",
-    "貯金",
+    "光熱費",
+    "通信費",
+    "予備費",
     "その他",
   ];
   const incomeCats = [
@@ -4547,7 +4687,7 @@ function BudgetPanel({
     "PayPay",
     "クレカ",
     "楽天",
-    "貯金",
+    "予備費",
     "その他",
   ];
   const wallets = Array.from(
@@ -4562,7 +4702,7 @@ function BudgetPanel({
     "銀行",
     "Suica",
     "PayPay",
-    "貯金",
+    "予備費",
     "電子マネー",
     "クレカ",
     "その他",
@@ -4647,6 +4787,49 @@ function BudgetPanel({
         return acc;
       }, {}),
   ).sort((a, b) => b[1] - a[1])[0];
+  const todayExpense = logs
+    .filter((l) => l.type === "expense" && l.spend_date === todayKey())
+    .reduce((s, l) => s + Number(l.amount || 0), 0);
+  const recent7Expense = logs
+    .filter((l) => l.type === "expense" && l.spend_date >= dateMinus(todayKey(), 6))
+    .reduce((s, l) => s + Number(l.amount || 0), 0);
+  const todaySpendable = Math.max(0, dailyBudget - todayExpense);
+  const subscriptionMonthly = subscriptions.reduce(
+    (sum, sub) => sum + (sub.frequency === "yearly" ? Math.round(Number(sub.amount || 0) / 12) : Number(sub.amount || 0)),
+    0,
+  );
+  const subscriptionYearly = subscriptions.reduce(
+    (sum, sub) => sum + (sub.frequency === "yearly" ? Number(sub.amount || 0) : Number(sub.amount || 0) * 12),
+    0,
+  );
+  const freeRemaining = Math.max(0, monthIncome - monthExpense - fixedMonthly - subscriptionMonthly);
+  const monthEndForecast = Math.round(totalAssets - (recent7Expense / 7) * daysLeftInMonth());
+  const upcomingFixed = templates
+    .filter((t) => t.active !== false)
+    .map((t) => ({ ...t, daysLeft: daysUntilMonthlyDue(Number(t.due_day || 1)) }))
+    .sort((a, b) => a.daysLeft - b.daysLeft)
+    .slice(0, 5);
+  const budgetRows = expenseCats.map((cat) => {
+    const used = currentCat[cat] || 0;
+    const setting = moneyBudgets.find((b) => b.category === cat);
+    const limit = Number(setting?.limit || 0);
+    const rate = limit ? Math.round((used / limit) * 100) : 0;
+    return { category: cat, used, limit, remaining: Math.max(0, limit - used), rate };
+  });
+  const overBudgetRows = budgetRows.filter((row) => row.limit && row.rate >= 80).slice(0, 4);
+  const oftenWallet = Object.entries(
+    thisMonthLogs.reduce((acc: Record<string, number>, l) => {
+      const k = l.wallet || l.payment_method || "未設定";
+      acc[k] = (acc[k] || 0) + 1;
+      return acc;
+    }, {}),
+  ).sort((a, b) => b[1] - a[1])[0]?.[0] || "未設定";
+  const moneyAlerts = [
+    todayExpense > Math.max(3000, dailyBudget) ? `今日の支出が${yen(todayExpense)}。次だけ軽めにできると安定しそう。` : "",
+    overBudgetRows[0] ? `${overBudgetRows[0].category}予算を${overBudgetRows[0].rate}%使用しています。少し見える化できてるよ。` : "",
+    freeRemaining <= Math.max(1000, remainingMonth * 0.2) ? "自由費の余白が少なめ。固定費とサブスクを見直すと安心感が戻りそう。" : "",
+    subscriptionMonthly > 0 ? `サブスク合計は月${yen(subscriptionMonthly)} / 年${yen(subscriptionYearly)}です。` : "",
+  ].filter(Boolean);
   const grouped = accountKinds
     .map((kind) => ({ kind, items: accounts.filter((a) => a.kind === kind) }))
     .filter((g) => g.items.length);
@@ -5028,11 +5211,16 @@ function BudgetPanel({
         logs: thisMonthLogs,
         accounts,
         templates,
+        subscriptions,
+        moneyBudgets,
         categoryWarnings,
         monthIncome,
         monthExpense,
         fixedMonthly,
         dailyBudget,
+        todaySpendable,
+        freeRemaining,
+        monthEndForecast,
       };
       const res = await fetch("/api", {
         method: "POST",
@@ -5050,15 +5238,135 @@ function BudgetPanel({
     }
   }
 
+  function saveMoneyBudgets(next: MoneyBudgetSetting[]) {
+    setMoneyBudgets(next);
+    writeMoneyBudgetSettings(next);
+  }
+
+  function updateBudgetLimit(categoryName: string, limit: number) {
+    const clean = Math.max(0, Number(limit || 0));
+    const exists = moneyBudgets.some((b) => b.category === categoryName);
+    const next = exists
+      ? moneyBudgets.map((b) => (b.category === categoryName ? { ...b, limit: clean } : b))
+      : [
+          ...moneyBudgets,
+          {
+            id: `money-budget-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            category: categoryName,
+            limit: clean,
+            created_at: new Date().toISOString(),
+          },
+        ];
+    saveMoneyBudgets(next);
+  }
+
+  function saveSubscriptions(next: MoneySubscription[]) {
+    setSubscriptions(next);
+    writeMoneySubscriptions(next);
+  }
+
+  function addSubscription() {
+    if (!subName.trim() || !subAmount) return alert("サブスク名と金額を入れてね");
+    const item: MoneySubscription = {
+      id: `money-sub-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      name: subName.trim(),
+      amount: Math.abs(Number(subAmount || 0)),
+      wallet: subWallet,
+      nextDate: subNextDate || todayKey(),
+      frequency: subFrequency,
+      usage: subUsage,
+      memo: subMemo.trim(),
+      created_at: new Date().toISOString(),
+    };
+    saveSubscriptions([item, ...subscriptions].slice(0, 120));
+    setSubName("");
+    setSubAmount(0);
+    setSubMemo("");
+    setGuideDraft(`サブスク「${item.name}」をMoney Hubに追加したよ。月額と年額の見える化に使えるね。`);
+  }
+
+  function deleteSubscription(id: string) {
+    saveSubscriptions(subscriptions.filter((s) => s.id !== id));
+  }
+
+  async function quickExpense(categoryName: string, quickAmount: number, quickMemo = "") {
+    const value = Math.abs(Number(quickAmount || 0));
+    if (!value) return;
+    const accountLabel = wallet || wallets[0] || "財布";
+    const { error } = await supabase.from("budget_logs").insert({
+      spend_date: todayKey(),
+      type: "expense",
+      category: categoryName,
+      amount: value,
+      wallet: accountLabel,
+      payment_method: accountLabel,
+      memo: quickMemo || `かんたん入力:${categoryName}`,
+    });
+    if (error) return alert("かんたん支出登録に失敗: " + error.message);
+    await applyBalanceChange(accountLabel, -value);
+    setGuideDraft(`${categoryName} ${yen(value)} を記録したよ。今日あと使える目安にも反映されるよ。`);
+    window.setTimeout(() => void refreshSnapshot("Money Hub同期中..."), 120);
+  }
+
+  async function duplicateLog(log: BudgetLog) {
+    if (log.type === "charge") {
+      setAmount(Number(log.amount || 0));
+      setChargeFrom(String(log.source || chargeFrom));
+      setChargeTo(String(log.wallet || log.payment_method || chargeTo));
+      setMemo(log.memo || "");
+      setGuideDraft("チャージ内容を入力欄に複製したよ。確認してから登録できるよ。");
+      return;
+    }
+    const payload = {
+      spend_date: todayKey(),
+      type: log.type,
+      category: log.category,
+      amount: Number(log.amount || 0),
+      wallet: log.wallet || log.payment_method || wallet,
+      source: log.source || null,
+      payment_method: log.payment_method || log.wallet || wallet,
+      memo: log.memo ? `複製:${log.memo}` : "複製入力",
+    };
+    const { error } = await supabase.from("budget_logs").insert(payload);
+    if (error) return alert("複製に失敗: " + error.message);
+    await applyBalanceChange(String(payload.wallet || ""), accountDelta(log.type, Number(log.amount || 0)));
+    await refreshSnapshot("Money Hub同期中...");
+  }
+
+  async function saveEditedLog() {
+    if (!editLog) return;
+    const original = logs.find((l) => l.id === editLog.id);
+    const payload = {
+      spend_date: editLog.spend_date,
+      type: editLog.type,
+      category: editLog.category,
+      amount: Math.abs(Number(editLog.amount || 0)),
+      wallet: editLog.wallet || editLog.payment_method || wallet,
+      source: editLog.source || null,
+      payment_method: editLog.payment_method || editLog.wallet || wallet,
+      memo: editLog.memo || null,
+    } as any;
+    const { error } = await supabase.from("budget_logs").update(payload).eq("id", editLog.id);
+    if (error) return alert("収支編集に失敗: " + error.message);
+    if (original && original.type !== "charge" && editLog.type !== "charge") {
+      const oldAccount = linkedAccountName(original);
+      const newAccount = String(payload.wallet || payload.payment_method || "");
+      if (oldAccount) await applyBalanceChange(oldAccount, -accountDelta(original.type, Number(original.amount || 0)));
+      if (newAccount) await applyBalanceChange(newAccount, accountDelta(editLog.type, Number(editLog.amount || 0)));
+    }
+    setEditLog(null);
+    await refreshSnapshot("Money Hub同期中...");
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="money-hub-page space-y-4">
       <GlassCard className="future-budget-hero budget-command-hero overflow-hidden">
         <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,.8fr)] lg:items-end">
           <div>
             <p className="text-xs font-black tracking-[0.34em] text-sky-100/70">MONEY COMMAND CENTER</p>
-            <h2 className="mt-3 text-4xl font-black leading-tight sm:text-5xl">家計簿</h2>
+            <h2 className="mt-3 text-4xl font-black leading-tight sm:text-5xl">Money Hub / マネーハブ</h2>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-sky-50/72">
-              収入・支出・固定費・お金のコーナーを一画面で見て、今日使える余白まで判断できるようにしたよ。
+              収入・支出・チャージ・資金移動・固定費・サブスク・お金のコーナーを一画面で見て、今日あと使える金額まで判断できる司令室だよ。
               既存の保存形式はそのまま使って、見た目と判断しやすさを強化しているよ。
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -5086,6 +5394,34 @@ function BudgetPanel({
           </div>
         </div>
       </GlassCard>
+      <div className="money-hub-kpi-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {[
+          ["今日あと使える", yen(todaySpendable), "生活判断の中心"],
+          ["今日の支出", yen(todayExpense), "本日の使用額"],
+          ["今週の支出", yen(recent7Expense), "直近7日"],
+          ["自由費残り", yen(freeRemaining), "固定費・サブスク後"],
+          ["月末予測", `${yen(monthEndForecast)}前後`, "簡易予測"],
+        ].map(([label, value, sub]) => (
+          <GlassCard key={label} className="future-money-kpi-card">
+            <p className="text-xs font-black text-sky-100/52">{label}</p>
+            <p className="mt-2 truncate text-2xl font-black text-white">{value}</p>
+            <p className="mt-1 text-xs text-white/45">{sub}</p>
+          </GlassCard>
+        ))}
+      </div>
+      {upcomingFixed.length > 0 && (
+        <GlassCard className="border-amber-200/20 bg-amber-300/[0.07]">
+          <h3 className="text-xl font-black">次に来る支払い予定</h3>
+          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {upcomingFixed.map((item) => (
+              <div key={item.id} className="rounded-2xl bg-black/25 p-3">
+                <p className="font-black">{item.daysLeft === 0 ? "今日" : `${item.daysLeft}日後`}に {item.title}</p>
+                <p className="mt-1 text-sm text-white/58">{yen(Number(item.amount || 0))} / {item.wallet || "未設定"} / 毎月{item.due_day || 1}日</p>
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
       <div className="grid gap-3 lg:grid-cols-3">
         <GlassCard>
           <p className="text-xs text-white/45">今月あと使える</p>
@@ -5148,6 +5484,113 @@ function BudgetPanel({
           </div>
         </GlassCard>
       </div>
+      <GlassCard className="money-quick-input">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h3 className="text-xl font-black">レシートなし簡単入力</h3>
+            <p className="mt-1 text-sm text-white/55">金額と用途を押すだけで支出登録できるよ。支払元は現在の「{wallet}」を使うよ。</p>
+          </div>
+          <select
+            value={wallet}
+            onChange={(e) => setWallet(e.target.value)}
+            className="rounded-2xl border border-white/20 bg-slate-950/90 p-3 text-sm font-black text-white"
+          >
+            {wallets.map((w) => <option key={w}>{w}</option>)}
+          </select>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {[100, 300, 500, 1000, 3000].map((value) => (
+            <button key={value} onClick={() => setAmount(value)} className={`rounded-2xl px-3 py-3 text-sm font-black ${amount === value ? "bg-sky-200 text-black" : "bg-white/10"}`}>
+              {yen(value)}
+            </button>
+          ))}
+          <Field
+            type="number"
+            placeholder="カスタム"
+            value={amount || ""}
+            onChange={(e) => setAmount(Number(e.target.value))}
+          />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
+          {["コンビニ", "カフェ", "交通費", "食費", "日用品", "サブスク", "本/学習", "筋トレ/健康"].map((label) => (
+            <button
+              key={label}
+              onClick={() => quickExpense(label === "コンビニ" ? "食費" : label, amount || 0, label)}
+              disabled={!amount}
+              className="rounded-2xl border border-white/10 bg-white/[0.07] px-3 py-3 text-sm font-black disabled:opacity-40"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </GlassCard>
+
+      <GlassCard>
+        <h3 className="text-xl font-black">カテゴリ予算</h3>
+        <p className="mt-1 text-sm text-white/55">カテゴリごとの月予算をlocalStorageに安全保存するよ。既存家計簿ログは壊さない。</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {budgetRows.map((row) => (
+            <div key={row.category} className="rounded-2xl border border-white/10 bg-black/25 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-black">{row.category}</p>
+                <span className={`rounded-full px-2 py-1 text-[10px] font-black ${row.limit && row.rate >= 100 ? "bg-rose-300 text-black" : row.limit && row.rate >= 80 ? "bg-amber-300 text-black" : "bg-white/10 text-white/55"}`}>
+                  {row.limit ? `${row.rate}%` : "未設定"}
+                </span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/40">
+                <div className="h-full rounded-full bg-gradient-to-r from-sky-300 to-indigo-400" style={{ width: `${Math.min(100, row.limit ? row.rate : 0)}%` }} />
+              </div>
+              <p className="mt-2 text-xs text-white/52">使用 {yen(row.used)} / 残り {row.limit ? yen(row.remaining) : "未設定"}</p>
+              <Field
+                type="number"
+                placeholder="月予算"
+                value={row.limit || ""}
+                onChange={(e) => updateBudgetLimit(row.category, Number(e.target.value))}
+                className="mt-2"
+              />
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+
+      <GlassCard>
+        <h3 className="text-xl font-black">サブスク管理</h3>
+        <p className="mt-1 text-sm text-white/55">固定費とは別に、サブスクだけを月額・年額で見える化するよ。</p>
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_140px_140px_150px_140px_1fr_130px]">
+          <Field placeholder="Apple Music / Runna / iCloud" value={subName} onChange={(e) => setSubName(e.target.value)} />
+          <Field type="number" placeholder="金額" value={subAmount || ""} onChange={(e) => setSubAmount(Number(e.target.value))} />
+          <select value={subFrequency} onChange={(e) => setSubFrequency(e.target.value as "monthly" | "yearly")} className="rounded-2xl border border-white/20 bg-slate-950/90 p-4 text-white">
+            <option value="monthly">月額</option>
+            <option value="yearly">年額</option>
+          </select>
+          <Field type="date" value={subNextDate} onChange={(e) => setSubNextDate(e.target.value)} />
+          <select value={subWallet} onChange={(e) => setSubWallet(e.target.value)} className="rounded-2xl border border-white/20 bg-slate-950/90 p-4 text-white">
+            {wallets.map((w) => <option key={w}>{w}</option>)}
+          </select>
+          <Field placeholder="使用頻度・解約検討メモ" value={subUsage} onChange={(e) => setSubUsage(e.target.value)} />
+          <PrimaryButton onClick={addSubscription}>追加</PrimaryButton>
+        </div>
+        <TextArea className="mt-3 min-h-20" placeholder="メモ 任意" value={subMemo} onChange={(e) => setSubMemo(e.target.value)} />
+        <div className="mt-4 grid gap-3 lg:grid-cols-[260px_1fr]">
+          <div className="rounded-3xl border border-sky-200/14 bg-sky-300/10 p-4">
+            <p className="text-xs font-black text-sky-100/52">現在のサブスク合計</p>
+            <p className="mt-2 text-2xl font-black">{yen(subscriptionMonthly)} / 月</p>
+            <p className="mt-1 text-sm text-white/55">{yen(subscriptionYearly)} / 年</p>
+          </div>
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {subscriptions.length ? subscriptions.map((sub) => (
+              <div key={sub.id} className="rounded-2xl bg-black/25 p-3">
+                <p className="font-black">{sub.name}</p>
+                <p className="mt-1 text-sm text-white/60">{yen(sub.amount)} / {sub.frequency === "monthly" ? "月" : "年"} / {sub.wallet}</p>
+                <p className="mt-1 text-xs text-white/45">次回 {sub.nextDate} / {sub.usage}</p>
+                {sub.memo && <p className="mt-2 text-xs text-white/55">{sub.memo}</p>}
+                <button onClick={() => deleteSubscription(sub.id)} className="mt-2 rounded-xl bg-red-500 px-3 py-2 text-xs font-black">削除</button>
+              </div>
+            )) : <p className="rounded-2xl bg-black/25 p-4 text-sm text-white/55">まだサブスクは登録されていないよ。</p>}
+          </div>
+        </div>
+      </GlassCard>
+
       <GlassCard>
         <h3 className="text-xl font-black">固定費テンプレ</h3>
         <p className="mt-1 text-sm text-white/55">
@@ -5512,10 +5955,10 @@ function BudgetPanel({
       <GlassCard>
         <h3 className="text-xl font-black">入力済みの収支</h3>
         <p className="mt-1 text-xs text-white/50">
-          長押しすると削除確認が出るよ。削除した場合、紐づく残高も逆方向に戻すよ。
+          編集・複製・削除ができるよ。長押しでも削除確認を開けるよ。
         </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {logs.map((l) => (
+          {logs.slice(0, 120).map((l) => (
             <div
               key={l.id}
               onPointerDown={() => startLogLongPress(l)}
@@ -5547,6 +5990,26 @@ function BudgetPanel({
               </p>
               {l.memo && <p className="mt-2 text-sm text-white/65">{l.memo}</p>}
               <ImagePreview src={l.image_url} />
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => setEditLog(l)}
+                  className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black"
+                >
+                  編集
+                </button>
+                <button
+                  onClick={() => duplicateLog(l)}
+                  className="rounded-xl bg-sky-300/15 px-3 py-2 text-xs font-black text-sky-50"
+                >
+                  複製
+                </button>
+                <button
+                  onClick={() => setDeleteLogTarget(l)}
+                  className="rounded-xl bg-red-500/85 px-3 py-2 text-xs font-black"
+                >
+                  削除
+                </button>
+              </div>
               <p className="mt-3 text-[11px] text-white/35">長押し：削除確認</p>
             </div>
           ))}
@@ -5577,6 +6040,52 @@ function BudgetPanel({
           >
             キャンセル
           </button>
+        </Modal>
+      )}
+      {editLog && (
+        <Modal title="収支ログを編集" onClose={() => setEditLog(null)}>
+          <div className="space-y-3">
+            <Field
+              type="date"
+              value={editLog.spend_date}
+              onChange={(e) => setEditLog({ ...editLog, spend_date: e.target.value })}
+            />
+            <select
+              value={editLog.type}
+              onChange={(e) => setEditLog({ ...editLog, type: e.target.value as BudgetLog["type"] })}
+              className="w-full rounded-2xl border border-white/20 bg-slate-950/90 p-4 text-white"
+            >
+              <option value="expense">支出</option>
+              <option value="income">収入</option>
+              <option value="charge">チャージ/資金移動</option>
+            </select>
+            <select
+              value={editLog.category}
+              onChange={(e) => setEditLog({ ...editLog, category: e.target.value })}
+              className="w-full rounded-2xl border border-white/20 bg-slate-950/90 p-4 text-white"
+            >
+              {[...expenseCats, ...incomeCats, "チャージ"].map((c) => <option key={c}>{c}</option>)}
+            </select>
+            <Field
+              type="number"
+              value={editLog.amount}
+              onChange={(e) => setEditLog({ ...editLog, amount: Number(e.target.value) })}
+            />
+            <select
+              value={editLog.wallet || editLog.payment_method || wallet}
+              onChange={(e) => setEditLog({ ...editLog, wallet: e.target.value, payment_method: e.target.value })}
+              className="w-full rounded-2xl border border-white/20 bg-slate-950/90 p-4 text-white"
+            >
+              {wallets.map((w) => <option key={w}>{w}</option>)}
+            </select>
+            <TextArea
+              value={editLog.memo || ""}
+              onChange={(e) => setEditLog({ ...editLog, memo: e.target.value })}
+            />
+            <button onClick={saveEditedLog} className="w-full rounded-2xl bg-white px-4 py-3 font-black text-black">
+              保存する
+            </button>
+          </div>
         </Modal>
       )}
       {editAccount && (
@@ -7920,6 +8429,40 @@ function BrainDumpPanel({
     setGuideDraft(`Mind Captureで整理した内容を保存したよ。${summary || "必要な場所へ振り分けたよ。"}`);
   }
 
+  async function sendInboxItem(item: MindInboxItem, category: MindCaptureCategory) {
+    const message = await persistMindCaptureCandidate({
+      id: item.id,
+      category,
+      content: item.content,
+      save: true,
+      confidence: category === "inbox" ? "保留推奨" : "確認が必要",
+      date: null,
+      amount: extractYenAmount(item.content),
+      note: "Mind Inboxから移動",
+      source: "manual",
+    });
+    const next = readMindInboxItems().filter((row) => row.id !== item.id);
+    writeMindInboxItems(next);
+    setInboxItems(next);
+    await refreshSnapshot("Mind Inbox整理中...");
+    showBanner(message);
+  }
+
+  function updateInboxItem(item: MindInboxItem, content: string) {
+    const next = readMindInboxItems().map((row) =>
+      row.id === item.id ? { ...row, content } : row,
+    );
+    writeMindInboxItems(next);
+    setInboxItems(next);
+  }
+
+  function deleteInboxItem(id: string) {
+    const next = readMindInboxItems().filter((row) => row.id !== id);
+    writeMindInboxItems(next);
+    setInboxItems(next);
+    showBanner("Mind Inboxから削除しました");
+  }
+
   const grouped = groupMindCaptureCandidates(activeResult.candidates);
 
   return (
@@ -8094,8 +8637,26 @@ function BrainDumpPanel({
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {inboxItems.slice(0, 12).map((item) => (
               <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-sm leading-6 text-white/78">{item.content}</p>
+                <TextArea
+                  className="min-h-20 bg-black/25 p-3 text-sm"
+                  value={item.content}
+                  onChange={(e) => updateInboxItem(item, e.target.value)}
+                />
                 <p className="mt-2 text-xs text-white/40">{new Date(item.created_at).toLocaleString("ja-JP")}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {(["memo", "todo", "calendar", "budget", "shopping", "routine", "diary"] as MindCaptureCategory[]).map((category) => (
+                    <button
+                      key={category}
+                      onClick={() => sendInboxItem(item, category)}
+                      className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black"
+                    >
+                      {mindCaptureCategoryMeta[category].short}へ
+                    </button>
+                  ))}
+                  <button onClick={() => deleteInboxItem(item.id)} className="rounded-xl bg-red-500 px-2 py-2 text-xs font-black">
+                    削除
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -8710,11 +9271,45 @@ function GlobalSearchModal({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [aiHint, setAiHint] = useState("");
+  const [aiSearching, setAiSearching] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const results = useMemo(
     () => collectGlobalSearchResults(snapshot, deferredQuery),
     [snapshot, deferredQuery],
   );
+
+  async function runAISearch() {
+    if (!query.trim()) return;
+    setAiSearching(true);
+    try {
+      const res = await fetch("/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "searchAI",
+          text: JSON.stringify({
+            query,
+            resultPreview: results.slice(0, 12),
+            counts: {
+              memos: snapshot?.memos?.length || 0,
+              todos: snapshot?.todos?.length || 0,
+              budget: snapshot?.budget?.length || 0,
+              routines: snapshot?.routines?.length || 0,
+              events: snapshot?.events?.length || 0,
+              mindInbox: readMindInboxItems().length,
+            },
+          }),
+        }),
+      });
+      const json = await res.json();
+      setAiHint(json.result || "AI検索の補助結果を取得できなかったよ。");
+    } catch {
+      setAiHint("AI検索に失敗したよ。OPENAI_API_KEYか通信状態を確認してね。");
+    } finally {
+      setAiSearching(false);
+    }
+  }
   function jump(page: PageKey, id: string) {
     setPage(page);
     onClose();
@@ -8735,12 +9330,26 @@ function GlobalSearchModal({
   return (
     <Modal title="AI検索 / 全ページ検索" onClose={onClose}>
       <div className="space-y-3">
-        <Field
-          autoFocus
-          placeholder="例: 先週のカフェ代 / 明日の予定 / 夜ルーティン / Mind Inbox"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        <div className="grid gap-2 sm:grid-cols-[1fr_150px]">
+          <Field
+            autoFocus
+            placeholder="例: 先週のカフェ代 / 明日の予定 / 夜ルーティン / Mind Inbox"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button
+            onClick={runAISearch}
+            disabled={!query.trim() || aiSearching}
+            className="rounded-2xl bg-white px-4 py-3 font-black text-black disabled:opacity-50"
+          >
+            {aiSearching ? "AI検索中" : "AI検索"}
+          </button>
+        </div>
+        {aiHint && (
+          <p className="rounded-2xl border border-sky-200/16 bg-sky-300/10 p-3 text-sm leading-6 text-sky-50/82">
+            {aiHint}
+          </p>
+        )}
         {!query.trim() && (
           <p className="text-sm text-white/55">
             メモ、TODO、家計簿、予定、Routine、持ち物、Mind Inboxをまとめて探せるよ。関連ページへそのまま移動できる。
