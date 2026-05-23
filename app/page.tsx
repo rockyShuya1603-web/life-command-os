@@ -1698,16 +1698,27 @@ export default function Home() {
           {navItems.filter((item) => ["home", "memos", "todos", "routines", "budget"].includes(item.key)).map((item) => {
             const active = page === item.key;
             return (
-              <button
-                key={item.key}
-                onClick={() => setPage(item.key)}
-                className={`min-w-[76px] snap-start rounded-2xl px-2 py-2 text-center text-[11px] transition sm:min-w-0 sm:flex-1 ${active ? `bg-gradient-to-r ${theme.accent} font-black text-black` : "bg-white/[0.04] text-white/65 hover:bg-white/10"}`}
-              >
-                <div className="flex justify-center">
-                  <NavIcon icon={item.icon} label={item.label} className="h-8 w-8" />
-                </div>
-                <div>{item.label}</div>
-              </button>
+              <div key={item.key} className="contents">
+                <button
+                  onClick={() => setPage(item.key)}
+                  className={`min-w-[76px] snap-start rounded-2xl px-2 py-2 text-center text-[11px] transition sm:min-w-0 sm:flex-1 ${active ? `bg-gradient-to-r ${theme.accent} font-black text-black` : "bg-white/[0.04] text-white/65 hover:bg-white/10"}`}
+                >
+                  <div className="flex justify-center">
+                    <NavIcon icon={item.icon} label={item.label} className="h-8 w-8" />
+                  </div>
+                  <div>{item.label}</div>
+                </button>
+                {item.key === "routines" && (
+                  <button
+                    onClick={() => setQuickAddOpen(true)}
+                    className="mobile-quick-add-nav min-w-[76px] snap-start rounded-2xl px-2 py-2 text-center text-[11px] font-black text-white sm:min-w-0 sm:flex-1"
+                    aria-label="Quick Add"
+                  >
+                    <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xl">＋</div>
+                    <div>追加</div>
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
@@ -6883,6 +6894,8 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
   const [routineMode, setRoutineMode] = useState<"morning" | "night">("morning");
+  const [routineView, setRoutineView] = useState<"routine" | "habit">("routine");
+  const [expandedRoutineIds, setExpandedRoutineIds] = useState<Set<string>>(() => new Set());
   const [template, setTemplate] = useState("平日朝ルーティン");
   const [conditionMood, setConditionMood] = useState("Good");
   const [conditionNote, setConditionNote] = useState("");
@@ -6912,20 +6925,28 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
       );
   }, [snapshot?.routineChecks]);
 
-  const morningRoutines = useMemo(
-    () => routines.filter((r) => classifyRoutineSlot(r) === "morning"),
+  const routineFlowItems = useMemo(
+    () => routines.filter((r) => classifyRoutineKind(r) === "routine"),
     [routines],
+  );
+  const habitRoutines = useMemo(
+    () => routines.filter((r) => classifyRoutineKind(r) === "habit"),
+    [routines],
+  );
+  const morningRoutines = useMemo(
+    () => routineFlowItems.filter((r) => classifyRoutineSlot(r) === "morning"),
+    [routineFlowItems],
   );
   const nightRoutines = useMemo(
-    () => routines.filter((r) => classifyRoutineSlot(r) === "night"),
-    [routines],
+    () => routineFlowItems.filter((r) => classifyRoutineSlot(r) === "night"),
+    [routineFlowItems],
   );
-  const activeRoutines = routineMode === "morning" ? morningRoutines : nightRoutines;
+  const activeRoutines = routineView === "habit" ? habitRoutines : routineMode === "morning" ? morningRoutines : nightRoutines;
   const today = todayKey();
   const todayActions = routineActions.filter((a) => a.date === today);
   const activeDone = activeRoutines.filter((r) => checks.some((c) => c.routine_id === r.id && c.check_date === today)).length;
   const activeCompletion = activeRoutines.length ? Math.round((activeDone / activeRoutines.length) * 100) : 0;
-  const activeMinutes = activeRoutines.length * (routineMode === "morning" ? 4 : 5);
+  const activeMinutes = activeRoutines.length * (routineView === "habit" ? 3 : routineMode === "morning" ? 4 : 5);
   const streakDays = calcRoutineGroupStreak(activeRoutines, checks);
 
   function saveActions(next: RoutineActionLog[]) {
@@ -6940,8 +6961,8 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
 
   async function add() {
     if (!title.trim()) return;
-    const defaultTime = routineMode === "morning" ? "07:00" : "21:30";
-    const prefix = routineMode === "morning" ? "朝: " : "夜: ";
+    const defaultTime = routineView === "habit" ? "" : routineMode === "morning" ? "07:00" : "21:30";
+    const prefix = routineView === "habit" ? "習慣: " : routineMode === "morning" ? "朝: " : "夜: ";
     const { error } = await supabase
       .from("routines")
       .insert({
@@ -6962,16 +6983,20 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
   async function addTemplate() {
     const items = routineTemplateItems(template);
     if (!items.length) return;
-    const mode = template.includes("夜") || template.includes("ナイト") ? "night" : "morning";
+    const kind = template.includes("習慣") ? "habit" : template.includes("夜") || template.includes("ナイト") ? "night" : "morning";
     const rows = items.map((name, index) => ({
-      title: `${mode === "morning" ? "朝" : "夜"}: ${name}`,
-      routine_time: mode === "morning" ? `07:${String(index * 4).padStart(2, "0")}` : `21:${String(index * 5).padStart(2, "0")}`,
+      title: `${kind === "habit" ? "習慣" : kind === "morning" ? "朝" : "夜"}: ${name}`,
+      routine_time: kind === "habit" ? null : kind === "morning" ? `07:${String(index * 4).padStart(2, "0")}` : `21:${String(index * 5).padStart(2, "0")}`,
       note: `${template}から追加`,
       active: true,
     }));
     const { error } = await supabase.from("routines").insert(rows);
     if (error) return alert("テンプレート追加失敗: " + error.message);
-    setRoutineMode(mode);
+    if (kind === "habit") setRoutineView("habit");
+    else {
+      setRoutineView("routine");
+      setRoutineMode(kind);
+    }
     setGuideDraft(`${template}をRoutineに追加したよ。必要なものだけ残して育てられるよ。`);
     await refreshSnapshot();
   }
@@ -7097,11 +7122,13 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
     await refreshSnapshot();
   }
 
-  const modeLabel = routineMode === "morning" ? "Morning Routine" : "Night Routine";
+  const modeLabel = routineView === "habit" ? "Habit / 習慣" : routineMode === "morning" ? "Morning Routine" : "Night Routine";
   const modeSub =
-    routineMode === "morning"
-      ? "朝に迷わず1日を始めるための起動リスト。"
-      : "反省よりも、明日の自分を軽くするための終了リスト。";
+    routineView === "habit"
+      ? "毎日・毎週の積み上げを、短いブロックで見守るページ。"
+      : routineMode === "morning"
+        ? "朝に迷わず1日を始めるための起動リスト。"
+        : "反省よりも、明日の自分を軽くするための終了リスト。";
 
   return (
     <div className="routine-command-page space-y-4">
@@ -7109,9 +7136,9 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
         <div className="grid gap-5 lg:grid-cols-[1fr_420px] lg:items-end">
           <div>
             <p className="text-xs font-black tracking-[0.34em] text-sky-100/65">LIFE COMMAND OS / ROUTINE</p>
-            <h2 className="mt-3 text-4xl font-black sm:text-5xl">Routine / ルーティン</h2>
+            <h2 className="mt-3 text-4xl font-black sm:text-5xl">Routine & Habit</h2>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/66">
-              MorningとNightを分けて、毎日の開始と終了を迷わず進めるページ。完璧にやる前提ではなく、最低限版やスキップも記録できるようにしたよ。
+              ルーティンは「朝/夜の流れ」、習慣は「継続する小さな積み上げ」として分けたよ。縦長になりすぎないように、各ブロックの＋から1週間の履歴を開ける形式にした。
             </p>
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -7131,22 +7158,41 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
         </div>
       </GlassCard>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="routine-view-tabs grid gap-3 sm:grid-cols-2">
         <button
-          onClick={() => setRoutineMode("morning")}
-          className={`rounded-3xl border px-5 py-4 text-left transition ${routineMode === "morning" ? "border-sky-200/35 bg-sky-300/15" : "border-white/10 bg-white/[0.05]"}`}
+          onClick={() => setRoutineView("routine")}
+          className={`rounded-3xl border px-5 py-4 text-left transition ${routineView === "routine" ? "border-sky-200/35 bg-sky-300/15" : "border-white/10 bg-white/[0.05]"}`}
         >
-          <p className="text-xl font-black">🌅 Morning Routine</p>
-          <p className="mt-1 text-sm text-white/58">朝の起動率を上げる</p>
+          <p className="text-xl font-black">🧭 ルーティン</p>
+          <p className="mt-1 text-sm text-white/58">朝/夜の流れ。手順として進めるもの。</p>
         </button>
         <button
-          onClick={() => setRoutineMode("night")}
-          className={`rounded-3xl border px-5 py-4 text-left transition ${routineMode === "night" ? "border-indigo-200/35 bg-indigo-300/15" : "border-white/10 bg-white/[0.05]"}`}
+          onClick={() => setRoutineView("habit")}
+          className={`rounded-3xl border px-5 py-4 text-left transition ${routineView === "habit" ? "border-emerald-200/35 bg-emerald-300/15" : "border-white/10 bg-white/[0.05]"}`}
         >
-          <p className="text-xl font-black">🌙 Night Routine</p>
-          <p className="mt-1 text-sm text-white/58">明日の自分を軽くする</p>
+          <p className="text-xl font-black">🌱 習慣</p>
+          <p className="mt-1 text-sm text-white/58">継続履歴を見る小さな積み上げ。</p>
         </button>
       </div>
+
+      {routineView === "routine" && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            onClick={() => setRoutineMode("morning")}
+            className={`rounded-3xl border px-5 py-4 text-left transition ${routineMode === "morning" ? "border-sky-200/35 bg-sky-300/15" : "border-white/10 bg-white/[0.05]"}`}
+          >
+            <p className="text-xl font-black">🌅 Morning Routine</p>
+            <p className="mt-1 text-sm text-white/58">朝の起動率を上げる</p>
+          </button>
+          <button
+            onClick={() => setRoutineMode("night")}
+            className={`rounded-3xl border px-5 py-4 text-left transition ${routineMode === "night" ? "border-indigo-200/35 bg-indigo-300/15" : "border-white/10 bg-white/[0.05]"}`}
+          >
+            <p className="text-xl font-black">🌙 Night Routine</p>
+            <p className="mt-1 text-sm text-white/58">明日の自分を軽くする</p>
+          </button>
+        </div>
+      )}
 
       <GlassCard>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -7160,7 +7206,7 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
               onChange={(e) => setTemplate(e.target.value)}
               className="rounded-2xl border border-white/15 bg-slate-950/90 px-4 py-3 text-sm font-black text-white"
             >
-              {["平日朝ルーティン", "休日朝ルーティン", "仕事前ルーティン", "疲れている日の短縮版", "ナイトルーティン通常版", "ナイトルーティン最低限版"].map((name) => (
+              {["平日朝ルーティン", "休日朝ルーティン", "仕事前ルーティン", "疲れている日の短縮版", "ナイトルーティン通常版", "ナイトルーティン最低限版", "毎日習慣スターター", "最低限習慣セット"].map((name) => (
                 <option key={name}>{name}</option>
               ))}
             </select>
@@ -7173,7 +7219,7 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
 
       <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
         <Field
-          placeholder={routineMode === "morning" ? "例: 水を飲む / 今日の予定確認" : "例: 明日の持ち物準備 / 家計簿をつける"}
+          placeholder={routineView === "habit" ? "例: 音読20分 / 家計簿1件 / 5分片付け" : routineMode === "morning" ? "例: 水を飲む / 今日の予定確認" : "例: 明日の持ち物準備 / 家計簿をつける"}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
@@ -7184,7 +7230,7 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
-      <PrimaryButton onClick={add}>Routineを追加</PrimaryButton>
+      <PrimaryButton onClick={add}>{routineView === "habit" ? "習慣を追加" : "Routineを追加"}</PrimaryButton>
 
       {undoCheck && (
         <div className="sticky top-3 z-40 rounded-3xl border border-amber-200/30 bg-amber-400/20 p-4 shadow-2xl backdrop-blur-xl">
@@ -7204,61 +7250,102 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
         <Empty text={`${modeLabel} はまだ空だよ。テンプレ追加か、1つだけ手入力して始められるよ。`} />
       )}
 
-      <div className="routine-card-grid grid gap-3 lg:grid-cols-2">
+      <div className="routine-block-grid grid gap-3">
         {activeRoutines.map((r) => {
           const stats = calcRoutineStats(r.id, checks);
           const action = todayActions.find((a) => a.routine_id === r.id);
+          const expanded = expandedRoutineIds.has(r.id);
+          const kind = classifyRoutineKind(r);
           return (
-            <GlassCard key={r.id} className="future-routine-card relative overflow-hidden">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-black text-sky-100/50">{classifyRoutineSlot(r) === "morning" ? "MORNING" : "NIGHT"}</p>
-                  <h3 className="mt-1 truncate pr-2 text-xl font-black">{cleanRoutineTitle(r.title)}</h3>
-                  <p className="mt-1 text-sm text-white/55">{r.routine_time ? `${r.routine_time}ごろ` : "時間なし"}</p>
-                </div>
-                <div className={`rounded-2xl px-4 py-2 text-center font-black text-black ${stats.doneToday ? "bg-emerald-300" : "bg-sky-200"}`}>
-                  <p className="text-[10px] leading-none opacity-70">連続</p>
-                  <p className="mt-1 text-2xl leading-none">{stats.currentStreak}日</p>
-                </div>
-              </div>
-
-              {r.note && <p className="mt-3 whitespace-pre-wrap text-sm text-white/65">{r.note}</p>}
-
-              <div className="mt-4 grid grid-cols-7 gap-1">
-                {stats.recent7.map((day) => (
-                  <div key={day.date} className={`rounded-xl py-2 text-center text-xs font-black ${day.done ? "bg-emerald-300 text-black" : "bg-white/10 text-white/35"}`}>
-                    {Number(day.date.slice(8, 10))}
+            <GlassCard key={r.id} className={`future-routine-card routine-compact-block relative overflow-hidden ${expanded ? "routine-expanded" : ""}`}>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => check(r)}
+                  className={`routine-done-dot shrink-0 rounded-2xl px-3 py-3 text-sm font-black ${stats.doneToday ? "bg-emerald-300 text-black" : "bg-white/10 text-white"}`}
+                  aria-label={`${cleanRoutineTitle(r.title)}を完了`}
+                >
+                  {stats.doneToday ? "✓" : "○"}
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black text-white/50">
+                      {kind === "habit" ? "HABIT" : classifyRoutineSlot(r) === "morning" ? "MORNING" : "NIGHT"}
+                    </span>
+                    <span className="text-xs text-white/45">{r.routine_time ? `${r.routine_time}ごろ` : "時間なし"}</span>
                   </div>
-                ))}
+                  <h3 className="mt-1 truncate text-lg font-black">{cleanRoutineTitle(r.title)}</h3>
+                </div>
+                <div className={`hidden rounded-2xl px-3 py-2 text-center font-black text-black sm:block ${stats.doneToday ? "bg-emerald-300" : "bg-sky-200"}`}>
+                  <p className="text-[10px] leading-none opacity-70">連続</p>
+                  <p className="mt-1 text-xl leading-none">{stats.currentStreak}日</p>
+                </div>
+                <button
+                  onClick={() =>
+                    setExpandedRoutineIds((current) => {
+                      const next = new Set(current);
+                      if (next.has(r.id)) next.delete(r.id);
+                      else next.add(r.id);
+                      return next;
+                    })
+                  }
+                  className="routine-expand-plus shrink-0 rounded-2xl bg-white px-4 py-3 text-xl font-black text-black"
+                  aria-label="1週間の履歴を開く"
+                >
+                  {expanded ? "−" : "+"}
+                </button>
               </div>
 
-              {action && (
-                <p className="mt-3 rounded-2xl bg-white/10 px-3 py-2 text-xs font-black text-white/62">
-                  今日の扱い: {action.action === "skip" ? "スキップ" : action.action === "tomorrow" ? "明日に回す" : `メモ ${action.memo || ""}`}
-                </p>
+              {expanded && (
+                <div className="mt-4 border-t border-white/10 pt-4">
+                  {r.note && <p className="mb-3 whitespace-pre-wrap rounded-2xl bg-black/20 p-3 text-sm text-white/65">{r.note}</p>}
+
+                  <div className="rounded-3xl bg-black/20 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-black">ここ1週間の継続履歴</p>
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/55">
+                        合計 {stats.totalDays}日
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-7 gap-1">
+                      {stats.recent7.map((day) => (
+                        <div key={day.date} className={`rounded-xl py-2 text-center text-xs font-black ${day.done ? "bg-emerald-300 text-black" : "bg-white/10 text-white/35"}`}>
+                          <span className="block text-[10px] opacity-60">{["日", "月", "火", "水", "木", "金", "土"][new Date(`${day.date}T00:00:00`).getDay()]}</span>
+                          {Number(day.date.slice(8, 10))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {action && (
+                    <p className="mt-3 rounded-2xl bg-white/10 px-3 py-2 text-xs font-black text-white/62">
+                      今日の扱い: {action.action === "skip" ? "スキップ" : action.action === "tomorrow" ? "明日に回す" : `メモ ${action.memo || ""}`}
+                    </p>
+                  )}
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    <button onClick={() => check(r)} className={`rounded-2xl px-4 py-3 text-sm font-black ${stats.doneToday ? "bg-emerald-400 text-black" : "bg-white text-black"}`}>
+                      {stats.doneToday ? "完了済み" : "完了"}
+                    </button>
+                    <button onClick={() => logRoutineAction(r, "skip")} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">
+                      スキップ
+                    </button>
+                    <button onClick={() => logRoutineAction(r, "tomorrow")} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">
+                      明日へ
+                    </button>
+                    <button onClick={() => addRoutineMemo(r)} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">
+                      メモ
+                    </button>
+                    <button onClick={() => del(r.id)} className="rounded-2xl bg-red-500/80 px-4 py-3 text-sm font-black">
+                      削除
+                    </button>
+                  </div>
+                </div>
               )}
-
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <button onClick={() => check(r)} className={`rounded-2xl px-4 py-3 text-sm font-black ${stats.doneToday ? "bg-emerald-400 text-black" : "bg-white text-black"}`}>
-                  {stats.doneToday ? "完了済み" : "完了"}
-                </button>
-                <button onClick={() => logRoutineAction(r, "skip")} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">
-                  スキップ
-                </button>
-                <button onClick={() => logRoutineAction(r, "tomorrow")} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">
-                  明日へ
-                </button>
-                <button onClick={() => addRoutineMemo(r)} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">
-                  メモ
-                </button>
-              </div>
-              <button onClick={() => del(r.id)} className="mt-2 w-full rounded-2xl bg-red-500/80 px-4 py-3 text-sm font-black">
-                削除
-              </button>
             </GlassCard>
           );
         })}
       </div>
+
 
       <div className="grid gap-4 lg:grid-cols-[1fr_.9fr]">
         <GlassCard>
@@ -7352,7 +7439,14 @@ function writeRoutineConditionLogs(items: RoutineConditionLog[]) {
 }
 
 function cleanRoutineTitle(title: string) {
-  return String(title || "").replace(/^(朝|夜)\s*[:：]\s*/, "").trim();
+  return String(title || "").replace(/^(朝|夜|習慣)\s*[:：]\s*/, "").trim();
+}
+
+function classifyRoutineKind(r: Routine): "routine" | "habit" {
+  const text = `${r.title || ""} ${r.note || ""}`;
+  if (/^\s*習慣\s*[:：]/.test(r.title || "")) return "habit";
+  if (!/^\s*(朝|夜)\s*[:：]/.test(r.title || "") && /習慣|Habit|毎日|毎週|継続|ストリーク|音読|読書|家計簿|片付け|瞑想|水を飲む|運動/.test(text)) return "habit";
+  return "routine";
 }
 
 function classifyRoutineSlot(r: Routine): "morning" | "night" {
@@ -7372,6 +7466,8 @@ function routineTemplateItems(name: string) {
     "疲れている日の短縮版": ["水を飲む", "歯磨き", "服を整える", "今日の最低限を1つ決める"],
     "ナイトルーティン通常版": ["風呂", "歯磨き", "明日の予定確認", "明日の服/持ち物準備", "家計簿をつける", "今日のメモ整理", "Mind Captureで頭を空にする", "スマホを置く"],
     "ナイトルーティン最低限版": ["歯磨き", "明日の予定確認", "持ち物だけ準備", "スマホを置く"],
+    "毎日習慣スターター": ["音読20分", "家計簿1件", "5分片付け", "Mind Inboxを1件整理"],
+    "最低限習慣セット": ["水を飲む", "歯磨き", "今日の予定確認"],
   };
   return map[name] || [];
 }
@@ -10573,10 +10669,10 @@ function QuickAddFab({
     <>
       <button
         onClick={onOpen}
-        className="quick-add-fab rainbow-quick-add-fab fixed z-[85] flex items-center justify-center rounded-full text-3xl font-black text-white shadow-2xl"
+        className="quick-add-fab rainbow-quick-add-fab fixed z-[85] hidden items-center justify-center rounded-full text-3xl font-black text-white shadow-2xl lg:flex"
         aria-label="Quick Add"
       >
-        ＋
+        <span className="relative z-10">＋</span>
       </button>
       {open && (
         <Modal title="Quick Add / どこでも追加" onClose={onClose}>
