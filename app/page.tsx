@@ -1693,33 +1693,56 @@ export default function Home() {
           background: transparent;
         }
       `}</style>
-      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/85 px-2 py-2 backdrop-blur-xl lg:hidden">
-        <div className="mobile-bottom-fixed-grid mx-auto grid max-w-6xl grid-cols-5 gap-2">
-          {([
-            { key: "home", label: "ホーム", icon: "🏠" },
-            { key: "memos", label: "メモ", icon: "📝" },
-            { key: "todos", label: "TODO", icon: "✅" },
-            { key: "budget", label: "家計簿", icon: "💰" },
-          ] as { key: PageKey; label: string; icon: string }[]).map((item) => {
-            const active = page === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setPage(item.key)}
-                className={`mobile-bottom-nav-button rounded-2xl px-1 py-2 text-center text-[11px] transition ${active ? `bg-gradient-to-r ${theme.accent} font-black text-black` : "bg-white/[0.04] text-white/65 hover:bg-white/10"}`}
-              >
-                <div className="mx-auto flex h-8 w-8 items-center justify-center text-xl">{item.icon}</div>
-                <div className="mt-0.5 truncate">{item.label}</div>
-              </button>
-            );
-          })}
+      <nav className="safe-bottom mobile-bottom-nav-v373 fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/88 px-2 py-2 backdrop-blur-xl lg:hidden">
+        <div className="mobile-bottom-v373 mx-auto grid w-full max-w-6xl grid-cols-5 gap-1.5">
           <button
+            type="button"
+            onClick={() => setPage("home")}
+            className={`mobile-bottom-item-v373 ${page === "home" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.04] text-white/70"}`}
+            aria-label="ホーム"
+          >
+            <span className="mobile-bottom-icon-v373">🏠</span>
+            <span className="mobile-bottom-label-v373">ホーム</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPage("memos")}
+            className={`mobile-bottom-item-v373 ${page === "memos" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.04] text-white/70"}`}
+            aria-label="メモ"
+          >
+            <span className="mobile-bottom-icon-v373">📝</span>
+            <span className="mobile-bottom-label-v373">メモ</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPage("todos")}
+            className={`mobile-bottom-item-v373 ${page === "todos" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.04] text-white/70"}`}
+            aria-label="TODO"
+          >
+            <span className="mobile-bottom-icon-v373">✅</span>
+            <span className="mobile-bottom-label-v373">TODO</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPage("budget")}
+            className={`mobile-bottom-item-v373 ${page === "budget" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.04] text-white/70"}`}
+            aria-label="家計簿"
+          >
+            <span className="mobile-bottom-icon-v373">💰</span>
+            <span className="mobile-bottom-label-v373">家計簿</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setQuickAddOpen(true)}
-            className="mobile-quick-add-nav mobile-bottom-nav-button rounded-2xl px-1 py-2 text-center text-[11px] font-black text-white"
+            className="mobile-bottom-item-v373 mobile-quick-add-v373 text-white"
             aria-label="Quick Add"
           >
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xl">＋</div>
-            <div className="mt-0.5">追加</div>
+            <span className="mobile-bottom-icon-v373 mobile-quick-plus-v373">＋</span>
+            <span className="mobile-bottom-label-v373">追加</span>
           </button>
         </div>
       </nav>
@@ -10748,7 +10771,7 @@ function QuickAddFab({
       const ai = inferUniversalAIAction(phrase, amount);
       const finalCategory = category === detected.category ? ai.category : category;
       const calendarNote = ai.calendarDraft?.start_time ? `開始: ${ai.calendarDraft.start_time}${ai.calendarDraft.end_time ? ` / 終了: ${ai.calendarDraft.end_time}` : ""}` : null;
-      const message = await persistMindCaptureCandidate({
+      await persistMindCaptureCandidate({
         id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         category: finalCategory,
         content: finalCategory === "calendar" ? (normalizeCalendarTitleForAI(phrase) || phrase) : phrase,
@@ -10759,7 +10782,16 @@ function QuickAddFab({
         note: calendarNote || `Quick Addから追加: ${phrase}`,
         source: "manual",
       });
-      messages.push(message);
+      const savedLabel =
+        finalCategory === "calendar" ? "カレンダー" :
+        finalCategory === "budget" ? "家計簿" :
+        finalCategory === "todo" ? "TODO" :
+        finalCategory === "shopping" ? "買い物" :
+        finalCategory === "diary" ? "Diary" :
+        finalCategory === "inbox" ? "Mind Inbox" :
+        finalCategory === "routine" ? "Routine" :
+        "メモ";
+      messages.push(`${savedLabel}に保存しました`);
     }
     setText("");
     setAmount(0);
