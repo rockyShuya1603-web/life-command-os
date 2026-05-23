@@ -236,7 +236,7 @@ const navItems: { key: PageKey; label: string; icon: string }[] = [
   { key: "map", label: "地図", icon: "🗺️" },
   { key: "heatmap", label: "ヒートマップ", icon: "🔥" },
   { key: "lifehub", label: "生活OS", icon: "🧬" },
-  { key: "braindump", label: "脳ダンプ", icon: "🧺" },
+  { key: "braindump", label: "Mind Capture", icon: "🧠" },
   { key: "focus", label: "集中タイマー", icon: "⏱️" },
   { key: "search", label: "検索", icon: "🧠" },
   { key: "tags", label: "タグ", icon: "🏷️" },
@@ -924,7 +924,7 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = useState("同期準備中");
   const [appNotice, setAppNotice] = useState<AppNotice | null>(null);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
-  const [visualMode, setVisualMode] = useState<VisualMode>("current");
+  const [visualMode, setVisualMode] = useState<VisualMode>("liquid");
   const syncingRef = useRef(false);
   const realtimeRefreshTimerRef = useRef<number | null>(null);
   const firedNoticeRef = useRef<Set<string>>(new Set());
@@ -967,7 +967,14 @@ export default function Home() {
       saveTheme("mirai");
       localStorage.setItem(forceFutureKey, "20260521");
     }
-    setVisualMode(readVisualMode());
+    const forceLiquidKey = "lifeFutureLiquidAppliedV15";
+    const shouldForceLiquid = typeof window !== "undefined" && localStorage.getItem(forceLiquidKey) !== "20260523-v15";
+    const nextVisualMode = shouldForceLiquid ? "liquid" : readVisualMode();
+    setVisualMode(nextVisualMode);
+    if (shouldForceLiquid) {
+      saveVisualMode("liquid");
+      localStorage.setItem(forceLiquidKey, "20260523-v15");
+    }
     (async () => {
       try {
         const { data } = await supabase
@@ -1212,6 +1219,18 @@ export default function Home() {
           </div>
         </aside>
         <div className="min-w-0 flex-1">
+          {themeKey === "mirai" ? (
+            <FutureTopHud
+              title={title}
+              syncStatus={syncStatus}
+              themeKey={themeKey}
+              visualMode={visualMode}
+              onSearch={() => setGlobalSearchOpen(true)}
+              onManualSync={() => refreshSnapshot("手動同期中...")}
+              onChangeTheme={changeTheme}
+              onChangeVisualMode={changeVisualMode}
+            />
+          ) : (
           <header
             className={`matsuri-topbar rounded-[1.75rem] border ${theme.card} p-4 shadow-2xl backdrop-blur-xl sm:rounded-[2rem] sm:p-5`}
           >
@@ -1275,8 +1294,9 @@ export default function Home() {
               </div>
             </div>
           </header>
+          )}
           <section
-            className={`matsuri-stage mt-4 rounded-[1.75rem] border ${theme.card} p-3 shadow-2xl backdrop-blur-xl sm:mt-5 sm:rounded-[2rem] sm:p-6`}
+            className={`matsuri-stage ${themeKey === "mirai" ? "future-main-stage mt-3 rounded-[2rem] border-transparent bg-transparent p-0 shadow-none sm:mt-4 sm:p-0" : `mt-4 rounded-[1.75rem] border ${theme.card} p-3 shadow-2xl backdrop-blur-xl sm:mt-5 sm:rounded-[2rem] sm:p-6`}`}
           >
             {page === "home" && (
               <HomePanel themeKey={themeKey} {...panelProps} />
@@ -1505,7 +1525,7 @@ export default function Home() {
       `}</style>
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/85 px-2 py-2 backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-6xl snap-x gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
-          {navItems.map((item) => {
+          {navItems.filter((item) => ["home", "memos", "todos", "calendar", "settings"].includes(item.key)).map((item) => {
             const active = page === item.key;
             return (
               <button
@@ -1769,17 +1789,159 @@ function WeatherCard() {
   );
 }
 
+function FutureTopHud({
+  title,
+  syncStatus,
+  themeKey,
+  visualMode,
+  onSearch,
+  onManualSync,
+  onChangeTheme,
+  onChangeVisualMode,
+}: {
+  title: string;
+  syncStatus: string;
+  themeKey: ThemeKey;
+  visualMode: VisualMode;
+  onSearch: () => void;
+  onManualSync: () => void;
+  onChangeTheme: (theme: ThemeKey) => void;
+  onChangeVisualMode: (mode: VisualMode) => void;
+}) {
+  const [clock, setClock] = useState(() => new Date());
+  const [hudWeather, setHudWeather] = useState<WeatherState>(() => {
+    if (typeof window === "undefined") return { status: "idle" };
+    try {
+      const raw = localStorage.getItem("lifeHomeWeatherCache");
+      if (!raw) return { status: "idle" };
+      const cached = JSON.parse(raw) as WeatherState;
+      if (cached.updatedAt && Date.now() - cached.updatedAt < 30 * 60 * 1000)
+        return cached;
+    } catch {}
+    return { status: "idle" };
+  });
+
+  const loadHudWeather = useCallback(() => {
+    if (typeof window === "undefined" || !("geolocation" in navigator)) {
+      setHudWeather({ status: "denied", message: "位置情報待ち" });
+      return;
+    }
+    setHudWeather((prev) => ({ ...prev, status: "loading" }));
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("weather fetch failed");
+          const json = await res.json();
+          const next: WeatherState = {
+            status: "ready",
+            temperature: Math.round(Number(json.current?.temperature_2m ?? 0)),
+            apparent: Math.round(Number(json.current?.apparent_temperature ?? 0)),
+            wind: Math.round(Number(json.current?.wind_speed_10m ?? 0)),
+            code: Number(json.current?.weather_code ?? 0),
+            updatedAt: Date.now(),
+          };
+          localStorage.setItem("lifeHomeWeatherCache", JSON.stringify(next));
+          setHudWeather(next);
+        } catch {
+          setHudWeather({ status: "error", message: "天気取得エラー" });
+        }
+      },
+      () => setHudWeather({ status: "denied", message: "位置情報待ち" }),
+      { enableHighAccuracy: false, timeout: 9000, maximumAge: 30 * 60 * 1000 },
+    );
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setClock(new Date()), 30000);
+    return () => window.clearInterval(id);
+  }, []);
+  useEffect(() => {
+    if (hudWeather.status === "idle") loadHudWeather();
+  }, [hudWeather.status, loadHudWeather]);
+
+  const timeLabel = clock.toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const dateLabel = clock.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  });
+  const weatherText =
+    hudWeather.status === "ready"
+      ? `${weatherLabel(hudWeather.code)} ${hudWeather.temperature}℃`
+      : hudWeather.status === "loading"
+        ? "天気取得中"
+        : "天気待ち";
+
+  return (
+    <header className="future-top-hud">
+      <div className="future-brand-lockup">
+        <p className="text-2xl font-black leading-none text-white drop-shadow">Life Command OS</p>
+        <p className="mt-2 text-sm font-bold text-sky-100/70">思い出・習慣・目標をまとめる人生OS</p>
+      </div>
+
+      <button type="button" onClick={onSearch} className="future-search-pill" aria-label="検索を開く">
+        <span className="text-3xl leading-none">⌕</span>
+        <span className="text-sm font-bold text-white/58">検索</span>
+      </button>
+
+      <div className="future-hud-widgets">
+        <button type="button" onClick={loadHudWeather} className="future-hud-card future-weather-chip">
+          <span className="text-2xl">☀️</span>
+          <span>
+            <b>{weatherText}</b>
+            <small>気分: Good 😊</small>
+          </span>
+        </button>
+        <div className="future-hud-card future-clock-chip">
+          <b>{timeLabel}</b>
+          <small>{dateLabel}</small>
+        </div>
+        <button type="button" onClick={onManualSync} className="future-icon-button" aria-label="同期">
+          🔔
+        </button>
+        <div className="future-avatar" aria-label="プロフィール">
+          秀
+        </div>
+      </div>
+
+      <div className="future-mode-row">
+        <span className="future-system-dot" />
+        <span>{syncStatus}</span>
+        <select value={themeKey} onChange={(e) => onChangeTheme(e.target.value as ThemeKey)}>
+          {Object.entries(themes).map(([key, value]) => (
+            <option key={key} value={key}>{value.emoji} {value.name}</option>
+          ))}
+        </select>
+        <select value={visualMode} onChange={(e) => onChangeVisualMode(e.target.value as VisualMode)}>
+          {Object.entries(visualModes).map(([key, value]) => (
+            <option key={key} value={key}>{value.emoji} {value.name}</option>
+          ))}
+        </select>
+      </div>
+    </header>
+  );
+}
+
 function HomePanel({
   themeKey,
   snapshot,
   refreshSnapshot,
   setPage,
 }: PanelProps & { themeKey: ThemeKey }) {
-  const theme = themes[themeKey];
   const [guideMessage, setGuideMessage] = useState(
-    "こんばんは、しゅうやさん。今日も最高の1日を積み上げよう。",
+    "おはよう、しゅうやさん。未来港の朝みたいに、今日も小さく前へ進もう。",
   );
   const [loading, setLoading] = useState(false);
+  const [quickMemo, setQuickMemo] = useState("");
+  const [savingQuickMemo, setSavingQuickMemo] = useState(false);
+
   async function refreshGuide() {
     setLoading(true);
     try {
@@ -1802,6 +1964,25 @@ function HomePanel({
       setLoading(false);
     }
   }
+
+  async function saveQuickMemo() {
+    const content = quickMemo.trim();
+    if (!content || savingQuickMemo) return;
+    setSavingQuickMemo(true);
+    try {
+      const result = await supabase.from("memos").insert({ content });
+      if (result.error) throw result.error;
+      setQuickMemo("");
+      setGuideDraft("クイックメモを保存したよ。小さな記録が未来の材料になるね。");
+      await refreshSnapshot("クイックメモ保存中...");
+    } catch (error) {
+      console.error(error);
+      setGuideDraft("メモ保存が少し詰まったみたい。通信状態かSupabaseの設定を確認してみてね。");
+    } finally {
+      setSavingQuickMemo(false);
+    }
+  }
+
   useEffect(() => {
     const saved = localStorage.getItem("lifeGuideMessage");
     if (saved) setGuideMessage(saved);
@@ -1813,39 +1994,80 @@ function HomePanel({
 
   const now = new Date();
   const today = todayKey();
-  const dateLabel = now.toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
-  const timeLabel = now.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-  const todayTodos = (snapshot?.todos || []).filter((t) => !t.done && (t.due_date || getCreatedDateKey(t.created_at)) === today);
+  const dateLabel = now.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  });
+  const timeLabel = now.toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const todayTodos = (snapshot?.todos || []).filter(
+    (t) => !t.done && (t.due_date || getCreatedDateKey(t.created_at)) === today,
+  );
+  const undoneTodos = (snapshot?.todos || []).filter((t) => !t.done);
   const doneTodos = (snapshot?.todos || []).filter((t) => t.done).length;
   const allTodos = snapshot?.todos?.length || 0;
   const monthLogs = (snapshot?.budget || []).filter((b) => isSameMonth(b.spend_date));
-  const income = monthLogs.filter((b) => b.type === "income").reduce((s, b) => s + Number(b.amount || 0), 0);
-  const expense = monthLogs.filter((b) => b.type === "expense").reduce((s, b) => s + Number(b.amount || 0), 0);
+  const income = monthLogs
+    .filter((b) => b.type === "income")
+    .reduce((s, b) => s + Number(b.amount || 0), 0);
+  const expense = monthLogs
+    .filter((b) => b.type === "expense")
+    .reduce((s, b) => s + Number(b.amount || 0), 0);
   const balance = income - expense;
+  const todayEvents = (snapshot?.events || []).filter((e) => e.event_date === today).slice(0, 6);
+  const todayMemos = (snapshot?.memos || [])
+    .filter((m) => getCreatedDateKey(m.created_at) === today)
+    .slice(0, 4);
+  const latestMemos = (todayMemos.length ? todayMemos : (snapshot?.memos || []).slice(0, 4));
+  const routines = (snapshot?.routines || []).filter((r) => r.active).slice(0, 6);
+  const completion = allTodos ? Math.round((doneTodos / allTodos) * 100) : 60;
   const sleep = snapshot?.sleep?.[0];
   const coffee = snapshot?.coffee?.find((c) => c.drink_date === today);
-  const latestMemo = (snapshot?.memos || []).slice(0, 4);
-  const routines = (snapshot?.routines || []).filter((r) => r.active).slice(0, 4);
-  const completion = allTodos ? Math.round((doneTodos / allTodos) * 100) : 0;
-  const isMatsuriTheme = themeKey === "hanabi" || themeKey === "natsumatsuri";
-  const heroKicker = isMatsuriTheme ? "LIFE COMMAND OS / NATSU MATSURI" : themeKey === "mirai" ? "LIFE COMMAND OS / FUTURE HARBOR" : "LIFE COMMAND OS";
-  const heroDescription = isMatsuriTheme
-    ? "花火、提灯、夜店の熱気を、背景だけじゃなくカード、枠線、ボタン、ナビゲーションの質感にまで広げたホームだよ。"
-    : "未来都市と海、朝焼け、ホログラムの空気を、背景だけじゃなくカード、枠線、アイコン、ボタン、ページ全体の質感に反映したホームだよ。";
+
+  const fallbackSchedule = [
+    "07:00　ジム・筋トレ",
+    "09:30　仕事・集中タイム",
+    "12:30　昼食・リフレッシュ",
+    "16:00　プロジェクト作業",
+    "19:00　読書時間",
+  ];
+  const fallbackMemos = [
+    "急に画面がガタンと動くバグを治す",
+    "デザインの微調整をする",
+    "サイトの表示速度を上げる方法を調べる",
+    "明日の準備をして早めに寝る",
+  ];
+  const progressTodos = (todayTodos.length ? todayTodos : undoneTodos).slice(0, 4);
 
   return (
-    <div className={`matsuri-dashboard ${themeKey === "mirai" ? "future-dashboard" : ""} space-y-4`}>
-      <div className="matsuri-hero grid gap-4 xl:grid-cols-[1.2fr_0.82fr]">
-        <GlassCard className="matsuri-welcome relative min-h-[245px] overflow-hidden p-6 sm:p-8">
-          <div className="relative z-10 max-w-xl">
-            <p className="text-xs font-black tracking-[0.3em] text-amber-100/75">{heroKicker}</p>
-            <h2 className="mt-5 text-3xl font-black leading-tight text-white sm:text-5xl">おはよう、しゅうやさん</h2>
-            <p className="mt-4 max-w-lg text-sm leading-7 text-amber-50/75">{heroDescription}</p>
-            <div className="mt-5 grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-5">
-              {[{label:"エネルギー",value:"78%",icon:"⚡"},{label:"集中力",value:"82",icon:"◎"},{label:"気分",value:"Good",icon:"☻"},{label:"時刻",value:timeLabel,icon:"◷"},{label:"日付",value:dateLabel.replace(/年|月/g,"/").replace("日","") ,icon:"▣"}].map((item) => (
-                <div key={item.label} className="matsuri-mini rounded-2xl border border-amber-300/20 bg-black/30 p-3 text-center">
-                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-full border border-amber-200/30 bg-orange-400/10 text-lg shadow-[0_0_22px_rgba(251,146,60,.35)]">{item.icon}</div>
-                  <p className="mt-2 text-[10px] font-black text-amber-100/55">{item.label}</p>
+    <div className={`matsuri-dashboard ${themeKey === "mirai" ? "future-dashboard future-home-v14 future-home-v16" : ""} space-y-4`}>
+      <div className="future-hero-grid">
+        <GlassCard className="future-welcome-card matsuri-welcome relative min-h-[292px] overflow-hidden p-6 sm:p-8">
+          <div className="relative z-10 max-w-3xl">
+            <p className="future-kicker">LIFE COMMAND OS</p>
+            <h2 className="mt-5 text-4xl font-black leading-tight text-white drop-shadow sm:text-5xl">
+              おはよう、しゅうやさん
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-sky-50/78">
+              最高の一日を、今日も始めよう。記録・予定・習慣をひとつの未来港に集めて、背景だけじゃなくカード、枠線、アイコン、ボタンまで青いLiquid Glassで統一したホームだよ。
+            </p>
+            <div className="mt-6 grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-5">
+              {[
+                { label: "エネルギー", value: "78%", icon: "⚡" },
+                { label: "集中力", value: "82", icon: "◎" },
+                { label: "気分", value: "Good", icon: "☻" },
+                { label: "時刻", value: timeLabel, icon: "◷" },
+                { label: "日付", value: dateLabel.replace(/年|月/g, "/").replace("日", ""), icon: "▣" },
+              ].map((item) => (
+                <div key={item.label} className="matsuri-mini future-stat-tile rounded-2xl border border-sky-200/20 bg-black/25 p-3 text-center">
+                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-sky-100/30 bg-sky-300/12 text-lg shadow-[0_0_24px_rgba(125,211,252,.35)]">
+                    {item.icon}
+                  </div>
+                  <p className="mt-2 text-[10px] font-black text-sky-100/55">{item.label}</p>
                   <p className="mt-1 text-sm font-black text-white">{item.value}</p>
                 </div>
               ))}
@@ -1853,64 +2075,145 @@ function HomePanel({
           </div>
         </GlassCard>
 
-        <GlassCard className="matsuri-quest p-5">
-          <div className="flex items-center justify-between gap-3">
+        <GlassCard className="future-progress-card matsuri-quest p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-black text-amber-100/60">今日の進行</p>
-              <h3 className="mt-1 text-2xl font-black">今日の進行</h3>
+              <p className="text-xs font-black text-sky-100/62">今日の進行</p>
+              <h3 className="mt-1 text-3xl font-black">今日の進行</h3>
             </div>
-            <span className="rounded-full border border-orange-300/30 bg-orange-400/15 px-3 py-1 text-xs font-black text-orange-100">進捗 {completion}%</span>
+            <span className="rounded-full border border-sky-200/25 bg-sky-300/10 px-3 py-1 text-xs font-black text-sky-100">
+              進捗 {completion}%
+            </span>
           </div>
-          <div className="mt-4 space-y-3">
-            {(todayTodos.length ? todayTodos : [
-              { id: "stretch", title: "脳ダンプをホームに表示させる", done: false, priority: "normal", due_date: today, created_at: new Date().toISOString() },
-              { id: "coffee", title: "電車の乗り換えや時刻情報を確認する", done: false, priority: "normal", due_date: today, created_at: new Date().toISOString() },
-              { id: "goal", title: "未来テーマのUIを微調整する", done: false, priority: "normal", due_date: today, created_at: new Date().toISOString() },
-            ] as Todo[]).slice(0, 4).map((todo) => (
-              <button key={todo.id} onClick={() => setPage("todos")} className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-left transition hover:bg-white/10">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full border border-cyan-200/50 bg-cyan-300/20 text-xs">✓</span>
-                <span className="min-w-0 flex-1 truncate text-sm font-bold text-white/85">{todo.title}</span>
-                <span className="rounded-full bg-orange-400/20 px-2 py-1 text-[10px] font-black text-orange-100">{todo.priority === "high" ? "高" : todo.priority === "low" ? "低" : "中"}</span>
+          <div className="mt-5 h-2 overflow-hidden rounded-full bg-black/30">
+            <div className="h-full rounded-full bg-gradient-to-r from-sky-300 via-indigo-300 to-blue-500" style={{ width: `${Math.max(8, completion)}%` }} />
+          </div>
+          <div className="mt-5 space-y-3">
+            {(progressTodos.length
+              ? progressTodos
+              : ([
+                  { id: "fallback-1", title: "Mind Captureをホームのページに表示させる", done: false, priority: "normal", due_date: today, created_at: new Date().toISOString() },
+                  { id: "fallback-2", title: "電車の乗り換えや時刻情報を教えてくれる機能", done: false, priority: "normal", due_date: today, created_at: new Date().toISOString() },
+                  { id: "fallback-3", title: "未来テーマのUIを微調整する", done: false, priority: "normal", due_date: today, created_at: new Date().toISOString() },
+                ] as Todo[])
+            ).map((todo) => (
+              <button key={todo.id} onClick={() => setPage("todos")} className="future-progress-row group flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-black/24 px-4 py-3 text-left transition hover:bg-white/10">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-sky-200/50 bg-sky-300/14 text-xs shadow-[0_0_18px_rgba(125,211,252,.22)]">✓</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-bold text-white/88">{todo.title}</span>
+                <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2 py-1 text-[10px] font-black text-amber-100">進行中</span>
               </button>
             ))}
           </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-orange-300 via-rose-300 to-fuchsia-300" style={{ width: `${Math.max(8, completion)}%` }} /></div>
+          <button onClick={() => setPage("todos")} className="mt-5 w-full rounded-2xl border border-sky-200/18 bg-sky-300/10 px-4 py-3 text-sm font-black text-sky-100 transition hover:bg-sky-300/15">
+            すべてのタスクを見る　→
+          </button>
         </GlassCard>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <GlassCard className="p-5">
-          <div className="flex items-center justify-between"><h3 className="text-xl font-black">今日の予定</h3><button onClick={() => setPage("calendar")} className="text-xs font-black text-sky-200">カレンダーへ</button></div>
+      <HomeMindCaptureCard refreshSnapshot={refreshSnapshot} setPage={setPage} />
+
+      <div className="future-middle-grid">
+        <GlassCard className="future-panel-card p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xl font-black">今日の予定</h3>
+            <button onClick={() => setPage("calendar")} className="text-xs font-black text-sky-200">カレンダーへ →</button>
+          </div>
           <div className="mt-4 space-y-3">
-            {(snapshot?.events || []).filter((e) => e.event_date === today).slice(0, 5).map((e) => <div key={e.id} className="matsuri-row"><span>•</span><span className="truncate">{e.title}</span></div>)}
-            {!(snapshot?.events || []).some((e) => e.event_date === today) && ["07:00　ジム・筋トレ", "09:30　仕事・集中タイム", "12:30　ランチ・サウナ", "19:00　読書時間"].map((x) => <div key={x} className="matsuri-row"><span>•</span><span>{x}</span></div>)}
+            {todayEvents.length
+              ? todayEvents.map((event) => (
+                  <button key={event.id} onClick={() => setPage("calendar")} className="matsuri-row future-list-row w-full text-left">
+                    <span>•</span><span className="truncate">{event.title}</span>
+                  </button>
+                ))
+              : fallbackSchedule.map((item) => (
+                  <div key={item} className="matsuri-row future-list-row"><span>•</span><span>{item}</span></div>
+                ))}
           </div>
         </GlassCard>
-        <GlassCard className="p-5">
-          <div className="flex items-center justify-between"><h3 className="text-xl font-black">タスク</h3><button onClick={() => setPage("todos")} className="text-xs font-black text-sky-200">タスク一覧へ</button></div>
-          <div className="mt-4 space-y-3">
-            {(snapshot?.todos || []).filter((t) => !t.done).slice(0, 5).map((t) => <div key={t.id} className="matsuri-row"><span className="h-4 w-4 rounded-full border border-amber-200/70"/><span className="truncate">{t.title}</span></div>)}
-            {!(snapshot?.todos || []).filter((t) => !t.done).length && <Empty text="未完了タスクはないよ。" />}
+
+        <GlassCard className="future-panel-card p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xl font-black">今日のメモ</h3>
+            <button onClick={() => setPage("memos")} className="text-xs font-black text-sky-200">すべて見る →</button>
           </div>
-          <p className="mt-4 text-xs font-black text-white/55">完了: {doneTodos} / {allTodos}</p>
+          <div className="mt-4 space-y-3">
+            {(latestMemos.length ? latestMemos.map((memo) => memo.content) : fallbackMemos).slice(0, 4).map((memo, index) => (
+              <button key={`${memo}-${index}`} onClick={() => setPage("memos")} className="matsuri-row future-list-row w-full text-left">
+                <span>✎</span><span className="truncate">{memo}</span>
+              </button>
+            ))}
+          </div>
         </GlassCard>
-        <GlassCard className="p-5">
-          <div className="flex items-center justify-between"><h3 className="text-xl font-black">今日のメモ</h3><button onClick={() => setPage("memos")} className="text-xs font-black text-sky-200">すべて見る</button></div>
-          <div className="mt-4 space-y-3">
-            {latestMemo.length ? latestMemo.map((m) => <div key={m.id} className="matsuri-row"><span>✎</span><span className="truncate">{m.content}</span></div>) : ["アイデア：新しいアプリの構想", "学び：継続は力なり", "感謝：家族と過ごした時間"].map((m) => <div key={m} className="matsuri-row"><span>✎</span><span>{m}</span></div>)}
+
+        <GlassCard className="future-panel-card p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xl font-black">クイックメモ</h3>
+            <button onClick={() => setQuickMemo((v) => v || "新しいアイデア：")} className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-200/25 bg-sky-300/10 text-xl font-black text-sky-100">＋</button>
           </div>
+          <textarea
+            value={quickMemo}
+            onChange={(e) => setQuickMemo(e.target.value)}
+            placeholder="未来のUIにホログラムの演出を追加する、など"
+            className="mt-4 min-h-28 w-full resize-none rounded-3xl border border-sky-200/16 bg-black/24 p-4 text-sm leading-7 text-white outline-none placeholder:text-white/35 focus:border-sky-200/45"
+          />
+          <button
+            type="button"
+            onClick={saveQuickMemo}
+            disabled={!quickMemo.trim() || savingQuickMemo}
+            className="mt-3 w-full rounded-2xl border border-sky-200/25 bg-sky-400/15 px-4 py-3 text-sm font-black text-sky-50 transition active:scale-95 disabled:opacity-45"
+          >
+            {savingQuickMemo ? "保存中..." : "メモを保存"}
+          </button>
         </GlassCard>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <GlassCard className="p-5"><h3 className="text-xl font-black">体調サマリー</h3><div className="mt-4 space-y-3"><div className="matsuri-row"><span>🌙</span><span>睡眠品質</span><b className="ml-auto">{sleep?.quality || "記録待ち"}</b></div><div className="matsuri-row"><span>☕</span><span>カフェイン</span><b className="ml-auto">{coffee?.caffeine_mg || 0}mg</b></div><div className="matsuri-row"><span>✅</span><span>ルーティン</span><b className="ml-auto">{routines.length}件</b></div></div></GlassCard>
-        <GlassCard className="p-5"><h3 className="text-xl font-black">予算サマリー</h3><p className="mt-4 text-4xl font-black text-amber-50">{yen(balance)}</p><div className="mt-4 h-2 rounded-full bg-white/10"><div className="h-full w-2/3 rounded-full bg-gradient-to-r from-emerald-300 to-orange-300" /></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div className="rounded-2xl bg-black/25 p-3"><p className="text-white/50">収入</p><b>{yen(income)}</b></div><div className="rounded-2xl bg-black/25 p-3"><p className="text-white/50">支出</p><b>{yen(expense)}</b></div></div></GlassCard>
-        <GlassCard className="p-5"><h3 className="text-xl font-black">AIアドバイス</h3><p className="mt-4 text-sm leading-7 text-white/70">{guideMessage}</p><button onClick={refreshGuide} disabled={loading} className="mt-4 w-full rounded-2xl border border-sky-200/25 bg-sky-400/15 px-4 py-3 text-sm font-black text-sky-100 transition active:scale-95">{loading ? "考え中..." : "AIに聞く"}</button></GlassCard>
-      </div>
+      <div className="future-bottom-grid">
+        <GlassCard className="future-panel-card p-5">
+          <h3 className="text-xl font-black">習慣トラッカー</h3>
+          <p className="mt-1 text-xs font-bold text-sky-100/55">今週の達成度</p>
+          <div className="mt-5 flex items-end gap-3">
+            {[34, 52, 46, 65, 78, 91, 96].map((height, index) => (
+              <div key={index} className="flex flex-1 flex-col items-center gap-2">
+                <div className="w-full rounded-full bg-sky-300/18 p-1">
+                  <div className="mx-auto w-full rounded-full bg-gradient-to-t from-blue-500 via-sky-300 to-white shadow-[0_0_18px_rgba(96,165,250,.45)]" style={{ height }} />
+                </div>
+                <span className="text-[10px] font-black text-white/50">{["月", "火", "水", "木", "金", "土", "日"][index]}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 space-y-2">
+            {routines.length ? routines.slice(0, 3).map((routine) => {
+              const stats = calcRoutineStats(routine.id, snapshot?.routineChecks || []);
+              return (
+                <button key={routine.id} onClick={() => setPage("routines")} className="matsuri-row future-list-row w-full text-left">
+                  <span>✅</span><span className="truncate">{routine.title}</span><b className="ml-auto">{stats.currentStreak}日</b>
+                </button>
+              );
+            }) : <div className="matsuri-row future-list-row"><span>✅</span><span>ルーティン</span><b className="ml-auto">{routines.length}件</b></div>}
+          </div>
+        </GlassCard>
 
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <GlassCard className="future-panel-card future-motivation-card p-5">
+          <h3 className="text-xl font-black">モチベーション</h3>
+          <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/25 p-5">
+            <p className="text-lg font-black leading-8 text-white">未来を信じて、<br />今日を全力で生きる。</p>
+            <p className="mt-4 text-right text-xs font-bold text-sky-100/55">- 自分を信じて -</p>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs font-black text-sky-100/70">
+            <div className="rounded-2xl bg-black/20 p-3">睡眠<br /><span className="text-white">{sleep?.quality || "記録待ち"}</span></div>
+            <div className="rounded-2xl bg-black/20 p-3">カフェイン<br /><span className="text-white">{coffee?.caffeine_mg || 0}mg</span></div>
+            <div className="rounded-2xl bg-black/20 p-3">収支<br /><span className="text-white">{yen(balance)}</span></div>
+          </div>
+        </GlassCard>
+
         <WeatherCard />
-        <GuideAiCard themeKey={themeKey} message={guideMessage} onRefresh={refreshGuide} loading={loading} />
+      </div>
+
+      <div className="future-footer-strip">
+        <span>小さな積み重ねが、未来をつくる。</span>
+        <span className="hidden sm:inline">● システム正常</span>
+        <span className="hidden sm:inline">バックアップ：最新</span>
+        <span>Ver. 2.0.0</span>
       </div>
     </div>
   );
@@ -2026,7 +2329,7 @@ function LifeAssistPanel({
               onClick={() => setPage(todos.length ? "todos" : "braindump")}
               className="mt-1 rounded-2xl bg-white px-3 py-2 text-xs font-black text-black"
             >
-              {todos.length ? "TODOへ" : "脳ダンプへ"}
+              {todos.length ? "TODOへ" : "Mind Captureへ"}
             </button>
           </div>
         </div>
@@ -2179,41 +2482,54 @@ function GuideAiCard({
 }) {
   const theme = themes[themeKey];
   return (
-    <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.08] shadow-2xl">
-      <div className="relative h-72 bg-black/30 sm:h-80">
-        <img
-          src="/life-ai-guide.png"
-          alt="案内係AI"
-          className="h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-transparent" />
-        <div className="absolute bottom-4 left-4 right-4">
-          <p
-            className={`inline-flex rounded-full bg-gradient-to-r ${theme.accent} px-3 py-1 text-xs font-black text-black`}
-          >
-            癒し系案内AI
-          </p>
-          <h3 className="mt-2 text-2xl font-black">今日もおつかれさま。</h3>
+    <section className="future-ai-navigator overflow-hidden rounded-[1.75rem] border border-sky-200/16 bg-slate-950/32 shadow-2xl backdrop-blur-2xl">
+      <div className="relative grid gap-0 lg:grid-cols-[minmax(0,.92fr)_minmax(0,1.08fr)]">
+        <div className="future-ai-portrait relative min-h-[260px] overflow-hidden bg-black/30 lg:min-h-[360px]">
+          <img
+            src="/life-ai-guide.png"
+            alt="案内係AI"
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent" />
+          <div className="absolute bottom-4 left-4 right-4">
+            <p className={`inline-flex rounded-full bg-gradient-to-r ${theme.accent} px-3 py-1 text-xs font-black text-black`}>
+              Life Command AI
+            </p>
+            <h3 className="mt-3 text-2xl font-black">現在のAI</h3>
+            <p className="mt-1 text-sm text-white/62">記録・予定・お金・習慣を横断して、次に見る場所を整理するよ。</p>
+          </div>
+        </div>
+        <div className="future-ai-console p-5 sm:p-6">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              ["今日", "横断分析"],
+              ["お金", "支出確認"],
+              ["予定", "行動整理"],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-2xl border border-sky-200/12 bg-white/[0.055] p-3">
+                <p className="text-[11px] font-black text-sky-100/50">{label}</p>
+                <p className="mt-1 text-sm font-black text-white">{value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="relative mt-4 rounded-[1.4rem] border border-sky-200/14 bg-black/28 p-4">
+            <div className="absolute -top-2 left-8 h-4 w-4 rotate-45 border-l border-t border-sky-200/14 bg-[#06142c]" />
+            <p className="whitespace-pre-wrap text-sm leading-7 text-white/82">
+              {message}
+            </p>
+          </div>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={loading}
+              className="mt-4 w-full rounded-2xl border border-sky-200/18 bg-sky-300/12 px-4 py-3 text-sm font-black text-sky-50 shadow-[0_0_30px_rgba(96,165,250,.12)] transition hover:bg-sky-300/18 disabled:opacity-50"
+            >
+              {loading ? "分析中..." : "現在の記録からAIに整理してもらう"}
+            </button>
+          )}
         </div>
       </div>
-      <div className="p-4 sm:p-5">
-        <div className="relative rounded-3xl border border-white/10 bg-black/30 p-4">
-          <div className="absolute -top-2 left-8 h-4 w-4 rotate-45 border-l border-t border-white/10 bg-black/30" />
-          <p className="whitespace-pre-wrap text-sm leading-7 text-white/82">
-            {message}
-          </p>
-        </div>
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            disabled={loading}
-            className="mt-3 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black disabled:opacity-50"
-          >
-            {loading ? "読んでる..." : "今日の内容から話しかけてもらう"}
-          </button>
-        )}
-      </div>
-    </div>
+    </section>
   );
 }
 
@@ -2421,7 +2737,7 @@ function MemosPanel({ snapshot, refreshSnapshot }: PanelProps) {
     );
   }
   return (
-    <div className="space-y-4">
+    <div className="budget-command-page space-y-4">
       <GlassCard className="bg-gradient-to-br from-cyan-400/10 to-fuchsia-400/10">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -4271,6 +4587,22 @@ function BudgetPanel({
     .reduce((s, t) => s + Number(t.amount || 0), 0);
   const remainingMonth = Math.max(0, monthIncome - monthExpense - fixedMonthly);
   const dailyBudget = Math.floor(remainingMonth / daysLeftInMonth());
+  const spendingRatio = monthIncome > 0 ? Math.min(140, Math.round((monthExpense / monthIncome) * 100)) : monthExpense > 0 ? 100 : 0;
+  const fixedRatio = monthIncome > 0 ? Math.min(100, Math.round((fixedMonthly / monthIncome) * 100)) : 0;
+  const moneyMood =
+    remainingMonth <= 0
+      ? "引き締めモード"
+      : dailyBudget >= 2000
+        ? "余白あり"
+        : dailyBudget >= 800
+          ? "標準運転"
+          : "節約寄り";
+  const budgetPaceLabel =
+    spendingRatio >= 95
+      ? "支出ペース強め"
+      : spendingRatio >= 70
+        ? "少し注意"
+        : "安定ペース";
   const currentCat = thisMonthLogs
     .filter((l) => l.type === "expense")
     .reduce((acc: Record<string, number>, l) => {
@@ -4718,18 +5050,39 @@ function BudgetPanel({
 
   return (
     <div className="space-y-4">
-      <GlassCard className="bg-gradient-to-br from-emerald-500/15 to-cyan-500/10">
-        <h2 className="text-2xl font-black">家計簿</h2>
-        <p className="mt-2 text-sm text-white/60">
-          今月 収入 {yen(monthIncome)} / 支出 {yen(monthExpense)} / 固定費予定{" "}
-          {yen(fixedMonthly)}
-        </p>
-        <p className="mt-4 text-4xl font-black">総資産 {yen(totalAssets)}</p>
-        <p className="mt-1 text-xs text-white/50">
-          今月あと使える目安 {yen(remainingMonth)} / 1日あたり{" "}
-          {yen(dailyBudget)}
-          。収支を追加/削除すると、同じ名前のコーナー残高が自動で増減するよ。
-        </p>
+      <GlassCard className="future-budget-hero budget-command-hero overflow-hidden">
+        <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,.8fr)] lg:items-end">
+          <div>
+            <p className="text-xs font-black tracking-[0.34em] text-sky-100/70">MONEY COMMAND CENTER</p>
+            <h2 className="mt-3 text-4xl font-black leading-tight sm:text-5xl">家計簿</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-sky-50/72">
+              収入・支出・固定費・お金のコーナーを一画面で見て、今日使える余白まで判断できるようにしたよ。
+              既存の保存形式はそのまま使って、見た目と判断しやすさを強化しているよ。
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="future-budget-chip">
+                <span>総資産</span>
+                <b>{yen(totalAssets)}</b>
+              </div>
+              <div className="future-budget-chip">
+                <span>今月あと使える</span>
+                <b>{yen(remainingMonth)}</b>
+              </div>
+              <div className="future-budget-chip">
+                <span>1日目安</span>
+                <b>{yen(dailyBudget)}</b>
+              </div>
+            </div>
+          </div>
+          <div className="future-budget-orb">
+            <span>{moneyMood}</span>
+            <b>{budgetPaceLabel}</b>
+            <p>支出 {spendingRatio}% / 固定費 {fixedRatio}%</p>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-black/30">
+              <div className="h-full rounded-full bg-gradient-to-r from-sky-300 via-indigo-300 to-blue-500" style={{ width: `${Math.min(100, Math.max(8, spendingRatio))}%` }} />
+            </div>
+          </div>
+        </div>
       </GlassCard>
       <div className="grid gap-3 lg:grid-cols-3">
         <GlassCard>
@@ -4758,6 +5111,39 @@ function BudgetPanel({
           <p className="mt-1 text-xs text-white/50">
             先月より増えた支出カテゴリ
           </p>
+        </GlassCard>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.2fr]">
+        <GlassCard className="future-money-card">
+          <p className="text-xs font-black text-sky-100/60">今月の流れ</p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-black/25 p-3">
+              <p className="text-xs text-white/45">収入</p>
+              <b className="text-xl text-emerald-100">{yen(monthIncome)}</b>
+            </div>
+            <div className="rounded-2xl bg-black/25 p-3">
+              <p className="text-xs text-white/45">支出</p>
+              <b className="text-xl text-rose-100">{yen(monthExpense)}</b>
+            </div>
+          </div>
+        </GlassCard>
+        <GlassCard className="future-money-card">
+          <p className="text-xs font-black text-sky-100/60">AIチェック</p>
+          <h3 className="mt-2 text-xl font-black">{moneyMood}</h3>
+          <p className="mt-2 text-sm leading-6 text-white/65">
+            今日の目安は {yen(dailyBudget)}。固定費を引いた後の余白を基準にしているよ。
+          </p>
+        </GlassCard>
+        <GlassCard className="future-money-card">
+          <p className="text-xs font-black text-sky-100/60">増えたカテゴリ</p>
+          <div className="mt-3 space-y-2">
+            {categoryWarnings.length ? categoryWarnings.map((item) => (
+              <div key={item.name} className="flex items-center justify-between gap-3 rounded-2xl bg-black/25 px-3 py-2">
+                <span className="truncate text-sm font-bold text-white/78">{item.name}</span>
+                <b className="text-sm text-amber-100">+{yen(item.diff)}</b>
+              </div>
+            )) : <p className="rounded-2xl bg-black/25 px-3 py-3 text-sm text-white/60">先月より強く増えたカテゴリは少なめ。</p>}
+          </div>
         </GlassCard>
       </div>
       <GlassCard>
@@ -5118,7 +5504,7 @@ function BudgetPanel({
         )}
       </GlassCard>
       <GuideAiCard
-        themeKey={themeKey}
+        themeKey="mirai"
         message={`家計簿を見たよ。総資産は${yen(totalAssets)}。今月は収入${yen(monthIncome)}、支出${yen(monthExpense)}。${topCategory ? `支出で多いのは「${topCategory[0]}」の${yen(topCategory[1])}。` : "支出データはこれから育つよ。"}${topSource ? ` 収入源では「${topSource[0]}」が目立ってるね。` : ""}`}
       />
       <GlassCard>
@@ -6772,6 +7158,251 @@ function IdealsPanel({
   );
 }
 
+
+type MindCaptureCategory =
+  | "calendar"
+  | "todo"
+  | "shopping"
+  | "diary"
+  | "budget"
+  | "workout"
+  | "memo"
+  | "inbox";
+
+type MindCaptureConfidence = "確定候補" | "確認が必要" | "保留推奨";
+
+type MindCaptureCandidate = {
+  id: string;
+  category: MindCaptureCategory;
+  content: string;
+  save: boolean;
+  confidence: MindCaptureConfidence;
+  date?: string | null;
+  amount?: number | null;
+  note?: string | null;
+  source?: "ai" | "local";
+};
+
+type MindCaptureState = {
+  labels: string[];
+  summary: string;
+};
+
+type MindCaptureResult = {
+  candidates: MindCaptureCandidate[];
+  state: MindCaptureState;
+  source: "ai" | "local" | "manual";
+};
+
+type MindInboxItem = {
+  id: string;
+  content: string;
+  originalCategory?: MindCaptureCategory;
+  created_at: string;
+};
+
+const mindCaptureCategoryMeta: Record<
+  MindCaptureCategory,
+  { label: string; short: string; emoji: string; tone: string }
+> = {
+  calendar: { label: "カレンダー候補", short: "今日の予定", emoji: "📅", tone: "border-sky-300/25 bg-sky-400/10" },
+  todo: { label: "TODO候補", short: "今日のTODO", emoji: "✅", tone: "border-cyan-300/25 bg-cyan-400/10" },
+  shopping: { label: "買い物リスト候補", short: "買い物", emoji: "🛒", tone: "border-emerald-300/25 bg-emerald-400/10" },
+  diary: { label: "日記/感情ログ候補", short: "日記", emoji: "📖", tone: "border-fuchsia-300/25 bg-fuchsia-400/10" },
+  budget: { label: "家計簿候補", short: "家計簿", emoji: "👛", tone: "border-amber-300/25 bg-amber-400/10" },
+  workout: { label: "ワークアウトメモ候補", short: "ワークアウト", emoji: "💪", tone: "border-rose-300/25 bg-rose-400/10" },
+  memo: { label: "通常メモ候補", short: "メモ", emoji: "📝", tone: "border-blue-300/25 bg-blue-400/10" },
+  inbox: { label: "保留ボックス / Mind Inbox", short: "Mind Inbox", emoji: "📥", tone: "border-white/20 bg-white/10" },
+};
+
+
+function HomeMindCaptureCard({
+  refreshSnapshot,
+  setPage,
+}: {
+  refreshSnapshot: (reason?: string) => Promise<void>;
+  setPage: (p: PageKey) => void;
+}) {
+  const [text, setText] = useState("");
+  const [result, setResult] = useState<MindCaptureResult | null>(null);
+  const [organizing, setOrganizing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [banner, setBanner] = useState<string | null>(null);
+
+  const localPreview = useMemo(
+    () => (text.trim() ? buildLocalMindCaptureResult(text) : null),
+    [text],
+  );
+  const activeResult = result || localPreview;
+  const topCandidates = (activeResult?.candidates || []).slice(0, 4);
+  const stateLabels = activeResult?.state.labels?.length
+    ? activeResult.state.labels
+    : ["入力待ち", "思考を一括整理", "保存前確認あり"];
+
+  function showBanner(message: string) {
+    setBanner(message);
+    window.setTimeout(() => setBanner(null), 3000);
+  }
+
+  async function organizeHomeMindCapture() {
+    if (!text.trim()) {
+      showBanner("Mind Captureに入力すると整理できます");
+      return;
+    }
+    setOrganizing(true);
+    try {
+      const response = await fetch("/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "mindCaptureAI", text }),
+      });
+      const json = await response.json();
+      const normalized = normalizeMindCaptureResult(json, text);
+      setResult(normalized.candidates.length ? normalized : buildLocalMindCaptureResult(text));
+      showBanner("AI仕分け結果を作成しました");
+    } catch {
+      setResult(buildLocalMindCaptureResult(text));
+      showBanner("ローカル仕分けで整理しました");
+    } finally {
+      setOrganizing(false);
+    }
+  }
+
+  async function saveTopCandidates() {
+    const candidates = (activeResult?.candidates || []).filter((candidate) => candidate.save).slice(0, 8);
+    if (!candidates.length) {
+      showBanner("保存する候補がまだありません");
+      return;
+    }
+    setSaving(true);
+    const counts: Record<string, number> = {};
+    for (const candidate of candidates) {
+      await persistMindCaptureCandidate(candidate);
+      const label = mindCaptureCategoryMeta[candidate.category].short;
+      counts[label] = (counts[label] || 0) + 1;
+    }
+    await refreshSnapshot("Mind Capture保存中...");
+    setSaving(false);
+    const summary = Object.entries(counts).map(([label, count]) => `${label} ${count}件`).join(" / ");
+    showBanner(summary ? `${summary}を保存しました` : "保存しました");
+  }
+
+  function openFullMindCapture() {
+    try {
+      if (text.trim()) localStorage.setItem("lifeMindCaptureDraft", text);
+    } catch {
+      // localStorageが使えなくても遷移はできる
+    }
+    setPage("braindump");
+  }
+
+  return (
+    <GlassCard className="future-mind-capture-home relative overflow-hidden p-5 sm:p-6">
+      {banner && (
+        <div className="absolute right-4 top-4 z-10 rounded-2xl border border-cyan-200/30 bg-slate-950/85 px-4 py-2 text-xs font-black text-cyan-50 shadow-2xl backdrop-blur-xl">
+          {banner}
+        </div>
+      )}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(340px,.9fr)] lg:items-stretch">
+        <div>
+          <p className="future-kicker">CORE / MIND CAPTURE</p>
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+                Mind Capture
+              </h3>
+              <p className="mt-2 text-sm font-bold text-cyan-50/72">
+                思考を、予定・行動・記録へ変換する。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openFullMindCapture}
+              className="rounded-2xl border border-cyan-200/20 bg-cyan-300/10 px-4 py-3 text-sm font-black text-cyan-50 transition hover:bg-cyan-300/15 active:scale-[0.98]"
+            >
+              詳細確認へ →
+            </button>
+          </div>
+          <textarea
+            value={text}
+            onChange={(event) => {
+              setText(event.target.value);
+              setResult(null);
+            }}
+            className="mt-4 min-h-[150px] w-full resize-none rounded-[1.6rem] border border-cyan-200/18 bg-slate-950/42 px-4 py-4 text-base leading-7 text-white outline-none placeholder:text-cyan-50/38 focus:border-cyan-200/45 focus:bg-slate-950/55 sm:min-h-[170px]"
+            placeholder="頭の中にあることを、そのまま書いてください。予定、買い物、感情、アイデア、出費、全部まとめて大丈夫です。"
+          />
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+            <button
+              type="button"
+              onClick={organizeHomeMindCapture}
+              disabled={organizing || !text.trim()}
+              className="rounded-2xl bg-white px-5 py-4 text-sm font-black text-black shadow-[0_0_28px_rgba(191,219,254,.20)] transition active:scale-[0.98] disabled:opacity-50"
+            >
+              {organizing ? "整理中..." : "思考を整理する"}
+            </button>
+            <button
+              type="button"
+              onClick={saveTopCandidates}
+              disabled={saving || !activeResult?.candidates.some((candidate) => candidate.save)}
+              className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 text-sm font-black text-white transition hover:bg-white/15 active:scale-[0.98] disabled:opacity-50"
+            >
+              {saving ? "保存中..." : "候補を保存"}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          <div className="rounded-[1.4rem] border border-cyan-200/16 bg-black/20 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-cyan-100/55">今日の脳内状態</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {stateLabels.slice(0, 5).map((label) => (
+                <span key={label} className="rounded-full border border-cyan-200/18 bg-cyan-300/10 px-3 py-2 text-xs font-black text-cyan-50">
+                  {label}
+                </span>
+              ))}
+            </div>
+            <p className="mt-3 text-sm leading-7 text-white/62">
+              {activeResult?.state.summary || "予定・TODO・買い物・感情・出費・アイデアを、保存前に確認できる候補へ整理します。"}
+            </p>
+          </div>
+
+          <div className="rounded-[1.4rem] border border-white/12 bg-black/18 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-black text-white">AI仕分けプレビュー</p>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/60">
+                {topCandidates.length || 0}件
+              </span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {topCandidates.length ? (
+                topCandidates.map((candidate) => {
+                  const meta = mindCaptureCategoryMeta[candidate.category];
+                  return (
+                    <div key={candidate.id} className="rounded-2xl border border-white/10 bg-slate-950/30 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded-full bg-cyan-300/10 px-2 py-1 text-[11px] font-black text-cyan-50">
+                          {meta.emoji} {meta.short}
+                        </span>
+                        <span className="text-[11px] font-black text-white/45">{candidate.confidence}</span>
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/78">{candidate.content}</p>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="rounded-2xl border border-dashed border-cyan-200/18 bg-cyan-300/5 p-4 text-sm leading-7 text-white/54">
+                  ここにカレンダー候補、TODO候補、買い物候補、Mind Inbox候補が表示されます。
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
 function BrainDumpPanel({
   refreshSnapshot,
   setPage,
@@ -6780,136 +7411,647 @@ function BrainDumpPanel({
   setPage: (p: PageKey) => void;
 }) {
   const [text, setText] = useState("");
-  const [result, setResult] = useState<{
-    todos: TodoInsertCandidate[];
-    memos: string[];
-    later: string[];
-  } | null>(null);
+  const [result, setResult] = useState<MindCaptureResult | null>(null);
+  const [organizing, setOrganizing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [banner, setBanner] = useState<string | null>(null);
+  const [inboxItems, setInboxItems] = useState<MindInboxItem[]>([]);
   const voice = useVoiceInput((spoken) =>
     setText((current) => `${current}${current ? "\n" : ""}${spoken}`),
   );
-  const preview = useMemo(() => classifyBrainDump(text), [text]);
-  async function saveAll() {
-    const classified = classifyBrainDump(text);
+  const preview = useMemo(() => buildLocalMindCaptureResult(text), [text]);
+  const activeResult = result || preview;
+
+  useEffect(() => {
+    setInboxItems(readMindInboxItems());
+    try {
+      const draft = localStorage.getItem("lifeMindCaptureDraft");
+      if (draft) {
+        setText(draft);
+        setResult(buildLocalMindCaptureResult(draft));
+        localStorage.removeItem("lifeMindCaptureDraft");
+      }
+    } catch {
+      // localStorageが使えない環境でも画面は止めない
+    }
+  }, []);
+
+  function showBanner(message: string) {
+    setBanner(message);
+    window.setTimeout(() => setBanner(null), 3000);
+  }
+
+  function updateCandidate(id: string, patch: Partial<MindCaptureCandidate>) {
+    setResult((current) => {
+      const base = current || preview;
+      return {
+        ...base,
+        candidates: base.candidates.map((candidate) =>
+          candidate.id === id ? { ...candidate, ...patch } : candidate,
+        ),
+      };
+    });
+  }
+
+  function moveToInbox(id: string) {
+    updateCandidate(id, { category: "inbox", save: true, confidence: "保留推奨" });
+    showBanner("Mind Inboxに保留しました");
+  }
+
+  async function organize() {
     if (!text.trim()) return;
+    setOrganizing(true);
+    try {
+      const response = await fetch("/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "mindCaptureAI", text }),
+      });
+      const json = await response.json().catch(() => null);
+      const normalized = normalizeMindCaptureResult(json, text);
+      setResult(normalized.candidates.length ? normalized : buildLocalMindCaptureResult(text));
+    } catch {
+      setResult(buildLocalMindCaptureResult(text));
+    } finally {
+      setOrganizing(false);
+    }
+  }
+
+  async function saveCandidate(candidate: MindCaptureCandidate) {
+    const message = await persistMindCaptureCandidate(candidate);
+    setInboxItems(readMindInboxItems());
+    showBanner(message);
+    setResult((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        candidates: current.candidates.map((row) =>
+          row.id === candidate.id ? { ...row, save: false } : row,
+        ),
+      };
+    });
+    await refreshSnapshot("手動同期中...");
+  }
+
+  async function saveSelected() {
+    const selected = activeResult.candidates.filter((candidate) => candidate.save);
+    if (!selected.length) {
+      showBanner("保存する候補が選ばれていません");
+      return;
+    }
     setSaving(true);
-    let memoCount = 0;
-    let tweetCount = 0;
-    const todoResult = await insertTodoCandidates(classified.todos, todayKey());
-    for (const memo of classified.memos) {
-      const { error } = await supabase.from("memos").insert({ content: memo });
-      if (!error) memoCount += 1;
+    const counts: Record<string, number> = {};
+    for (const candidate of selected) {
+      const message = await persistMindCaptureCandidate(candidate);
+      const label = mindCaptureCategoryMeta[candidate.category].short;
+      counts[label] = (counts[label] || 0) + 1;
+      setBanner(message);
     }
-    for (const later of classified.later) {
-      const { error } = await supabase
-        .from("tweets")
-        .insert({
-          tweet_date: todayKey(),
-          content: `あとで: ${later}`,
-          mood: "普通",
-        });
-      if (!error) tweetCount += 1;
-    }
-    setResult(classified);
-    setGuideDraft(
-      `脳ダンプを整理したよ。TODO ${todoResult.inserted}件、メモ ${memoCount}件、後でBOX ${tweetCount}件に分けたよ。`,
+    setInboxItems(readMindInboxItems());
+    setResult((current) =>
+      current
+        ? {
+            ...current,
+            candidates: current.candidates.map((candidate) =>
+              candidate.save ? { ...candidate, save: false } : candidate,
+            ),
+          }
+        : current,
     );
-    setText("");
     await refreshSnapshot("手動同期中...");
     setSaving(false);
+    const summary = Object.entries(counts)
+      .map(([label, count]) => `${label} ${count}件`)
+      .join(" / ");
+    showBanner(summary ? `${summary}を保存しました` : "保存しました");
+    setGuideDraft(`Mind Captureで整理した内容を保存したよ。${summary || "必要な場所へ振り分けたよ。"}`);
   }
+
+  const grouped = groupMindCaptureCandidates(activeResult.candidates);
+
   return (
     <div className="space-y-4">
-      <GlassCard>
-        <p className="text-xs font-black text-fuchsia-100/70">外部脳</p>
-        <h2 className="mt-1 text-3xl font-black">脳ダンプ</h2>
-        <p className="mt-2 text-sm leading-7 text-white/60">
-          思いついたことを雑に全部入れる場所。TODO・メモ・後でBOXに自動で分けて、ワーキングメモリを軽くする。
-        </p>
+      {banner && (
+        <div className="fixed inset-x-4 top-4 z-[120] mx-auto max-w-md rounded-3xl border border-cyan-200/30 bg-slate-950/90 px-5 py-4 text-sm font-black text-cyan-50 shadow-2xl backdrop-blur-2xl">
+          {banner}
+        </div>
+      )}
+
+      <GlassCard className="overflow-hidden border-cyan-200/20 bg-cyan-400/[0.08] p-5 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.35em] text-cyan-100/70">
+              LIFE COMMAND OS / CORE FEATURE
+            </p>
+            <h2 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">
+              Mind Capture / マインドキャプチャ
+            </h2>
+            <p className="mt-2 text-lg font-black text-cyan-50/85">
+              思考を、予定・行動・記録へ変換する。
+            </p>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/62">
+              頭の中の予定、TODO、買い物、感情、日記、出費、アイデア、メモをまとめて受け止めて、保存前にカテゴリ別の候補へ整理する場所だよ。
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs font-black text-white/75 sm:min-w-80">
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3">
+              <p className="text-2xl">{activeResult.candidates.length}</p>
+              <p>候補</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3">
+              <p className="text-2xl">{activeResult.candidates.filter((c) => c.save).length}</p>
+              <p>保存予定</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 p-3">
+              <p className="text-2xl">{inboxItems.length}</p>
+              <p>Inbox</p>
+            </div>
+          </div>
+        </div>
       </GlassCard>
-      <div className="grid gap-4 lg:grid-cols-[1fr_.9fr]">
-        <GlassCard>
-          <TextArea
-            className="min-h-56"
-            placeholder="例: 牛乳買う。あとで靴を調べる。明日ジムの準備。部屋を片付けたい。"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
+        <GlassCard className="border-cyan-200/20 bg-slate-950/45 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-2xl font-black">Mind Capture入力カード</h3>
+              <p className="mt-1 text-sm text-white/55">まだ保存されないから、まずは一括で吐き出して大丈夫。</p>
+            </div>
             <button
               onClick={voice.start}
-              className={`rounded-2xl px-4 py-3 font-black ${voice.listening ? "bg-rose-300 text-black" : "bg-white/10"}`}
+              className={`shrink-0 rounded-2xl px-4 py-3 text-sm font-black transition active:scale-95 ${voice.listening ? "bg-rose-300 text-black" : "border border-white/15 bg-white/10 text-white"}`}
             >
               {voice.listening ? "聞いてる..." : "音声入力"}
             </button>
+          </div>
+          <TextArea
+            className="mt-4 min-h-[280px] border-cyan-200/20 bg-slate-950/55 text-base leading-7"
+            placeholder="頭の中にあることを、そのまま書いてください。予定、買い物、感情、アイデア、出費、全部まとめて大丈夫です。"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr]">
             <button
-              onClick={() => setResult(preview)}
-              className="rounded-2xl bg-white/10 px-4 py-3 font-black"
+              onClick={organize}
+              disabled={!text.trim() || organizing}
+              className="rounded-2xl bg-white px-5 py-4 font-black text-black transition active:scale-[0.99] disabled:opacity-50"
             >
-              分類プレビュー
+              {organizing ? "整理中..." : "思考を整理する"}
             </button>
             <button
-              onClick={saveAll}
-              disabled={saving || !text.trim()}
-              className="rounded-2xl bg-white px-4 py-3 font-black text-black disabled:opacity-50"
+              onClick={() => {
+                setResult(null);
+                setText("");
+              }}
+              className="rounded-2xl border border-white/15 bg-white/10 px-5 py-4 font-black text-white transition active:scale-[0.99]"
             >
-              {saving ? "保存中..." : "自動仕分け保存"}
+              入力をリセット
             </button>
           </div>
         </GlassCard>
-        <GlassCard>
-          <h3 className="text-xl font-black">仕分け予測</h3>
-          <div className="mt-3 space-y-3">
-            <div className="rounded-2xl bg-black/25 p-3">
-              <p className="text-xs font-black text-emerald-100">TODO候補</p>
-              {preview.todos.length ? (
-                preview.todos.map((t, i) => (
-                  <p key={i} className="mt-1 text-sm text-white/75">
-                    ・{String(t.title)}
-                  </p>
-                ))
-              ) : (
-                <p className="mt-1 text-sm text-white/45">なし</p>
-              )}
-            </div>
-            <div className="rounded-2xl bg-black/25 p-3">
-              <p className="text-xs font-black text-sky-100">メモ候補</p>
-              {preview.memos.length ? (
-                preview.memos.map((m, i) => (
-                  <p key={i} className="mt-1 text-sm text-white/75">
-                    ・{m}
-                  </p>
-                ))
-              ) : (
-                <p className="mt-1 text-sm text-white/45">なし</p>
-              )}
-            </div>
-            <div className="rounded-2xl bg-black/25 p-3">
-              <p className="text-xs font-black text-fuchsia-100">後でBOX候補</p>
-              {preview.later.length ? (
-                preview.later.map((m, i) => (
-                  <p key={i} className="mt-1 text-sm text-white/75">
-                    ・{m}
-                  </p>
-                ))
-              ) : (
-                <p className="mt-1 text-sm text-white/45">なし</p>
-              )}
-            </div>
+
+        <GlassCard className="border-blue-200/20 bg-blue-400/[0.07] p-5">
+          <h3 className="text-2xl font-black">今日の脳内状態</h3>
+          <p className="mt-2 text-sm leading-7 text-white/58">
+            診断ではなく、メモ整理の補助表示だよ。保存前の優先順位を見やすくするための軽いサマリー。
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {activeResult.state.labels.map((label) => (
+              <span key={label} className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-2 text-sm font-black text-cyan-50">
+                {label}
+              </span>
+            ))}
           </div>
-          {result && (
-            <button
-              onClick={() => setPage("todos")}
-              className="mt-4 w-full rounded-2xl bg-white px-4 py-3 font-black text-black"
-            >
-              TODOを確認
-            </button>
-          )}
+          <div className="mt-4 rounded-3xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-white/72">
+            {activeResult.state.summary}
+          </div>
+          <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.06] p-4">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-white/45">AI仕分けの扱い</p>
+            <p className="mt-2 text-sm leading-7 text-white/62">
+              確定候補はそのまま保存しやすいもの。確認が必要なものは編集推奨。保留推奨はMind Inboxに置いて後で見直せるよ。
+            </p>
+          </div>
         </GlassCard>
       </div>
+
+      <GlassCard className="border-cyan-200/20 bg-slate-950/45 p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-cyan-100/60">REVIEW BEFORE SAVE</p>
+            <h3 className="mt-1 text-3xl font-black">AI仕分け結果</h3>
+          </div>
+          <button
+            onClick={saveSelected}
+            disabled={saving || !activeResult.candidates.some((candidate) => candidate.save)}
+            className="rounded-2xl bg-white px-5 py-3 font-black text-black transition active:scale-[0.99] disabled:opacity-50"
+          >
+            {saving ? "保存中..." : "選択した候補を保存"}
+          </button>
+        </div>
+        {!activeResult.candidates.length ? (
+          <Empty text="入力すると、ここにカレンダー候補・TODO候補・買い物候補などが表示されるよ。" />
+        ) : (
+          <div className="mt-5 grid gap-4 xl:grid-cols-2">
+            {(Object.keys(mindCaptureCategoryMeta) as MindCaptureCategory[]).map((category) => {
+              const rows = grouped[category] || [];
+              if (!rows.length) return null;
+              const meta = mindCaptureCategoryMeta[category];
+              return (
+                <div key={category} className={`rounded-[1.6rem] border p-4 ${meta.tone}`}>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h4 className="text-lg font-black">{meta.emoji} {meta.short}</h4>
+                    <span className="rounded-full bg-black/25 px-3 py-1 text-xs font-black text-white/70">{rows.length}件</span>
+                  </div>
+                  <div className="space-y-3">
+                    {rows.map((candidate) => (
+                      <MindCaptureCandidateCard
+                        key={candidate.id}
+                        candidate={candidate}
+                        onUpdate={updateCandidate}
+                        onMoveInbox={moveToInbox}
+                        onSave={saveCandidate}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </GlassCard>
+
+      <GlassCard className="border-white/15 bg-white/[0.06] p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-2xl font-black">Mind Inbox</h3>
+            <p className="mt-1 text-sm text-white/55">曖昧なもの・まだ決めたくないものを保留しておく場所。</p>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.setItem("lifeMindInboxItems", "[]");
+              setInboxItems([]);
+              showBanner("Mind Inboxを空にしました");
+            }}
+            className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-black text-white"
+          >
+            Inboxを空にする
+          </button>
+        </div>
+        {inboxItems.length ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            {inboxItems.slice(0, 12).map((item) => (
+              <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-sm leading-6 text-white/78">{item.content}</p>
+                <p className="mt-2 text-xs text-white/40">{new Date(item.created_at).toLocaleString("ja-JP")}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Empty text="保留中のMind Inboxは空だよ。" />
+        )}
+      </GlassCard>
     </div>
   );
+}
+
+function MindCaptureCandidateCard({
+  candidate,
+  onUpdate,
+  onMoveInbox,
+  onSave,
+}: {
+  candidate: MindCaptureCandidate;
+  onUpdate: (id: string, patch: Partial<MindCaptureCandidate>) => void;
+  onMoveInbox: (id: string) => void;
+  onSave: (candidate: MindCaptureCandidate) => Promise<void>;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-3 shadow-inner">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <label className="inline-flex items-center gap-2 text-sm font-black text-white/80">
+          <input
+            type="checkbox"
+            checked={candidate.save}
+            onChange={(e) => onUpdate(candidate.id, { save: e.target.checked })}
+            className="h-4 w-4 accent-cyan-300"
+          />
+          保存する
+        </label>
+        <span className={`rounded-full px-3 py-1 text-xs font-black ${candidate.confidence === "確定候補" ? "bg-emerald-300/15 text-emerald-100" : candidate.confidence === "確認が必要" ? "bg-amber-300/15 text-amber-100" : "bg-white/10 text-white/65"}`}>
+          {candidate.confidence}
+        </span>
+      </div>
+      <TextArea
+        className="mt-3 min-h-24 bg-black/25 p-3 text-sm leading-6"
+        value={candidate.content}
+        onChange={(e) => onUpdate(candidate.id, { content: e.target.value })}
+      />
+      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_150px_150px]">
+        <select
+          value={candidate.category}
+          onChange={(e) => onUpdate(candidate.id, { category: e.target.value as MindCaptureCategory })}
+          className="rounded-2xl border border-white/15 bg-slate-950/90 px-3 py-2 text-sm font-black text-white"
+        >
+          {(Object.keys(mindCaptureCategoryMeta) as MindCaptureCategory[]).map((category) => (
+            <option key={category} value={category}>{mindCaptureCategoryMeta[category].short}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => onUpdate(candidate.id, { save: false })}
+          className="rounded-2xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-black text-white"
+        >
+          保存しない
+        </button>
+        <button
+          onClick={() => onMoveInbox(candidate.id)}
+          className="rounded-2xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-black text-white"
+        >
+          保留へ
+        </button>
+      </div>
+      <button
+        onClick={() => onSave(candidate)}
+        className="mt-2 w-full rounded-2xl bg-white px-3 py-2 text-sm font-black text-black"
+      >
+        この候補だけ保存
+      </button>
+    </div>
+  );
+}
+
+function groupMindCaptureCandidates(candidates: MindCaptureCandidate[]) {
+  return candidates.reduce(
+    (acc, candidate) => {
+      acc[candidate.category] = [...(acc[candidate.category] || []), candidate];
+      return acc;
+    },
+    {} as Partial<Record<MindCaptureCategory, MindCaptureCandidate[]>>,
+  );
+}
+
+function normalizeMindCaptureResult(input: any, originalText: string): MindCaptureResult {
+  const local = buildLocalMindCaptureResult(originalText);
+  const rawCandidates = Array.isArray(input?.candidates) ? input.candidates : [];
+  const candidates = rawCandidates
+    .map((row: any, index: number) => normalizeMindCaptureCandidate(row, index, "ai"))
+    .filter((row: MindCaptureCandidate | null): row is MindCaptureCandidate => Boolean(row))
+    .slice(0, 24);
+  const labels = Array.isArray(input?.state?.labels)
+    ? input.state.labels.map((label: unknown) => String(label).trim()).filter(Boolean).slice(0, 8)
+    : local.state.labels;
+  return {
+    candidates,
+    source: candidates.length ? "ai" : "local",
+    state: {
+      labels: labels.length ? labels : local.state.labels,
+      summary: String(input?.state?.summary || local.state.summary).slice(0, 220),
+    },
+  };
+}
+
+function normalizeMindCaptureCandidate(row: any, index: number, source: "ai" | "local"): MindCaptureCandidate | null {
+  const content = String(row?.content || row?.title || row?.text || "").trim();
+  if (!content) return null;
+  const category = isMindCaptureCategory(row?.category) ? row.category : inferMindCaptureCategory(content);
+  const confidenceText = String(row?.confidence || "");
+  const confidence: MindCaptureConfidence =
+    confidenceText === "確定候補" || confidenceText === "確認が必要" || confidenceText === "保留推奨"
+      ? confidenceText
+      : inferMindCaptureConfidence(content, category);
+  const amount = Number(row?.amount || extractYenAmount(content) || 0) || null;
+  return {
+    id: `${source}-${Date.now()}-${index}-${Math.random().toString(16).slice(2)}`,
+    category,
+    content: content.slice(0, 300),
+    save: category !== "inbox" && confidence !== "保留推奨",
+    confidence,
+    date: typeof row?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(row.date) ? row.date : inferDateKey(content),
+    amount,
+    note: typeof row?.note === "string" ? row.note.slice(0, 160) : null,
+    source,
+  };
+}
+
+function buildLocalMindCaptureResult(text: string): MindCaptureResult {
+  const lines = splitMindCaptureLines(text);
+  const candidates = lines.map((line, index) => normalizeMindCaptureCandidate({ content: line }, index, "local")).filter((row): row is MindCaptureCandidate => Boolean(row));
+  return {
+    source: "local",
+    candidates,
+    state: buildMindCaptureState(text, candidates),
+  };
+}
+
+function splitMindCaptureLines(text: string) {
+  return String(text || "")
+    .split(/\r?\n|[。！？!?]+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 24);
+}
+
+function isMindCaptureCategory(value: unknown): value is MindCaptureCategory {
+  return typeof value === "string" && value in mindCaptureCategoryMeta;
+}
+
+function inferMindCaptureCategory(text: string): MindCaptureCategory {
+  const line = String(text || "");
+  if (/(\d{1,3}(?:,\d{3})*|\d+)\s*円|使った|支払|支出|収入|予算|家計簿/.test(line)) return "budget";
+  if (/筋トレ|ジム|ワークアウト|ランニング|有酸素|肩|胸|背中|脚|腕|腹筋|レッグ|ベンチ|プレス|スクワット/.test(line)) return "workout";
+  if (/買う|買い|購入|欲しい|牛乳|卵|米|パン|日用品|スーパー|コンビニ|Amazon|アマゾン/.test(line)) return "shopping";
+  if (/今日|明日|明後日|来週|\d{1,2}時|予定|予約|集合|面談|病院|歯医者|美容院|会う|打ち合わせ/.test(line)) return "calendar";
+  if (/する|やる|確認|連絡|提出|送る|作る|準備|掃除|洗濯|電話|メール|返す|調べる|修正|登録|必要|忘れ/.test(line)) return "todo";
+  if (/疲|眠|寝不足|不安|焦|嬉|楽しい|つら|しんど|気分|感情|日記|集中できない/.test(line)) return "diary";
+  if (/アイデア|思いついた|企画|ネタ|メモ|考え|構想/.test(line)) return "memo";
+  return line.length > 45 ? "memo" : "inbox";
+}
+
+function inferMindCaptureConfidence(content: string, category: MindCaptureCategory): MindCaptureConfidence {
+  if (category === "inbox") return "保留推奨";
+  if (category === "budget" && !extractYenAmount(content)) return "確認が必要";
+  if (category === "calendar" && !inferDateKey(content) && !/\d{1,2}時/.test(content)) return "確認が必要";
+  if (/かも|たぶん|いつか|迷|未定|わから/.test(content)) return "保留推奨";
+  if (content.length < 4) return "確認が必要";
+  return "確定候補";
+}
+
+function inferDateKey(content: string) {
+  const today = todayKey();
+  if (/明後日/.test(content)) return dateMinus(today, -2);
+  if (/明日/.test(content)) return dateMinus(today, -1);
+  if (/今日/.test(content)) return today;
+  const slash = content.match(/(\d{1,2})[\/月](\d{1,2})日?/);
+  if (slash) {
+    const now = new Date();
+    const month = Number(slash[1]);
+    const day = Number(slash[2]);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${now.getFullYear()}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+  return null;
+}
+
+function extractYenAmount(content: string) {
+  const match = String(content || "").replace(/,/g, "").match(/(\d+)\s*円/);
+  return match ? Math.max(0, Number(match[1])) : null;
+}
+
+function buildMindCaptureState(text: string, candidates: MindCaptureCandidate[]): MindCaptureState {
+  const labels: string[] = [];
+  const raw = String(text || "");
+  const todoLike = candidates.filter((c) => c.category === "todo" || c.category === "calendar").length;
+  if (todoLike >= 3) labels.push("やること多め");
+  if (/疲|眠|寝不足|だる|しんど/.test(raw)) labels.push("疲労感あり");
+  if (/不安|焦|怖|心配|緊張/.test(raw)) labels.push("不安少し強め");
+  if (/アイデア|思いついた|企画|ネタ|構想/.test(raw)) labels.push("アイデア量多め");
+  if (candidates.some((c) => c.category === "calendar")) labels.push("予定整理が必要");
+  if (candidates.some((c) => c.category === "budget")) labels.push("お金メモあり");
+  if (!labels.length) labels.push("整理しやすい状態");
+  return {
+    labels: labels.slice(0, 6),
+    summary: `候補は${candidates.length}件。保存前にカテゴリと内容を確認して、曖昧なものはMind Inboxへ置ける状態だよ。`,
+  };
+}
+
+function readMindInboxItems(): MindInboxItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("lifeMindInboxItems") || "[]") as MindInboxItem[];
+  } catch {
+    return [];
+  }
+}
+
+function writeMindInboxItems(items: MindInboxItem[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("lifeMindInboxItems", JSON.stringify(items.slice(0, 120)));
+}
+
+function addMindInboxItem(candidate: MindCaptureCandidate) {
+  const next: MindInboxItem[] = [
+    {
+      id: `mind-inbox-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      content: candidate.content,
+      originalCategory: candidate.category,
+      created_at: new Date().toISOString(),
+    },
+    ...readMindInboxItems(),
+  ];
+  writeMindInboxItems(next);
+}
+
+function inferShoppingCategory(content: string) {
+  if (/薬|包帯|湿布|サプリ|病院/.test(content)) return "医薬品";
+  if (/充電|電池|ケーブル|家電|イヤホン/.test(content)) return "家電";
+  if (/服|ズボン|靴下|衣類|シューズ|靴/.test(content)) return "衣類";
+  if (/本|ノート|文房具|教材/.test(content)) return "学習";
+  if (/牛乳|卵|米|パン|肉|魚|野菜|食/.test(content)) return "食料品";
+  return "その他";
+}
+
+function inferBudgetCategory(content: string) {
+  if (/カフェ|コーヒー/.test(content)) return "カフェ";
+  if (/電車|バス|交通|タクシー/.test(content)) return "交通";
+  if (/服|靴|衣類/.test(content)) return "服";
+  if (/本|教材|学習/.test(content)) return "学習";
+  if (/病院|薬|医療/.test(content)) return "医療";
+  if (/牛乳|飯|ご飯|食|スーパー|コンビニ/.test(content)) return "食費";
+  return "その他";
+}
+
+function inferMood(content: string) {
+  if (/嬉|最高|楽しい|良かった|できた/.test(content)) return "良い";
+  if (/不安|焦|怖|緊張/.test(content)) return "不安";
+  if (/疲|眠|しんど|つら/.test(content)) return "疲れ";
+  return "普通";
+}
+
+function addShoppingFromMindCapture(candidate: MindCaptureCandidate) {
+  const current = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("lifeShoppingItems") || "[]") as ShoppingItem[];
+    } catch {
+      return [];
+    }
+  })();
+  const item: ShoppingItem = {
+    id: `mind-shopping-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name: candidate.content.replace(/買う|買いたい|購入/g, "").trim().slice(0, 80) || candidate.content.slice(0, 80),
+    category: inferShoppingCategory(candidate.content),
+    checked: false,
+    memo: "Mind Captureから追加",
+    created_at: new Date().toISOString(),
+  };
+  localStorage.setItem("lifeShoppingItems", JSON.stringify([item, ...current].slice(0, 300)));
+}
+
+async function persistMindCaptureCandidate(candidate: MindCaptureCandidate) {
+  const content = candidate.content.trim();
+  if (!content) return "空の候補は保存しませんでした";
+  if (candidate.category === "inbox") {
+    addMindInboxItem(candidate);
+    return "Mind Inboxに保留しました";
+  }
+  try {
+    if (candidate.category === "todo") {
+      await insertTodoCandidates([{ title: content, priority: candidate.confidence === "確定候補" ? "normal" : "low", due_date: candidate.date || null }], candidate.date || todayKey());
+      return "TODOに保存しました";
+    }
+    if (candidate.category === "calendar") {
+      const { error } = await supabase.from("calendar_events").insert({
+        title: content.slice(0, 100),
+        event_date: candidate.date || todayKey(),
+        note: candidate.note || `Mind Captureから追加: ${content}`,
+      });
+      if (error) throw error;
+      return "カレンダーに保存しました";
+    }
+    if (candidate.category === "shopping") {
+      addShoppingFromMindCapture(candidate);
+      return "買い物リストに保存しました";
+    }
+    if (candidate.category === "diary") {
+      const { error } = await supabase.from("diary_entries").insert({
+        entry_date: candidate.date || todayKey(),
+        mood: inferMood(content),
+        title: "Mind Capture",
+        content,
+      });
+      if (error) throw error;
+      return "日記に保存しました";
+    }
+    if (candidate.category === "budget") {
+      const amount = candidate.amount || extractYenAmount(content) || 0;
+      if (!amount) {
+        addMindInboxItem({ ...candidate, category: "inbox" });
+        return "金額が曖昧なのでMind Inboxに保留しました";
+      }
+      const { error } = await supabase.from("budget_logs").insert({
+        spend_date: candidate.date || todayKey(),
+        type: /収入|もらった|給料/.test(content) ? "income" : "expense",
+        category: inferBudgetCategory(content),
+        amount,
+        memo: content,
+        wallet: "財布",
+        payment_method: "財布",
+      } as any);
+      if (error) throw error;
+      return "家計簿に保存しました";
+    }
+    if (candidate.category === "workout") {
+      const { error } = await supabase.from("memos").insert({ content: `ワークアウトメモ: ${content}` });
+      if (error) throw error;
+      return "ワークアウトメモに保存しました";
+    }
+    const { error } = await supabase.from("memos").insert({ content });
+    if (error) throw error;
+    return "メモに保存しました";
+  } catch (error) {
+    console.error(error);
+    addMindInboxItem({ ...candidate, category: "inbox" });
+    return "保存に失敗したためMind Inboxに保留しました";
+  }
 }
 
 type GlobalSearchResult = {
@@ -7493,7 +8635,7 @@ function LifeHubPanel({
     {
       title: "切り替えブリッジ",
       body: "ページ移動前に、次の場所の意味を短く確認するための導線。",
-      action: "脳ダンプへ",
+      action: "Mind Captureへ",
       page: "braindump" as PageKey,
     },
     {
@@ -8241,7 +9383,7 @@ function AiNewsPanel() {
         </p>
       )}
       <GuideAiCard
-        themeKey="natsumatsuri"
+        themeKey="mirai"
         message={
           result ||
           "しゅうやくんの好みに合わせて、筋トレ・ランニング・サウナ系のニュースを中心にやさしく案内するね。苦手な政治・事故・事件系は避ける設定にできるよ。"
