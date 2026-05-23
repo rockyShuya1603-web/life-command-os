@@ -2134,3 +2134,48 @@ body {
     min-height: 250px !important;
   }
 }
+
+
+/* ===== v19 Speed tuning: belongings + fast UI ===== */
+.belongings-fast-page,
+.belongings-fast-page * {
+  min-width: 0;
+}
+.belongings-fast-grid {
+  align-items: start;
+}
+.belongings-fast-card {
+  contain: layout paint;
+  transform: translateZ(0);
+}
+.belongings-fast-item {
+  contain: layout paint;
+  transform: translateZ(0);
+  touch-action: manipulation;
+}
+.belongings-fast-item button,
+.belongings-fast-page button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+@supports (content-visibility: auto) {
+  .belongings-fast-card {
+    content-visibility: auto;
+    contain-intrinsic-size: 420px;
+  }
+}
+.future-os .matsuri-card,
+.future-os .future-panel-card,
+.future-os .future-progress-card,
+.future-os .future-welcome-card,
+.future-os .future-money-card {
+  will-change: auto;
+}
+@media (max-width: 767px) {
+  .belongings-fast-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .belongings-fast-item {
+    min-height: 58px;
+  }
+}

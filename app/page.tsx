@@ -624,6 +624,8 @@ function ImagePreview({
     <img
       src={src}
       alt={alt}
+      loading="lazy"
+      decoding="async"
       className="mt-3 max-h-72 w-full rounded-3xl border border-white/10 object-cover"
     />
   );
@@ -5791,13 +5793,39 @@ function BelongingsPanel({ snapshot, refreshSnapshot }: PanelProps) {
   const [belongingAiText, setBelongingAiText] = useState("");
   const [belongingAiLoading, setBelongingAiLoading] = useState(false);
   const [autoClassify, setAutoClassify] = useState(true);
+  const [localItems, setLocalItems] = useState<BelongingItem[]>([]);
+  const [pendingItemIds, setPendingItemIds] = useState<Record<string, boolean>>({});
   const cards = snapshot?.belongingCards || [];
-  const items = snapshot?.belongingItems || [];
+  const snapshotItems = snapshot?.belongingItems || [];
+
+  useEffect(() => {
+    setLocalItems(snapshotItems);
+  }, [snapshotItems]);
+
+  const items = localItems.length || snapshotItems.length ? localItems : snapshotItems;
+
+  const itemsByCard = useMemo(() => {
+    const grouped: Record<string, BelongingItem[]> = {};
+    for (const item of items) {
+      const key = item.card_id;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(item);
+    }
+    return grouped;
+  }, [items]);
+
+  const scheduleBackgroundRefresh = useCallback((label = "持ち物を同期中...") => {
+    window.setTimeout(() => {
+      void refreshSnapshot(label);
+    }, 120);
+  }, [refreshSnapshot]);
+
   async function addCard() {
     if (!title.trim()) return alert("カード名を入れてね");
+    const nextTitle = title.trim();
     const { error } = await supabase
       .from("belonging_cards")
-      .insert({ title: title.trim(), note: note || null });
+      .insert({ title: nextTitle, note: note || null });
     if (error)
       return alert(
         "持ち物カード作成失敗: " +
@@ -5807,10 +5835,11 @@ function BelongingsPanel({ snapshot, refreshSnapshot }: PanelProps) {
     setTitle("");
     setNote("");
     setGuideDraft(
-      `持ち物カード「${title}」を作ったよ。忘れ物チェックに使えるね。`,
+      `持ち物カード「${nextTitle}」を作ったよ。忘れ物チェックに使えるね。`,
     );
     await refreshSnapshot();
   }
+
   async function deleteCard(card: BelongingCard) {
     if (
       !confirm(
@@ -5823,46 +5852,138 @@ function BelongingsPanel({ snapshot, refreshSnapshot }: PanelProps) {
       .delete()
       .eq("id", card.id);
     if (error) return alert("カード削除失敗: " + error.message);
+    setLocalItems((cur) => cur.filter((item) => item.card_id !== card.id));
     await refreshSnapshot();
   }
+
   async function addItem(cardId: string) {
     const name = (newItem[cardId] || "").trim();
     if (!name) return;
-    const imageUrl = await imageFileToDataUrl(itemImageFile[cardId] || null);
+    const tempId = `local-${cardId}-${Date.now()}`;
+    const optimisticItem: BelongingItem = {
+      id: tempId,
+      card_id: cardId,
+      name,
+      checked: false,
+      image_url: null,
+      created_at: new Date().toISOString(),
+    };
+    setLocalItems((cur) => [optimisticItem, ...cur]);
+    setNewItem((cur) => ({ ...cur, [cardId]: "" }));
+    const file = itemImageFile[cardId] || null;
+    setItemImageFile((cur) => ({ ...cur, [cardId]: null }));
+    setPendingItemIds((cur) => ({ ...cur, [tempId]: true }));
+
+    const imageUrl = await imageFileToDataUrl(file);
+    if (imageUrl) {
+      setLocalItems((cur) =>
+        cur.map((item) => (item.id === tempId ? { ...item, image_url: imageUrl } : item)),
+      );
+    }
+
+    const payload = { card_id: cardId, name, checked: false, image_url: imageUrl };
     const result = await supabase
       .from("belonging_items")
-      .insert({ card_id: cardId, name, checked: false, image_url: imageUrl });
+      .insert(payload)
+      .select("*")
+      .single();
+
     if (result.error) {
       if (hasImageColumnError(result.error)) {
         const fallback = await supabase
           .from("belonging_items")
-          .insert({ card_id: cardId, name, checked: false });
-        if (fallback.error)
+          .insert({ card_id: cardId, name, checked: false })
+          .select("*")
+          .single();
+        if (fallback.error) {
+          setLocalItems((cur) => cur.filter((item) => item.id !== tempId));
+          setPendingItemIds((cur) => {
+            const next = { ...cur };
+            delete next[tempId];
+            return next;
+          });
           return alert("持ち物追加失敗: " + fallback.error.message);
+        }
+        setLocalItems((cur) =>
+          cur.map((item) => (item.id === tempId ? ((fallback.data as BelongingItem) || { ...item, id: tempId }) : item)),
+        );
       } else {
+        setLocalItems((cur) => cur.filter((item) => item.id !== tempId));
+        setPendingItemIds((cur) => {
+          const next = { ...cur };
+          delete next[tempId];
+          return next;
+        });
         return alert("持ち物追加失敗: " + result.error.message);
       }
+    } else {
+      setLocalItems((cur) =>
+        cur.map((item) => (item.id === tempId ? ((result.data as BelongingItem) || item) : item)),
+      );
     }
-    setNewItem((cur) => ({ ...cur, [cardId]: "" }));
-    setItemImageFile((cur) => ({ ...cur, [cardId]: null }));
-    await refreshSnapshot();
+
+    setPendingItemIds((cur) => {
+      const next = { ...cur };
+      delete next[tempId];
+      return next;
+    });
+    scheduleBackgroundRefresh();
   }
+
   async function toggleItem(item: BelongingItem) {
+    if (pendingItemIds[item.id]) return;
+    const nextChecked = !item.checked;
+    setPendingItemIds((cur) => ({ ...cur, [item.id]: true }));
+    setLocalItems((cur) =>
+      cur.map((current) =>
+        current.id === item.id ? { ...current, checked: nextChecked } : current,
+      ),
+    );
+
     const { error } = await supabase
       .from("belonging_items")
-      .update({ checked: !item.checked })
+      .update({ checked: nextChecked })
       .eq("id", item.id);
-    if (error) return alert("チェック更新失敗: " + error.message);
-    await refreshSnapshot();
+
+    if (error) {
+      setLocalItems((cur) =>
+        cur.map((current) =>
+          current.id === item.id ? { ...current, checked: item.checked } : current,
+        ),
+      );
+      alert("チェック更新失敗: " + error.message);
+    } else {
+      scheduleBackgroundRefresh("持ち物チェックを同期中...");
+    }
+
+    setPendingItemIds((cur) => {
+      const next = { ...cur };
+      delete next[item.id];
+      return next;
+    });
   }
+
   async function deleteItem(id: string) {
+    const previous = items;
+    setLocalItems((cur) => cur.filter((item) => item.id !== id));
+    setPendingItemIds((cur) => ({ ...cur, [id]: true }));
     const { error } = await supabase
       .from("belonging_items")
       .delete()
       .eq("id", id);
-    if (error) return alert("持ち物削除失敗: " + error.message);
-    await refreshSnapshot();
+    if (error) {
+      setLocalItems(previous);
+      alert("持ち物削除失敗: " + error.message);
+    } else {
+      scheduleBackgroundRefresh("持ち物削除を同期中...");
+    }
+    setPendingItemIds((cur) => {
+      const next = { ...cur };
+      delete next[id];
+      return next;
+    });
   }
+
   function classifyBelonging(name: string) {
     if (/服|ズボン|シャツ|靴下|下着|上着|帽子|衣類/.test(name)) return "衣類";
     if (
@@ -5881,11 +6002,11 @@ function BelongingsPanel({ snapshot, refreshSnapshot }: PanelProps) {
   async function belongingsAi() {
     const source = cards
       .map((card) => {
-        const cardItems = items
-          .filter((it) => it.card_id === card.id)
+        const cardItems = itemsByCard[card.id] || [];
+        const cardText = cardItems
           .map((it) => `${it.checked ? "済" : "未"}:${it.name}`)
           .join(" / ");
-        return `${card.title}: ${card.note || ""} ${cardItems}`;
+        return `${card.title}: ${card.note || ""} ${cardText}`;
       })
       .join("\n");
     if (!source.trim())
@@ -5911,11 +6032,11 @@ function BelongingsPanel({ snapshot, refreshSnapshot }: PanelProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="belongings-fast-page space-y-4">
       <GlassCard>
         <h2 className="text-2xl font-black">持ち物</h2>
         <p className="mt-2 text-sm text-white/60">
-          ジム用・会社用・旅行用みたいにカードを作って、その中で持ち物をTodo式にチェックできるページ。写真も一緒に残せるよ。
+          チェック操作は先に画面へ反映して、保存は裏側で同期する方式にしたよ。タップ後の待ち時間をかなり減らす設計だよ。
         </p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <button
@@ -5957,18 +6078,18 @@ function BelongingsPanel({ snapshot, refreshSnapshot }: PanelProps) {
       {!cards.length && (
         <Empty text="まだ持ち物カードがないよ。ジム用・会社用・サウナ用などを作るとここに表示されるよ。" />
       )}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="belongings-fast-grid grid gap-4 lg:grid-cols-2">
         {cards.map((card) => {
-          const cardItems = items.filter((it) => it.card_id === card.id);
+          const cardItems = itemsByCard[card.id] || [];
           const done = cardItems.filter((it) => it.checked).length;
           return (
             <GlassCard
               key={card.id}
-              className="bg-gradient-to-br from-white/[0.09] to-black/20"
+              className="belongings-fast-card bg-gradient-to-br from-white/[0.09] to-black/20"
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-2xl font-black">{card.title}</h3>
+                <div className="min-w-0">
+                  <h3 className="truncate text-2xl font-black">{card.title}</h3>
                   {card.note && (
                     <p className="mt-1 text-sm text-white/55">{card.note}</p>
                   )}
@@ -5978,7 +6099,7 @@ function BelongingsPanel({ snapshot, refreshSnapshot }: PanelProps) {
                 </div>
                 <button
                   onClick={() => deleteCard(card)}
-                  className="rounded-2xl bg-red-500 px-3 py-2 text-xs font-black"
+                  className="shrink-0 rounded-2xl bg-red-500 px-3 py-2 text-xs font-black"
                 >
                   カード削除
                 </button>
@@ -6010,33 +6131,44 @@ function BelongingsPanel({ snapshot, refreshSnapshot }: PanelProps) {
                 </button>
               </div>
               <div className="mt-4 space-y-2">
-                {cardItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 rounded-2xl bg-black/25 p-3"
-                  >
-                    <button
-                      onClick={() => toggleItem(item)}
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border font-black ${item.checked ? "border-emerald-200 bg-emerald-300 text-black" : "border-white/25 bg-white/10 text-white/50"}`}
+                {cardItems.map((item) => {
+                  const pending = Boolean(pendingItemIds[item.id]);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`belongings-fast-item flex items-center gap-3 rounded-2xl bg-black/25 p-3 ${pending ? "opacity-80" : ""}`}
                     >
-                      {item.checked ? "✓" : ""}
-                    </button>
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={`${item.checked ? "text-white/40 line-through" : "font-bold"}`}
+                      <button
+                        onClick={() => toggleItem(item)}
+                        disabled={pending}
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-lg font-black transition active:scale-95 disabled:cursor-wait ${item.checked ? "border-emerald-200 bg-emerald-300 text-black" : "border-white/25 bg-white/10 text-white/50"}`}
+                        aria-label={item.checked ? "チェックを外す" : "チェックする"}
                       >
-                        {item.name}
-                      </p>
-                      <ImagePreview src={item.image_url} />
+                        {pending ? "…" : item.checked ? "✓" : ""}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`truncate ${item.checked ? "text-white/40 line-through" : "font-bold"}`}
+                        >
+                          {item.name}
+                        </p>
+                        {autoClassify && (
+                          <p className="mt-1 text-[11px] font-black text-sky-100/45">
+                            {classifyBelonging(item.name)}
+                          </p>
+                        )}
+                        <ImagePreview src={item.image_url} />
+                      </div>
+                      <button
+                        onClick={() => deleteItem(item.id)}
+                        disabled={pending}
+                        className="shrink-0 rounded-xl bg-red-500 px-3 py-2 text-xs font-bold disabled:opacity-50"
+                      >
+                        削除
+                      </button>
                     </div>
-                    <button
-                      onClick={() => deleteItem(item.id)}
-                      className="rounded-xl bg-red-500 px-3 py-2 text-xs font-bold"
-                    >
-                      削除
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </GlassCard>
           );
@@ -6045,6 +6177,7 @@ function BelongingsPanel({ snapshot, refreshSnapshot }: PanelProps) {
     </div>
   );
 }
+
 
 function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
   const [title, setTitle] = useState("");
