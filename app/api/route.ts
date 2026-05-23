@@ -300,3 +300,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "APIエラー" }, { status: 500 });
   }
 }
+
+// v25: searchAI should support natural Japanese queries such as 先週の支出や明日の予定, and never require email OAuth tokens in localStorage.

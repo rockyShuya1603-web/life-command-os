@@ -58,6 +58,7 @@ type PageKey =
   | "emergencynote"
   | "placelog"
   | "sleepprep"
+  | "mail"
   | "settings";
 
 type Memo = {
@@ -317,6 +318,7 @@ const navItems: { key: PageKey; label: string; icon: string }[] = [
   { key: "exp", label: "経験値", icon: "🎮" },
   { key: "night", label: "夜モード", icon: "🌙" },
   { key: "ainews", label: "AIニュース", icon: "📰" },
+  { key: "mail", label: "メール", icon: "✉️" },
   { key: "settings", label: "設定", icon: "🎨" },
 ];
 
@@ -1389,7 +1391,7 @@ export default function Home() {
             {page === "memos" && <MemosPanel {...panelProps} />}
             {page === "tweets" && <TweetsPanel {...panelProps} />}
             {page === "todos" && <TodosPanel {...panelProps} />}
-            {page === "calendar" && <CalendarPanel snapshot={snapshot} />}
+            {page === "calendar" && <CalendarPanel snapshot={snapshot} refreshSnapshot={refreshSnapshot} />}
             {page === "diary" && <DiaryPanel {...panelProps} />}
             {page === "coffee" && <CoffeePanel {...panelProps} />}
             {page === "budget" && (
@@ -1511,6 +1513,7 @@ export default function Home() {
             )}
             {page === "night" && <NightModePanel setPage={setPage} />}
             {page === "ainews" && <AiNewsPanel />}
+            {page === "mail" && <MailPanel {...panelProps} />}
             {page === "settings" && (
               <SettingsPanel
                 themeKey={themeKey}
@@ -3905,7 +3908,7 @@ function TodosPanel({ snapshot, refreshSnapshot }: PanelProps) {
   );
 }
 
-function CalendarPanel({ snapshot }: { snapshot: Snapshot | null }) {
+function CalendarPanel({ snapshot, refreshSnapshot }: { snapshot: Snapshot | null; refreshSnapshot: (reason?: string) => Promise<void> }) {
   const today = todayKey();
   const [cursorMonth, setCursorMonth] = useState(monthKey(today));
   const [selected, setSelected] = useState(today);
@@ -3958,6 +3961,7 @@ function CalendarPanel({ snapshot }: { snapshot: Snapshot | null }) {
   ];
   return (
     <div className="space-y-4">
+      <CalendarQuickAddPanel refreshSnapshot={refreshSnapshot} setSelected={setSelected} setCursorMonth={setCursorMonth} />
       <GlassCard>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -10573,6 +10577,686 @@ function CommandPaletteModal({
 }
 
 
+
+
+type MailItem = {
+  id: string;
+  from: string;
+  to: string;
+  subject: string;
+  body: string;
+  receivedAt: string;
+  unread: boolean;
+  important: boolean;
+  hasAttachment: boolean;
+  source: "manual" | "gmail-ready" | "outlook-ready";
+};
+
+type MailDraftItem = {
+  id: string;
+  to: string;
+  cc: string;
+  bcc: string;
+  subject: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  status: "draft" | "sent-log";
+};
+
+type CalendarDraft = {
+  title: string;
+  event_date: string;
+  start_time: string;
+  end_time: string;
+  category: string;
+  note: string;
+  location: string;
+  repeat: string;
+  notify: string;
+  allDay: boolean;
+  confidence: "保存OK" | "確認が必要";
+};
+
+const MAIL_ITEMS_KEY = "lifeMailManualInboxV1";
+const MAIL_DRAFTS_KEY = "lifeMailDraftsV1";
+const MAIL_SETTINGS_KEY = "lifeMailSettingsV1";
+
+function readMailItems(): MailItem[] {
+  return readLifeJson<MailItem[]>(MAIL_ITEMS_KEY, []);
+}
+
+function writeMailItems(items: MailItem[]) {
+  writeLifeJson(MAIL_ITEMS_KEY, items.slice(0, 300));
+}
+
+function readMailDrafts(): MailDraftItem[] {
+  return readLifeJson<MailDraftItem[]>(MAIL_DRAFTS_KEY, []);
+}
+
+function writeMailDrafts(items: MailDraftItem[]) {
+  writeLifeJson(MAIL_DRAFTS_KEY, items.slice(0, 300));
+}
+
+function readMailSettings() {
+  return readLifeJson(MAIL_SETTINGS_KEY, {
+    provider: "未連携",
+    email: "",
+    lastSync: "",
+    syncLimit: 20,
+  });
+}
+
+function writeMailSettings(value: { provider: string; email: string; lastSync: string; syncLimit: number }) {
+  writeLifeJson(MAIL_SETTINGS_KEY, value);
+}
+
+function toDateKeyFromDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function addDaysKey(base: string, days: number) {
+  const d = new Date(`${base}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return toDateKeyFromDate(d);
+}
+
+function getWeekRange(offsetWeeks = 0) {
+  const today = new Date(`${todayKey()}T00:00:00`);
+  const day = today.getDay();
+  const mondayOffset = day === 0 ? -6 : 1 - day;
+  const start = new Date(today);
+  start.setDate(today.getDate() + mondayOffset + offsetWeeks * 7);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start: toDateKeyFromDate(start), end: toDateKeyFromDate(end) };
+}
+
+function getMonthRange() {
+  const today = new Date(`${todayKey()}T00:00:00`);
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  return { start: toDateKeyFromDate(start), end: toDateKeyFromDate(end) };
+}
+
+function inRange(date: string | null | undefined, start: string, end: string) {
+  return Boolean(date && date >= start && date <= end);
+}
+
+function detectSearchRange(query: string) {
+  const q = query.toLowerCase();
+  if (/先週/.test(q)) return getWeekRange(-1);
+  if (/来週/.test(q)) return getWeekRange(1);
+  if (/今週/.test(q)) return getWeekRange(0);
+  if (/今月/.test(q)) return getMonthRange();
+  if (/昨日/.test(q)) {
+    const d = addDaysKey(todayKey(), -1);
+    return { start: d, end: d };
+  }
+  if (/明日/.test(q)) {
+    const d = addDaysKey(todayKey(), 1);
+    return { start: d, end: d };
+  }
+  if (/今日/.test(q)) return { start: todayKey(), end: todayKey() };
+  return null;
+}
+
+function categoryFromText(text: string) {
+  if (/歯医者|病院|通院|クリニック/.test(text)) return "通院";
+  if (/支払い|スマホ代|家賃|給料|請求|引き落とし/.test(text)) return "支払い";
+  if (/仕事|勤務|バイト|会議|打ち合わせ/.test(text)) return "仕事";
+  if (/買い物|スーパー|コンビニ|薬局/.test(text)) return "買い物";
+  if (/締切|提出|期限/.test(text)) return "締切";
+  if (/ルーティン|習慣|毎日|毎週/.test(text)) return "ルーティン";
+  if (/休み|休息|睡眠/.test(text)) return "休息";
+  if (/アプリ|開発|コード|UI|GUI/.test(text)) return "アプリ開発";
+  return "その他";
+}
+
+function parseQuickCalendarText(input: string): CalendarDraft {
+  const text = input.trim();
+  const today = todayKey();
+  let eventDate = today;
+  let startTime = "";
+  let repeat = "なし";
+  let confidence: CalendarDraft["confidence"] = "保存OK";
+
+  if (/明日/.test(text)) eventDate = addDaysKey(today, 1);
+  if (/今日/.test(text)) eventDate = today;
+  const daysLater = text.match(/(\d+)日後/);
+  if (daysLater) eventDate = addDaysKey(today, Number(daysLater[1]));
+  const md = text.match(/(\d{1,2})月(\d{1,2})日/);
+  if (md) {
+    const year = new Date().getFullYear();
+    eventDate = `${year}-${String(Number(md[1])).padStart(2, "0")}-${String(Number(md[2])).padStart(2, "0")}`;
+  }
+  const ymd = text.match(/(20\d{2})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/);
+  if (ymd) {
+    eventDate = `${ymd[1]}-${String(Number(ymd[2])).padStart(2, "0")}-${String(Number(ymd[3])).padStart(2, "0")}`;
+  }
+
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  const weekMatch = text.match(/来週([日月火水木金土])/);
+  if (weekMatch) {
+    const target = weekdays.indexOf(weekMatch[1]);
+    const nextWeek = getWeekRange(1).start;
+    const base = new Date(`${nextWeek}T00:00:00`);
+    base.setDate(base.getDate() + (target === 0 ? 6 : target - 1));
+    eventDate = toDateKeyFromDate(base);
+  }
+
+  const timeMatch = text.match(/(\d{1,2})[:時](\d{2})?/);
+  if (timeMatch) startTime = `${String(Number(timeMatch[1])).padStart(2, "0")}:${String(timeMatch[2] ? Number(timeMatch[2]) : 0).padStart(2, "0")}`;
+  if (/朝/.test(text) && !startTime) {
+    startTime = "08:00";
+    confidence = "確認が必要";
+  }
+  if (/夜/.test(text) && !startTime) {
+    startTime = "20:00";
+    confidence = "確認が必要";
+  }
+  if (/毎週/.test(text)) repeat = "毎週";
+  if (/毎月/.test(text)) repeat = "毎月";
+  if (/毎日/.test(text)) repeat = "毎日";
+
+  let title = text
+    .replace(/今日|明日|来週[日月火水木金土]|毎週|毎月|毎日/g, "")
+    .replace(/\d+日後/g, "")
+    .replace(/\d{1,2}月\d{1,2}日/g, "")
+    .replace(/\d{1,2}[:時]\d{0,2}/g, "")
+    .replace(/に|の予定|予定|で/g, " ")
+    .trim();
+  if (!title) title = "予定";
+
+  const category = categoryFromText(text);
+  return {
+    title: title.slice(0, 100),
+    event_date: eventDate,
+    start_time: startTime,
+    end_time: "",
+    category,
+    note: `自然文から追加: ${text}${startTime ? ` / 開始 ${startTime}` : ""} / カテゴリ ${category} / 繰り返し ${repeat}`,
+    location: "",
+    repeat,
+    notify: "なし",
+    allDay: !startTime,
+    confidence,
+  };
+}
+
+function buildLifeSearchAnswer(snapshot: Snapshot | null, query: string) {
+  const q = query.trim();
+  if (!q) return null;
+  const range = detectSearchRange(q);
+  const budget = snapshot?.budget || [];
+  const events = snapshot?.events || [];
+  const todos = snapshot?.todos || [];
+  const memos = snapshot?.memos || [];
+  const diaries = snapshot?.diaries || [];
+  const mail = readMailItems();
+  const futures = readFutureLetters();
+  const modules = lifeModuleConfigs.flatMap((config) =>
+    readLifeModuleItems(config.key).map((item) => ({ config, item })),
+  );
+
+  if (/支出|料金|使った|カフェ代|交通費|サブスク|費/.test(q)) {
+    const selected = range
+      ? budget.filter((b) => inRange(b.spend_date, range.start, range.end))
+      : budget;
+    const expense = selected.filter((b) => b.type === "expense");
+    const categoryHint = /カフェ/.test(q) ? "カフェ" : /交通/.test(q) ? "交通費" : /サブスク/.test(q) ? "サブスク" : "";
+    const filtered = categoryHint ? expense.filter((b) => b.category.includes(categoryHint) || (b.memo || "").includes(categoryHint)) : expense;
+    const total = filtered.reduce((sum, b) => sum + Number(b.amount || 0), 0);
+    const byCategory = filtered.reduce<Record<string, number>>((acc, b) => {
+      acc[b.category || "その他"] = (acc[b.category || "その他"] || 0) + Number(b.amount || 0);
+      return acc;
+    }, {});
+    const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
+    return {
+      title: `${range ? `${range.start}〜${range.end}` : "対象期間"}の支出まとめ`,
+      page: "budget" as PageKey,
+      lines: [
+        `合計支出：${yen(total)}`,
+        topCategory ? `一番多いカテゴリ：${topCategory[0]} ${yen(topCategory[1])}` : "カテゴリ別支出：該当なし",
+        `該当履歴：${filtered.length}件`,
+      ],
+      records: filtered.slice(0, 8).map((b) => `${b.spend_date} ${b.category} ${yen(b.amount)} ${b.memo || ""}`),
+    };
+  }
+
+  if (/予定|カレンダー|明日|来週|今日|昨日|通院|支払い予定/.test(q)) {
+    const selected = range ? events.filter((e) => inRange(e.event_date, range.start, range.end)) : events.slice(0, 12);
+    const dueTodos = range ? todos.filter((t) => inRange(t.due_date, range.start, range.end)) : todos.filter((t) => !t.done).slice(0, 8);
+    return {
+      title: `${range ? `${range.start}〜${range.end}` : "近日"}の予定`,
+      page: "calendar" as PageKey,
+      lines: [
+        `予定：${selected.length}件`,
+        `関連TODO：${dueTodos.length}件`,
+        selected.length ? `次の予定：${selected[0].event_date} ${selected[0].title}` : "予定はまだ見つかっていません",
+      ],
+      records: [
+        ...selected.slice(0, 8).map((e) => `${e.event_date} ${e.start_time || ""} ${e.title}`),
+        ...dueTodos.slice(0, 5).map((t) => `TODO期限 ${t.due_date || "未設定"} ${t.title}`),
+      ],
+    };
+  }
+
+  if (/未完了|TODO|先送り/.test(q)) {
+    const meta = readTodoBoostMeta();
+    const selected = todos.filter((t) => !t.done);
+    const sorted = /先送り/.test(q)
+      ? [...selected].sort((a, b) => getTodoBoost(meta, b.id).postpone - getTodoBoost(meta, a.id).postpone)
+      : selected;
+    return {
+      title: /先送り/.test(q) ? "先送りが多いTODO" : "未完了TODO",
+      page: "todos" as PageKey,
+      lines: [`未完了：${selected.length}件`, `表示：${Math.min(sorted.length, 10)}件`],
+      records: sorted.slice(0, 10).map((t) => `${t.due_date || "期限なし"} ${t.title} / 先送り${getTodoBoost(meta, t.id).postpone}回`),
+    };
+  }
+
+  if (/メール|未返信|請求書|予約|添付/.test(q)) {
+    const selected = mail.filter((m) =>
+      /未返信/.test(q)
+        ? /確認|返信|お願いします|要返信/.test(`${m.subject} ${m.body}`)
+        : /請求書/.test(q)
+          ? /請求|領収|ご利用金額|支払い|¥|円/.test(`${m.subject} ${m.body}`)
+          : /添付/.test(q)
+            ? m.hasAttachment
+            : true,
+    );
+    return {
+      title: "メール検索結果",
+      page: "mail" as PageKey,
+      lines: [`該当メール：${selected.length}件`, "メール本文は手動取り込み分だけ検索対象です"],
+      records: selected.slice(0, 8).map((m) => `${m.receivedAt} ${m.from}「${m.subject}」`),
+    };
+  }
+
+  if (/手紙|Future|開封/.test(q)) {
+    const openable = futures.filter((f) => f.openDate <= todayKey());
+    return {
+      title: "Future Letter確認",
+      page: "futureletter" as PageKey,
+      lines: [`開封できる手紙：${openable.length}通`, `保存済み：${futures.length}通`],
+      records: openable.slice(0, 8).map((f) => `${f.openDate} ${f.title}`),
+    };
+  }
+
+  if (/メモ|依頼文|Project|バグ|日記|Diary|レビュー/.test(q)) {
+    const rangeMemos = range ? memos.filter((m) => inRange(getCreatedDateKey(m.created_at), range.start, range.end)) : memos;
+    const rangeDiaries = range ? diaries.filter((d) => inRange(d.entry_date, range.start, range.end)) : diaries;
+    return {
+      title: "メモ・日記・モジュール検索",
+      page: "memos" as PageKey,
+      lines: [
+        `メモ：${rangeMemos.length}件`,
+        `Diary：${rangeDiaries.length}件`,
+        `Life Modules：${modules.length}件`,
+      ],
+      records: [
+        ...rangeMemos.slice(0, 4).map((m) => `メモ ${m.content.slice(0, 60)}`),
+        ...rangeDiaries.slice(0, 4).map((d) => `Diary ${d.entry_date} ${d.title || ""}`),
+        ...modules.slice(0, 4).map(({ config, item }) => `${config.title} ${item.title}`),
+      ],
+    };
+  }
+
+  return null;
+}
+
+async function saveSearchAnswerToMemo(answer: ReturnType<typeof buildLifeSearchAnswer>) {
+  if (!answer) return;
+  const content = `【AI検索メモ】${answer.title}\n\n${answer.lines.join("\n")}\n\n${answer.records.join("\n")}`;
+  const { error } = await supabase.from("memos").insert({ content });
+  if (error) return alert("メモ保存に失敗: " + error.message);
+  setGuideDraft("AI検索結果をメモに保存したよ。");
+}
+
+function CalendarQuickAddPanel({
+  refreshSnapshot,
+  setSelected,
+  setCursorMonth,
+}: {
+  refreshSnapshot: (reason?: string) => Promise<void>;
+  setSelected: (date: string) => void;
+  setCursorMonth: (month: string) => void;
+}) {
+  const [input, setInput] = useState("");
+  const [draft, setDraft] = useState<CalendarDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  function makeDraft(text = input) {
+    const next = parseQuickCalendarText(text);
+    setDraft(next);
+    setSelected(next.event_date);
+    setCursorMonth(next.event_date.slice(0, 7));
+  }
+
+  async function saveDraft() {
+    if (!draft) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("calendar_events").insert({
+        title: draft.title,
+        event_date: draft.event_date,
+        note: [
+          draft.note,
+          draft.location ? `場所: ${draft.location}` : "",
+          draft.notify !== "なし" ? `通知: ${draft.notify}` : "",
+        ].filter(Boolean).join("\n"),
+      });
+      if (error) return alert("予定の保存に失敗: " + error.message);
+      setGuideDraft("予定をカレンダーに追加したよ。");
+      setInput("");
+      setDraft(null);
+      await refreshSnapshot("カレンダー同期中...");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const quicks = [
+    ["明日14時に歯医者", "通院"],
+    ["今日18時に買い物", "買い物"],
+    ["毎週金曜20時に家計簿チェック", "ルーティン"],
+    ["3日後にスマホ代支払い", "支払い"],
+  ];
+
+  return (
+    <GlassCard className="calendar-command-upgrade">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-black tracking-[0.3em] text-sky-100/55">CALENDAR COMMAND</p>
+          <h2 className="mt-2 text-2xl font-black">手軽に予定追加</h2>
+          <p className="mt-2 text-sm leading-6 text-white/60">
+            自然な日本語から日付・時間・カテゴリ候補を作って、確認してから保存するよ。
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {quicks.map(([text, label]) => (
+            <button key={text} onClick={() => { setInput(text); makeDraft(text); }} className="rounded-full bg-white/10 px-3 py-2 text-xs font-black">
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_140px]">
+        <Field
+          placeholder="例: 明日14時に歯医者 / 来週月曜9時に仕事 / 3日後にスマホ代支払い"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+        />
+        <button onClick={() => makeDraft()} className="rounded-2xl bg-white px-4 py-3 font-black text-black">
+          予定候補
+        </button>
+      </div>
+
+      {draft && (
+        <div className="mt-4 rounded-3xl border border-sky-200/16 bg-sky-300/10 p-4">
+          <div className="grid gap-3 md:grid-cols-3">
+            <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+            <DateField label="日付" value={draft.event_date} onChange={(e) => setDraft({ ...draft, event_date: e.target.value })} />
+            <Field placeholder="開始時間 例 14:00" value={draft.start_time} onChange={(e) => setDraft({ ...draft, start_time: e.target.value, allDay: !e.target.value })} />
+            <select value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white">
+              {["仕事", "外出", "通院", "支払い", "締切", "ルーティン", "買い物", "休息", "アプリ開発", "その他"].map((c) => <option key={c}>{c}</option>)}
+            </select>
+            <Field placeholder="場所 任意" value={draft.location} onChange={(e) => setDraft({ ...draft, location: e.target.value })} />
+            <select value={draft.notify} onChange={(e) => setDraft({ ...draft, notify: e.target.value })} className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white">
+              {["なし", "10分前", "30分前", "1時間前", "前日"].map((c) => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <TextArea className="mt-3 min-h-24" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} />
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-3 py-2 text-xs font-black ${draft.confidence === "保存OK" ? "bg-emerald-300/20 text-emerald-50" : "bg-amber-300/20 text-amber-50"}`}>
+              {draft.confidence}
+            </span>
+            {draft.confidence === "確認が必要" && <span className="text-sm text-white/55">曖昧な表現があるので、日付や時間を確認してから保存してね。</span>}
+            <button onClick={saveDraft} disabled={saving} className="ml-auto rounded-2xl bg-sky-200 px-4 py-3 font-black text-black disabled:opacity-50">
+              {saving ? "保存中" : "確認して保存"}
+            </button>
+          </div>
+        </div>
+      )}
+    </GlassCard>
+  );
+}
+
+function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
+  const [settings, setSettings] = useState(readMailSettings);
+  const [items, setItems] = useState<MailItem[]>(() => readMailItems());
+  const [drafts, setDrafts] = useState<MailDraftItem[]>(() => readMailDrafts());
+  const [selected, setSelected] = useState<MailItem | null>(null);
+  const [paste, setPaste] = useState("");
+  const [compose, setCompose] = useState({ to: "", cc: "", bcc: "", subject: "", body: "" });
+  const [confirmSend, setConfirmSend] = useState(false);
+  const [query, setQuery] = useState("");
+
+  function persistItems(next: MailItem[]) {
+    setItems(next);
+    writeMailItems(next);
+  }
+
+  function persistDrafts(next: MailDraftItem[]) {
+    setDrafts(next);
+    writeMailDrafts(next);
+  }
+
+  function saveSettings() {
+    const next = { ...settings, lastSync: new Date().toLocaleString(), provider: settings.provider || "Gmail準備中" };
+    setSettings(next);
+    writeMailSettings(next);
+    setGuideDraft("メール連携設定を保存したよ。OAuthトークンはlocalStorageに保存しない設計メモとして扱っているよ。");
+  }
+
+  function importMail() {
+    if (!paste.trim()) return;
+    const lines = paste.split("\n").map((line) => line.trim()).filter(Boolean);
+    const subjectLine = lines.find((line) => /^件名[:：]/.test(line));
+    const fromLine = lines.find((line) => /^差出人[:：]|^From[:：]/i.test(line));
+    const subject = subjectLine?.replace(/^件名[:：]/, "") || lines[0]?.slice(0, 80) || "手動取り込みメール";
+    const from = fromLine?.replace(/^差出人[:：]|^From[:：]/i, "") || "手動取り込み";
+    const item: MailItem = {
+      id: `mail-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      from,
+      to: settings.email || "",
+      subject,
+      body: paste,
+      receivedAt: todayKey(),
+      unread: true,
+      important: /重要|至急|確認|返信|請求|予約/.test(paste),
+      hasAttachment: /添付|attachment/i.test(paste),
+      source: "manual",
+    };
+    persistItems([item, ...items]);
+    setPaste("");
+  }
+
+  function saveDraft(status: MailDraftItem["status"] = "draft") {
+    const now = new Date().toISOString();
+    const item: MailDraftItem = {
+      id: `mail-draft-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      ...compose,
+      createdAt: now,
+      updatedAt: now,
+      status,
+    };
+    persistDrafts([item, ...drafts]);
+    setGuideDraft(status === "sent-log" ? "送信ログとして保存したよ。実送信はメールアプリで確認してね。" : "メール下書きを保存したよ。");
+  }
+
+  function openMailto() {
+    const params = new URLSearchParams();
+    if (compose.cc) params.set("cc", compose.cc);
+    if (compose.bcc) params.set("bcc", compose.bcc);
+    params.set("subject", compose.subject);
+    params.set("body", compose.body);
+    window.location.href = `mailto:${compose.to}?${params.toString()}`;
+    saveDraft("sent-log");
+    setConfirmSend(false);
+  }
+
+  async function mailToMemo(item: MailItem) {
+    const { error } = await supabase.from("memos").insert({ content: `【メールメモ】${item.subject}\nFrom: ${item.from}\n\n${item.body}` });
+    if (error) return alert("メモ保存に失敗: " + error.message);
+    await refreshSnapshot("メールをメモへ保存中...");
+  }
+
+  async function mailToTodo(item: MailItem) {
+    const { error } = await supabase.from("todos").insert({
+      title: `メール対応: ${item.subject}`.slice(0, 100),
+      priority: item.important ? "high" : "normal",
+      due_date: todayKey(),
+      done: false,
+    });
+    if (error) return alert("TODO化に失敗: " + error.message);
+    await refreshSnapshot("メールをTODOへ保存中...");
+  }
+
+  function mailToCalendarCandidate(item: MailItem) {
+    const draft = parseQuickCalendarText(item.body);
+    addLifeModuleItem("paymentcalendar", {
+      title: `メール予定候補: ${item.subject}`,
+      note: `${draft.event_date} ${draft.start_time} ${draft.title}\n\n元メール:\n${item.body}`,
+      category: "メール予定候補",
+      status: "確認",
+    });
+    setGuideDraft("メールから予定候補を作ったよ。カレンダー保存前に確認できるようPayment Calendarへ送ったよ。");
+    setPage("paymentcalendar");
+  }
+
+  async function mailToBudgetCandidate(item: MailItem) {
+    const amount = extractYenAmount(item.body);
+    if (!amount) return alert("金額が見つからなかったよ。本文に¥や円の金額があると候補化できるよ。");
+    addLifeModuleItem("paymentcalendar", {
+      title: `メール支払い候補: ${item.subject}`,
+      note: `支出候補 ${yen(amount)}\nカテゴリ未設定\n\n元メール:\n${item.body}`,
+      category: "請求書候補",
+      status: "確認",
+      amount,
+    });
+    setGuideDraft("メールから家計簿候補を作ったよ。いきなり保存せず確認ボックスへ送ったよ。");
+    setPage("paymentcalendar");
+  }
+
+  const filtered = items.filter((item) =>
+    !query.trim() || `${item.from} ${item.subject} ${item.body}`.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div className="mail-command-page space-y-4">
+      <GlassCard className="mail-command-hero">
+        <p className="text-xs font-black tracking-[0.32em] text-sky-100/55">LIFE COMMAND OS / MAIL</p>
+        <h2 className="mt-2 text-4xl font-black">Mail / メール</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-white/62">
+          Gmail / Outlook連携を見据えたメールMVP。今は安全優先で、手動取り込み・下書き・mailto送信・TODO/予定/家計簿候補化に対応しているよ。
+        </p>
+      </GlassCard>
+
+      <div className="grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
+        <GlassCard>
+          <h3 className="text-xl font-black">メール連携設定</h3>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <select value={settings.provider} onChange={(e) => setSettings({ ...settings, provider: e.target.value })} className="rounded-2xl border border-white/15 bg-slate-950/90 p-4 text-white">
+              <option>未連携</option>
+              <option>Gmail準備中</option>
+              <option>Outlook準備中</option>
+            </select>
+            <Field placeholder="接続中メールアドレス表示用" value={settings.email} onChange={(e) => setSettings({ ...settings, email: e.target.value })} />
+            <Field type="number" placeholder="同期件数" value={settings.syncLimit} onChange={(e) => setSettings({ ...settings, syncLimit: Number(e.target.value) })} />
+            <button onClick={saveSettings} className="rounded-2xl bg-white px-4 py-3 font-black text-black">設定を保存</button>
+          </div>
+          <p className="mt-3 rounded-2xl bg-amber-300/10 p-3 text-sm leading-6 text-amber-50/80">
+            Gmail本格連携にはGoogle OAuth、サーバー側トークン保管、必要最小限スコープが必要です。トークンをlocalStorageへ平文保存しない設計にしているよ。
+          </p>
+          <p className="mt-2 text-xs text-white/45">最終同期: {settings.lastSync || "未同期"}</p>
+        </GlassCard>
+
+        <GlassCard>
+          <h3 className="text-xl font-black">メール本文を手動取り込み</h3>
+          <TextArea className="mt-4 min-h-40" placeholder="メール本文を貼り付け。件名: / 差出人: を含めると自動で読み取るよ。" value={paste} onChange={(e) => setPaste(e.target.value)} />
+          <button onClick={importMail} className="mt-3 rounded-2xl bg-sky-200 px-4 py-3 font-black text-black">受信箱に追加</button>
+        </GlassCard>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <GlassCard>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 className="text-xl font-black">受信箱</h3>
+            <Field placeholder="メール検索" value={query} onChange={(e) => setQuery(e.target.value)} />
+          </div>
+          <div className="mt-4 space-y-2">
+            {filtered.map((item) => (
+              <button key={item.id} onClick={() => { setSelected(item); persistItems(items.map((m) => m.id === item.id ? { ...m, unread: false } : m)); }} className="w-full rounded-2xl border border-white/10 bg-black/24 p-3 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="min-w-0 truncate font-black">{item.subject}</p>
+                  <span className="shrink-0 text-xs text-white/45">{item.receivedAt}</span>
+                </div>
+                <p className="mt-1 text-xs text-sky-100/55">From: {item.from} {item.unread ? " / 未読" : ""} {item.hasAttachment ? " / 添付あり" : ""}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-white/55">{item.body}</p>
+              </button>
+            ))}
+            {!filtered.length && <Empty text="メールはまだないよ。手動取り込みから始められるよ。" />}
+          </div>
+        </GlassCard>
+
+        <GlassCard>
+          <h3 className="text-xl font-black">本文 / 返信 / 連携</h3>
+          {selected ? (
+            <div className="mt-4 space-y-3">
+              <p className="text-xs text-white/45">{selected.receivedAt} / From: {selected.from}</p>
+              <h4 className="text-2xl font-black">{selected.subject}</h4>
+              <p className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-3xl bg-black/25 p-4 text-sm leading-7 text-white/72">{selected.body}</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <button onClick={() => mailToMemo(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">メモ</button>
+                <button onClick={() => mailToTodo(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">TODO</button>
+                <button onClick={() => mailToCalendarCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">予定候補</button>
+                <button onClick={() => mailToBudgetCandidate(selected)} className="rounded-xl bg-white/10 px-2 py-2 text-xs font-black">家計簿候補</button>
+              </div>
+              <button onClick={() => setCompose({ ...compose, to: selected.from, subject: `Re: ${selected.subject}`, body: `\n\n--- 元メール ---\n${selected.body}` })} className="w-full rounded-2xl bg-sky-200 px-4 py-3 font-black text-black">返信下書きを作る</button>
+            </div>
+          ) : (
+            <Empty text="メールを選ぶと本文を表示するよ。" />
+          )}
+        </GlassCard>
+      </div>
+
+      <GlassCard>
+        <h3 className="text-xl font-black">新規メール / 下書き</h3>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <Field placeholder="宛先" value={compose.to} onChange={(e) => setCompose({ ...compose, to: e.target.value })} />
+          <Field placeholder="CC" value={compose.cc} onChange={(e) => setCompose({ ...compose, cc: e.target.value })} />
+          <Field placeholder="BCC" value={compose.bcc} onChange={(e) => setCompose({ ...compose, bcc: e.target.value })} />
+        </div>
+        <Field className="mt-3" placeholder="件名" value={compose.subject} onChange={(e) => setCompose({ ...compose, subject: e.target.value })} />
+        <TextArea className="mt-3 min-h-48" placeholder="本文" value={compose.body} onChange={(e) => setCompose({ ...compose, body: e.target.value })} />
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <button onClick={() => saveDraft("draft")} className="rounded-2xl bg-white/10 px-4 py-3 font-black">下書き保存</button>
+          <button onClick={() => setConfirmSend(true)} className="rounded-2xl bg-white px-4 py-3 font-black text-black">送信確認</button>
+          <a className="rounded-2xl bg-sky-300/10 px-4 py-3 text-center font-black" href={`mailto:${compose.to}`}>メールアプリを開く</a>
+        </div>
+        {drafts.length > 0 && <p className="mt-3 text-sm text-white/50">保存済み下書き/送信ログ: {drafts.length}件</p>}
+      </GlassCard>
+
+      {confirmSend && (
+        <Modal title="送信前確認" onClose={() => setConfirmSend(false)}>
+          <div className="space-y-3">
+            <p className="text-sm text-white/70">この内容でメールアプリを開きますか？実際の送信は外部メールアプリ側で最終確認できます。</p>
+            <div className="rounded-2xl bg-black/25 p-3 text-sm">
+              <p>宛先: {compose.to}</p>
+              <p>件名: {compose.subject}</p>
+            </div>
+            <button onClick={openMailto} className="w-full rounded-2xl bg-white px-4 py-3 font-black text-black">メールアプリで確認して送信</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+
 type GlobalSearchResult = {
   page: PageKey;
   title: string;
@@ -10804,6 +11488,16 @@ function collectGlobalSearchResults(
         kind: "record",
       });
   });
+  readMailItems().forEach((mail) => {
+    if (hit(`${mail.from} ${mail.to} ${mail.subject} ${mail.body} メール 未返信 請求 予定`))
+      rows.push({
+        page: "mail",
+        title: `メール ${mail.from}`,
+        body: `${mail.subject} ${mail.body}`,
+        id: `mail-${mail.id}`,
+        kind: "record",
+      });
+  });
   lifeModuleConfigs.forEach((config) => {
     readLifeModuleItems(config.key).forEach((item) => {
       if (hit(`${config.title} ${config.description} ${item.title} ${item.note} ${item.category} ${item.status}`))
@@ -10836,6 +11530,10 @@ function GlobalSearchModal({
     () => collectGlobalSearchResults(snapshot, deferredQuery),
     [snapshot, deferredQuery],
   );
+  const smartAnswer = useMemo(
+    () => buildLifeSearchAnswer(snapshot, deferredQuery),
+    [snapshot, deferredQuery],
+  );
 
   async function runAISearch() {
     if (!query.trim()) return;
@@ -10856,6 +11554,7 @@ function GlobalSearchModal({
               routines: snapshot?.routines?.length || 0,
               events: snapshot?.events?.length || 0,
               mindInbox: readMindInboxItems().length,
+              mail: readMailItems().length,
             },
           }),
         }),
@@ -10891,7 +11590,7 @@ function GlobalSearchModal({
         <div className="grid gap-2 sm:grid-cols-[1fr_150px]">
           <Field
             autoFocus
-            placeholder="例: 先週のカフェ代 / 明日の予定 / 夜ルーティン / Mind Inbox"
+            placeholder="予定、支出、メモ、TODO、メールをまとめて検索できます"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -10903,6 +11602,41 @@ function GlobalSearchModal({
             {aiSearching ? "AI検索中" : "AI検索"}
           </button>
         </div>
+        <div className="flex flex-wrap gap-2">
+          {["先週の支出", "明日の予定", "未完了TODO", "カフェ代", "開封できる手紙", "未整理メモ", "今月のサブスク", "未返信メール"].map((chip) => (
+            <button key={chip} onClick={() => setQuery(chip)} className="rounded-full bg-white/10 px-3 py-2 text-xs font-black text-white/75">
+              {chip}
+            </button>
+          ))}
+        </div>
+        {smartAnswer && (
+          <div className="global-search-answer-card rounded-3xl border border-sky-200/16 bg-sky-300/10 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-black tracking-[0.24em] text-sky-100/55">AI SEARCH ANSWER</p>
+                <h3 className="mt-1 text-xl font-black">{smartAnswer.title}</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => jump(smartAnswer.page, `page-${smartAnswer.page}`)} className="rounded-2xl bg-white px-3 py-2 text-sm font-black text-black">
+                  ページで見る
+                </button>
+                <button onClick={() => saveSearchAnswerToMemo(smartAnswer)} className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-black">
+                  メモ保存
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {smartAnswer.lines.map((line) => (
+                <p key={line} className="rounded-2xl bg-black/20 p-3 text-sm font-black text-sky-50/88">{line}</p>
+              ))}
+            </div>
+            {smartAnswer.records.length > 0 && (
+              <div className="mt-3 space-y-1 rounded-2xl bg-black/20 p-3 text-sm text-white/68">
+                {smartAnswer.records.map((line) => <p key={line}>・{line}</p>)}
+              </div>
+            )}
+          </div>
+        )}
         {aiHint && (
           <p className="rounded-2xl border border-sky-200/16 bg-sky-300/10 p-3 text-sm leading-6 text-sky-50/82">
             {aiHint}
@@ -10910,7 +11644,7 @@ function GlobalSearchModal({
         )}
         {!query.trim() && (
           <p className="text-sm text-white/55">
-            メモ、TODO、家計簿、予定、Routine、持ち物、Mind Inboxをまとめて探せるよ。関連ページへそのまま移動できる。
+メモ、TODO、家計簿、予定、Routine、メール、Mind Inboxをまとめて探せるよ。先週の支出や明日の予定も通常検索で回答カード化するよ。
           </p>
         )}
         <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
