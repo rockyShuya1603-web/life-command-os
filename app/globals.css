@@ -1143,709 +1143,265 @@ body {
 }
 
 
-/* ===== Future Harbor Liquid Glass v14 =====
-   理想画像に寄せるためのホーム専用HUD/カード配置。既存データ取得ロジックは page.tsx 側で維持。 */
-.future-os {
-  background: #03122a !important;
+/* ===== Life Command OS 夏祭りテーマ強化 v4 ===== */
+.matsuri-os {
+  --festival-bg: linear-gradient(180deg, rgba(17,4,14,.68), rgba(14,4,16,.78));
+  --festival-surface: linear-gradient(180deg, rgba(46, 9, 40, 0.72), rgba(18, 6, 25, 0.86));
+  --festival-surface-soft: linear-gradient(180deg, rgba(52, 14, 42, 0.58), rgba(20, 8, 28, 0.74));
+  --festival-border: rgba(246, 201, 121, 0.32);
+  --festival-border-strong: rgba(246, 201, 121, 0.52);
+  --festival-text-soft: rgba(255, 245, 230, 0.78);
+  --festival-shadow: 0 22px 64px rgba(9, 0, 18, 0.48), inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 1px rgba(246,201,121,.06);
 }
-.future-os > .relative.z-10 {
-  max-width: 1760px !important;
-  gap: 22px !important;
-  padding-top: 26px !important;
-}
-.future-os .matsuri-sidebar {
-  width: 214px !important;
-  border-radius: 30px !important;
-  background:
-    linear-gradient(180deg, rgba(7, 18, 42, .52), rgba(3, 10, 28, .72)),
-    radial-gradient(circle at 30% 0%, rgba(125, 211, 252, .18), transparent 34%) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.20),
-    0 30px 90px rgba(0,0,0,.34),
-    0 0 0 1px rgba(147,197,253,.14) !important;
-  backdrop-filter: blur(30px) saturate(1.32) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(1.32) !important;
-}
-.future-os .matsuri-sidebar button {
-  min-height: 48px;
-  border-radius: 18px !important;
-  color: rgba(239, 248, 255, .82) !important;
-  background: rgba(3, 14, 34, .18) !important;
-}
-.future-os .matsuri-sidebar button.bg-gradient-to-r,
-.future-os aside button[class*="bg-gradient-to-r"] {
-  color: #eaf7ff !important;
-  background:
-    linear-gradient(135deg, rgba(96,165,250,.50), rgba(56,189,248,.28)) !important;
-  box-shadow: 0 0 28px rgba(96,165,250,.42), inset 0 1px 0 rgba(255,255,255,.30) !important;
-}
-.future-top-hud {
-  position: relative;
-  z-index: 20;
-  display: grid;
-  grid-template-columns: minmax(190px, 320px) minmax(320px, 590px) 1fr;
-  align-items: center;
-  gap: 18px;
-  margin-bottom: 18px;
-}
-.future-brand-lockup {
-  padding-left: 8px;
-  text-shadow: 0 10px 30px rgba(0,0,0,.34);
-}
-.future-search-pill {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 58px;
-  border: 1px solid rgba(186, 224, 255, .26);
-  border-radius: 999px;
-  background: rgba(4, 14, 34, .38);
-  padding: 0 24px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 24px 70px rgba(0,0,0,.22);
-  backdrop-filter: blur(26px) saturate(1.35);
-  -webkit-backdrop-filter: blur(26px) saturate(1.35);
-}
-.future-hud-widgets {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 10px;
-}
-.future-hud-card,
-.future-icon-button,
-.future-avatar,
-.future-mode-row {
-  border: 1px solid rgba(186, 224, 255, .20);
-  background: rgba(4, 16, 38, .40);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 18px 54px rgba(0,0,0,.20);
-  backdrop-filter: blur(24px) saturate(1.25);
-  -webkit-backdrop-filter: blur(24px) saturate(1.25);
-}
-.future-hud-card {
-  min-height: 58px;
-  border-radius: 18px;
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: rgba(239,248,255,.92);
-}
-.future-hud-card b { display: block; font-size: 14px; line-height: 1.1; }
-.future-hud-card small { display: block; margin-top: 4px; font-size: 11px; color: rgba(191,219,254,.72); }
-.future-clock-chip { min-width: 132px; justify-content: center; text-align: center; }
-.future-clock-chip b { font-size: 20px; }
-.future-icon-button,
-.future-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  color: #eaf7ff;
-}
-.future-avatar {
-  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,.48), rgba(96,165,250,.34) 35%, rgba(3,10,28,.64));
-}
-.future-mode-row {
-  grid-column: 2 / -1;
-  justify-self: end;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-radius: 999px;
-  padding: 7px 10px 7px 14px;
-  color: rgba(226,244,255,.72);
-  font-size: 12px;
-  font-weight: 800;
-}
-.future-system-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: #34d399;
-  box-shadow: 0 0 18px rgba(52,211,153,.95);
-}
-.future-mode-row select {
-  max-width: 154px;
-  border: 1px solid rgba(186,224,255,.14) !important;
-  border-radius: 999px !important;
-  background: rgba(2,8,23,.55) !important;
-  padding: 8px 10px !important;
-  color: rgba(239,248,255,.86) !important;
-}
-.future-main-stage {
-  overflow: visible !important;
-}
-.future-home-v14 {
-  padding-bottom: 6px;
-}
-.future-hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(360px, .78fr);
-  gap: 18px;
-}
-.future-middle-grid {
-  display: grid;
-  grid-template-columns: .58fr 1.1fr .9fr;
-  gap: 18px;
-}
-.future-bottom-grid {
-  display: grid;
-  grid-template-columns: .92fr .92fr 1fr;
-  gap: 18px;
-}
-.future-home-v14 .matsuri-card,
-.future-home-v14 .matsuri-welcome,
-.future-home-v14 .matsuri-quest,
-.future-home-v14 .future-panel-card,
-.future-home-v14 .future-progress-card {
-  border-color: rgba(186, 224, 255, .24) !important;
-  background:
-    radial-gradient(circle at 18% 0%, rgba(180, 215, 255, .16), transparent 36%),
-    linear-gradient(135deg, rgba(13, 42, 84, .42), rgba(3, 16, 42, .52)) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.22),
-    0 30px 96px rgba(0,0,0,.30),
-    0 0 0 1px rgba(125,211,252,.06) !important;
-  backdrop-filter: blur(28px) saturate(1.38) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(1.38) !important;
-}
-.future-welcome-card {
-  min-height: 318px !important;
-}
-.future-kicker {
-  font-size: 14px;
-  font-weight: 900;
-  letter-spacing: .24em;
-  color: rgba(226, 242, 255, .78);
-}
-.future-stat-tile {
-  min-height: 118px;
-}
-.future-progress-card {
-  min-height: 318px;
-}
-.future-progress-row,
-.future-list-row {
-  border-color: rgba(186,224,255,.12) !important;
-  background: rgba(4, 14, 34, .34) !important;
-  color: rgba(239,248,255,.86) !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-}
-.future-list-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  border-radius: 16px;
-  padding: 10px 12px;
-  font-size: 14px;
-}
-.future-list-row span:first-child {
-  color: #7dd3fc;
-  text-shadow: 0 0 16px rgba(125,211,252,.7);
-}
-.future-panel-card {
-  min-height: 256px;
-}
-.future-motivation-card {
+
+.matsuri-os .matsuri-sidebar,
+.matsuri-os .matsuri-topbar,
+.matsuri-os .matsuri-stage,
+.matsuri-os .matsuri-card,
+.matsuri-os .matsuri-welcome,
+.matsuri-os .matsuri-quest,
+.matsuri-os nav.safe-bottom,
+.matsuri-os .rounded-3xl.border,
+.matsuri-os [class*="rounded-"][class*="border"] {
   position: relative;
   overflow: hidden;
+  isolation: isolate;
+  background: var(--festival-surface) !important;
+  border-color: var(--festival-border) !important;
+  box-shadow: var(--festival-shadow) !important;
 }
-.future-motivation-card::after {
+
+.matsuri-os .matsuri-sidebar::before,
+.matsuri-os .matsuri-topbar::before,
+.matsuri-os .matsuri-stage::before,
+.matsuri-os .matsuri-card::before,
+.matsuri-os .matsuri-welcome::before,
+.matsuri-os .matsuri-quest::before,
+.matsuri-os nav.safe-bottom::before {
   content: "";
   position: absolute;
-  inset: auto 24px 24px auto;
-  width: 120px;
-  height: 120px;
-  background: radial-gradient(circle, rgba(129,140,248,.35), transparent 68%);
-  filter: blur(12px);
+  inset: 0;
   pointer-events: none;
-}
-.future-footer-strip {
-  min-height: 46px;
-  border: 1px solid rgba(186,224,255,.18);
-  border-radius: 22px;
-  background: rgba(3, 12, 30, .44);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 0 18px;
-  color: rgba(226, 244, 255, .76);
-  font-size: 13px;
-  font-weight: 800;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 24px 70px rgba(0,0,0,.22);
-  backdrop-filter: blur(24px) saturate(1.24);
-  -webkit-backdrop-filter: blur(24px) saturate(1.24);
-}
-.future-home-v14 .matsuri-welcome::after { display: none !important; content: none !important; }
-.future-home-v14 textarea::placeholder { color: rgba(226,244,255,.38); }
-.future-home-v14 button:hover { border-color: rgba(186,224,255,.34) !important; }
-.future-os .safe-bottom {
-  background: rgba(2, 8, 23, .76) !important;
-  backdrop-filter: blur(24px) saturate(1.2) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(1.2) !important;
-}
-@media (max-width: 1279px) {
-  .future-top-hud {
-    grid-template-columns: 1fr;
-  }
-  .future-hud-widgets,
-  .future-mode-row {
-    justify-content: flex-start;
-    justify-self: stretch;
-    overflow-x: auto;
-  }
-  .future-hero-grid,
-  .future-middle-grid,
-  .future-bottom-grid {
-    grid-template-columns: 1fr;
-  }
-}
-@media (max-width: 767px) {
-  .future-os > .relative.z-10 {
-    padding-top: 12px !important;
-  }
-  .future-top-hud {
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-  .future-search-pill {
-    min-height: 52px;
-  }
-  .future-hud-widgets {
-    flex-wrap: wrap;
-  }
-  .future-hud-card {
-    flex: 1 1 150px;
-  }
-  .future-mode-row {
-    border-radius: 22px;
-    flex-wrap: wrap;
-  }
-  .future-mode-row select {
-    flex: 1 1 130px;
-  }
-  .future-welcome-card,
-  .future-progress-card,
-  .future-panel-card {
-    min-height: auto !important;
-    border-radius: 24px !important;
-  }
-  .future-welcome-card h2 {
-    font-size: 34px !important;
-  }
-  .future-footer-strip {
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 12px;
-    text-align: center;
-  }
-}
-
-
-/* ===== Future Harbor Liquid Glass v15 =====
-   理想画像との差分調整：上部HUDを画面全体に固定、ホームカードを上へ、ガラスの白濁を弱める。 */
-.future-os > .relative.z-10 {
-  width: 100% !important;
-  max-width: none !important;
-  padding: 128px 32px 58px 30px !important;
-  gap: 22px !important;
-}
-.future-top-hud {
-  position: fixed !important;
-  top: 24px !important;
-  left: 44px !important;
-  right: 42px !important;
-  z-index: 80 !important;
-  margin: 0 !important;
-  display: grid !important;
-  grid-template-columns: minmax(220px, 320px) minmax(420px, 620px) minmax(420px, 1fr) !important;
-  align-items: center !important;
-  gap: 18px !important;
-  pointer-events: none;
-}
-.future-top-hud > * { pointer-events: auto; }
-.future-brand-lockup {
-  padding-left: 0 !important;
-  align-self: center;
-}
-.future-brand-lockup p:first-child {
-  font-size: 24px !important;
-  letter-spacing: -.03em;
-}
-.future-brand-lockup p:nth-child(2) {
-  margin-top: 7px !important;
-  color: rgba(225, 241, 255, .74) !important;
-}
-.future-search-pill {
-  width: min(100%, 600px) !important;
-  min-height: 56px !important;
-  justify-self: center !important;
-  background: rgba(2, 13, 32, .42) !important;
-  border-color: rgba(199, 230, 255, .24) !important;
-}
-.future-hud-widgets {
-  justify-self: end !important;
-  justify-content: flex-end !important;
-  min-width: 0;
-}
-.future-weather-chip { min-width: 150px; }
-.future-clock-chip { min-width: 142px !important; }
-.future-icon-button,
-.future-avatar {
-  width: 46px !important;
-  height: 46px !important;
-}
-.future-mode-row {
-  display: none !important;
-}
-.future-main-stage {
-  margin-top: 0 !important;
-}
-.future-home-v14 {
-  margin-top: 0 !important;
-}
-.future-hero-grid {
-  grid-template-columns: minmax(520px, 1.34fr) minmax(390px, .86fr) !important;
-  gap: 18px !important;
-}
-.future-middle-grid {
-  grid-template-columns: minmax(180px, .48fr) minmax(360px, 1.02fr) minmax(320px, .86fr) !important;
-}
-.future-bottom-grid {
-  grid-template-columns: minmax(300px, .9fr) minmax(300px, .9fr) minmax(320px, 1fr) !important;
-}
-.future-home-v14 .matsuri-card,
-.future-home-v14 .matsuri-welcome,
-.future-home-v14 .matsuri-quest,
-.future-home-v14 .future-panel-card,
-.future-home-v14 .future-progress-card {
+  z-index: -1;
   background:
-    radial-gradient(circle at 22% 4%, rgba(180, 215, 255, .08), transparent 36%),
-    linear-gradient(135deg, rgba(12, 35, 76, .34), rgba(3, 14, 35, .50)) !important;
-  border-color: rgba(188, 224, 255, .30) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.18),
-    0 28px 88px rgba(0,0,0,.28),
-    0 0 0 1px rgba(96,165,250,.08) !important;
-  backdrop-filter: blur(18px) saturate(1.28) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(1.28) !important;
-}
-.future-welcome-card,
-.future-progress-card {
-  min-height: 292px !important;
-}
-.future-welcome-card {
-  display: flex;
-  align-items: center;
-}
-.future-welcome-card h2 {
-  font-size: clamp(38px, 3.1vw, 54px) !important;
-}
-.future-welcome-card p:nth-of-type(2) {
-  max-width: 800px;
-  line-height: 1.9 !important;
-}
-.future-stat-tile {
-  min-height: 96px !important;
-  padding: 14px 12px !important;
-}
-.future-progress-card {
-  padding: 26px 30px !important;
-}
-.future-progress-row {
-  min-height: 55px !important;
-}
-.future-panel-card {
-  min-height: 240px !important;
-}
-.future-footer-strip {
-  min-height: 44px !important;
-  margin-top: 2px;
-  background: rgba(3, 12, 30, .50) !important;
-}
-.future-bg-layer {
-  filter: saturate(1.18) contrast(1.05) brightness(.70) !important;
-  transform: scale(1.01) !important;
-}
-.future-vignette {
-  background:
-    radial-gradient(circle at 42% 28%, rgba(147,197,253,.06), transparent 34%),
-    linear-gradient(90deg, rgba(2,6,23,.76), rgba(2,8,23,.16) 28%, rgba(2,8,23,.18) 70%, rgba(2,6,23,.72)),
-    linear-gradient(180deg, rgba(2,6,23,.24), rgba(2,6,23,.16) 48%, rgba(2,6,23,.68)) !important;
-}
-.future-os .matsuri-sidebar {
-  width: 214px !important;
-  max-height: calc(100vh - 158px) !important;
-  top: 24px !important;
-}
-.future-os .matsuri-sidebar .mb-3 {
-  margin-bottom: 18px !important;
-}
-.future-os .matsuri-sidebar button {
-  min-height: 52px !important;
-  margin-bottom: 6px;
-}
-@media (min-width: 1280px) and (max-width: 1550px) {
-  .future-top-hud {
-    left: 42px !important;
-    right: 32px !important;
-    grid-template-columns: 300px minmax(360px, 520px) minmax(390px, 1fr) !important;
-    gap: 14px !important;
-  }
-  .future-hud-card { padding-left: 12px !important; padding-right: 12px !important; }
-  .future-hero-grid {
-    grid-template-columns: minmax(0, 1.25fr) minmax(370px, .82fr) !important;
-  }
-  .future-welcome-card h2 { font-size: 46px !important; }
-}
-@media (max-width: 1279px) {
-  .future-top-hud {
-    position: relative !important;
-    top: auto !important;
-    left: auto !important;
-    right: auto !important;
-    grid-template-columns: 1fr !important;
-    pointer-events: auto;
-  }
-  .future-os > .relative.z-10 {
-    padding-top: 14px !important;
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-  }
-  .future-mode-row { display: flex !important; }
-  .future-hero-grid,
-  .future-middle-grid,
-  .future-bottom-grid {
-    grid-template-columns: 1fr !important;
-  }
+    radial-gradient(circle at 12% 18%, rgba(255,176,87,.16), transparent 22%),
+    radial-gradient(circle at 84% 16%, rgba(255,83,117,.16), transparent 22%),
+    radial-gradient(circle at 50% 120%, rgba(255,196,113,.08), transparent 28%),
+    linear-gradient(180deg, rgba(255,255,255,.04), transparent 36%);
 }
 
-
-/* ===== Future Harbor v16: mobile dashboard + Home Mind Capture ===== */
-.future-mind-capture-home {
-  border-color: rgba(186, 224, 255, .30) !important;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(125, 211, 252, .16), transparent 34%),
-    radial-gradient(circle at 92% 12%, rgba(129, 140, 248, .14), transparent 28%),
-    linear-gradient(135deg, rgba(8, 28, 68, .48), rgba(2, 8, 28, .62)) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.18),
-    0 30px 90px rgba(0,0,0,.28),
-    0 0 0 1px rgba(96,165,250,.08) !important;
-  backdrop-filter: blur(22px) saturate(1.28) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(1.28) !important;
-}
-.future-mind-capture-home::after {
+.matsuri-os .matsuri-sidebar::after,
+.matsuri-os .matsuri-topbar::after,
+.matsuri-os .matsuri-stage::after,
+.matsuri-os .matsuri-card::after,
+.matsuri-os .matsuri-welcome::after,
+.matsuri-os .matsuri-quest::after,
+.matsuri-os nav.safe-bottom::after {
   content: "";
   position: absolute;
-  inset: auto 18px 18px auto;
-  width: 160px;
-  height: 160px;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: .18;
+  background-image:
+    radial-gradient(circle at 18% 26%, rgba(255,166,110,.65) 0 1px, transparent 2px),
+    radial-gradient(circle at 76% 18%, rgba(255,214,143,.55) 0 1px, transparent 2px),
+    radial-gradient(circle at 36% 74%, rgba(255,107,129,.35) 0 2px, transparent 3px),
+    linear-gradient(135deg, transparent 0 44%, rgba(255,255,255,.06) 45%, transparent 46%),
+    linear-gradient(0deg, rgba(246,201,121,.06), rgba(246,201,121,.02));
+  background-size: auto, auto, auto, 18px 18px, auto;
+}
+
+.matsuri-os .matsuri-bg-layer {
+  filter: saturate(1.2) contrast(1.05) brightness(.58) blur(.2px);
+  transform: scale(1.04);
+}
+
+.matsuri-os .matsuri-night-vignette {
+  background:
+    linear-gradient(180deg, rgba(4,1,12,.78), rgba(7,1,10,.26) 18%, rgba(4,1,12,.58) 100%),
+    radial-gradient(circle at 15% 12%, rgba(255,156,80,.12), transparent 18%),
+    radial-gradient(circle at 82% 18%, rgba(255,196,113,.10), transparent 16%),
+    radial-gradient(circle at 50% 0%, rgba(255,97,136,.08), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(3,0,9,.88), transparent 40%);
+}
+
+.matsuri-os .matsuri-sidebar .mb-3.rounded-3xl {
+  border: 1px solid rgba(246,201,121,.2);
+  background: linear-gradient(180deg, rgba(93,23,49,.50), rgba(28,8,38,.74));
+}
+
+.matsuri-os .matsuri-sidebar button {
+  border: 1px solid transparent;
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+  color: rgba(255,244,229,.84) !important;
+}
+.matsuri-os .matsuri-sidebar button:hover {
+  border-color: rgba(246,201,121,.18);
+  background: linear-gradient(180deg, rgba(255,185,104,.09), rgba(255,255,255,.03));
+}
+.matsuri-os .matsuri-sidebar button.bg-gradient-to-r {
+  color: #22070a !important;
+  box-shadow: 0 10px 28px rgba(255,139,61,.30), inset 0 1px 0 rgba(255,248,230,.42) !important;
+}
+
+.matsuri-os .matsuri-topbar h1,
+.matsuri-os .matsuri-stage h2,
+.matsuri-os .matsuri-stage h3,
+.matsuri-os .matsuri-card h3 {
+  color: #fff8ef;
+  text-shadow: 0 2px 18px rgba(255,116,72,.18);
+}
+
+.matsuri-os .matsuri-topbar p,
+.matsuri-os .matsuri-stage p,
+.matsuri-os .matsuri-card p,
+.matsuri-os .matsuri-stage span,
+.matsuri-os .matsuri-card span {
+  color: var(--festival-text-soft);
+}
+
+.matsuri-os .matsuri-welcome {
+  min-height: 270px;
+  background:
+    linear-gradient(90deg, rgba(16,6,20,.82) 0%, rgba(24,8,28,.72) 46%, rgba(24,8,28,.24) 100%),
+    linear-gradient(180deg, rgba(255,255,255,.04), transparent 30%) !important;
+}
+.matsuri-os .matsuri-welcome::before {
+  background:
+    linear-gradient(90deg, rgba(20,8,24,.86) 0%, rgba(25,8,30,.70) 48%, rgba(25,8,30,.16) 100%),
+    radial-gradient(circle at 22% 18%, rgba(255,177,83,.15), transparent 18%),
+    radial-gradient(circle at 82% 28%, rgba(255,92,125,.14), transparent 18%);
+}
+.matsuri-os .matsuri-welcome::after {
+  background:
+    radial-gradient(circle at 18% 24%, rgba(246,201,121,.55) 0 1px, transparent 2px),
+    radial-gradient(circle at 22% 28%, rgba(255,100,145,.35) 0 2px, transparent 3px),
+    radial-gradient(circle at 86% 18%, rgba(255,180,103,.3) 0 1px, transparent 3px),
+    linear-gradient(135deg, transparent 0 44%, rgba(246,201,121,.08) 45%, transparent 46%);
+  opacity: .22;
+}
+
+.matsuri-os .matsuri-mini {
+  background: linear-gradient(180deg, rgba(14,7,18,.62), rgba(34,10,28,.58)) !important;
+  border-color: rgba(246,201,121,.18) !important;
+}
+
+.matsuri-os .matsuri-row,
+.matsuri-os .matsuri-quest button,
+.matsuri-os .matsuri-card .rounded-2xl.bg-black\/25,
+.matsuri-os .matsuri-card .rounded-2xl.border {
+  border-color: rgba(246,201,121,.12) !important;
+  background: linear-gradient(180deg, rgba(11,6,18,.54), rgba(48,12,34,.32)) !important;
+}
+
+.matsuri-os .matsuri-row {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .72rem .84rem;
+  border-radius: 1rem;
+}
+
+.matsuri-os button,
+.matsuri-os select,
+.matsuri-os input,
+.matsuri-os textarea {
+  border-color: rgba(246,201,121,.22) !important;
+}
+
+.matsuri-os button.rounded-full,
+.matsuri-os button.rounded-2xl,
+.matsuri-os button.rounded-3xl {
+  background-image: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+}
+
+.matsuri-os select,
+.matsuri-os input,
+.matsuri-os textarea {
+  background: linear-gradient(180deg, rgba(15,7,18,.92), rgba(29,8,30,.86)) !important;
+  color: #fff8ef !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+
+.matsuri-os .text-sky-200,
+.matsuri-os .text-sky-100 {
+  color: #ffd58f !important;
+}
+
+.matsuri-os .bg-sky-400\/15,
+.matsuri-os .bg-cyan-300\/20,
+.matsuri-os .bg-emerald-400\/10,
+.matsuri-os .bg-orange-400\/15,
+.matsuri-os .bg-orange-400\/20 {
+  background-image: linear-gradient(90deg, rgba(255,156,79,.22), rgba(201,56,85,.18)) !important;
+}
+
+.matsuri-os .bg-gradient-to-r.from-orange-300.via-rose-300.to-fuchsia-300,
+.matsuri-os .bg-gradient-to-r.from-emerald-300.to-orange-300 {
+  background-image: linear-gradient(90deg, #f6c979, #ff9d4d 46%, #c93855 100%) !important;
+}
+
+.matsuri-os nav.safe-bottom {
+  left: 10px;
+  right: 10px;
+  bottom: calc(env(safe-area-inset-bottom) + 8px);
+  border-radius: 1.4rem;
+  border: 1px solid rgba(246,201,121,.22) !important;
+  background: linear-gradient(180deg, rgba(26,8,32,.90), rgba(15,6,20,.95)) !important;
+  box-shadow: 0 18px 36px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+
+.matsuri-os nav.safe-bottom button {
+  border-radius: 1rem;
+  padding-top: .75rem;
+  padding-bottom: .75rem;
+  color: rgba(255,244,229,.72);
+}
+
+.matsuri-os nav.safe-bottom button[class*="text-white"] {
+  background: linear-gradient(180deg, rgba(255,165,84,.16), rgba(201,56,85,.20));
+  color: #fff7e8 !important;
+  box-shadow: 0 0 0 1px rgba(246,201,121,.24), 0 8px 18px rgba(255,138,61,.22);
+}
+
+.matsuri-os .nav-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(246,201,121,.5), rgba(201,56,85,.48));
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(96, 165, 250, .20), transparent 64%);
-  filter: blur(14px);
-  pointer-events: none;
-}
-.future-home-v16 .future-mind-capture-home {
-  margin-top: 0;
-}
-.future-os .safe-bottom button {
-  min-height: 58px;
-}
-.future-os .safe-bottom img,
-.future-os .safe-bottom span {
-  filter: drop-shadow(0 0 12px rgba(125, 211, 252, .38));
 }
 
 @media (max-width: 767px) {
-  .future-os {
-    overflow-x: hidden !important;
+  .matsuri-os .relative.z-10.mx-auto.flex.max-w-\[1540px\] {
+    padding-left: .75rem;
+    padding-right: .75rem;
+    padding-top: .75rem;
+    padding-bottom: 7rem;
   }
-  .future-os > .relative.z-10 {
-    width: 100% !important;
-    max-width: 100% !important;
-    padding: 12px 10px calc(106px + env(safe-area-inset-bottom)) !important;
+  .matsuri-os .matsuri-topbar {
+    border-radius: 1.35rem !important;
+    padding: 1rem !important;
   }
-  .future-top-hud {
-    position: relative !important;
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-    margin-bottom: 12px !important;
+  .matsuri-os .matsuri-stage {
+    border-radius: 1.35rem !important;
+    padding: .8rem !important;
   }
-  .future-brand-block {
-    display: grid !important;
-    grid-template-columns: 48px minmax(0, 1fr) auto auto auto !important;
-    align-items: center !important;
-    gap: 10px !important;
+  .matsuri-os .matsuri-hero {
+    display: grid;
+    grid-template-columns: 1fr;
   }
-  .future-brand-orb {
-    width: 46px !important;
-    height: 46px !important;
+  .matsuri-os .matsuri-welcome {
+    min-height: auto;
+    padding: 1.2rem !important;
   }
-  .future-brand-block h1,
-  .future-brand-block p {
-    min-width: 0 !important;
+  .matsuri-os .matsuri-welcome h2 {
+    font-size: 2.1rem !important;
+    line-height: 1.2;
   }
-  .future-brand-block h1 {
-    font-size: 20px !important;
-    line-height: 1.1 !important;
-  }
-  .future-brand-block p {
-    font-size: 11px !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-  }
-  .future-search-pill {
-    order: 2;
-    min-height: 58px !important;
-    border-radius: 999px !important;
-    padding: 0 18px !important;
-  }
-  .future-hud-widgets {
-    order: 3;
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 10px !important;
-    overflow: visible !important;
-  }
-  .future-hud-card {
-    min-width: 0 !important;
-    flex: none !important;
-    padding: 12px !important;
-    border-radius: 22px !important;
-  }
-  .future-hud-card:nth-child(n+3) {
-    display: none !important;
-  }
-  .future-avatar {
-    width: 48px !important;
-    height: 48px !important;
-  }
-  .future-mode-row {
-    display: none !important;
-  }
-  .future-main-stage {
-    margin-top: 0 !important;
-  }
-  .future-home-v16 {
-    display: grid !important;
-    gap: 14px !important;
-    margin-top: 0 !important;
-  }
-  .future-hero-grid,
-  .future-middle-grid,
-  .future-bottom-grid {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 14px !important;
-  }
-  .future-welcome-card,
-  .future-progress-card,
-  .future-panel-card,
-  .future-mind-capture-home {
-    width: 100% !important;
-    min-width: 0 !important;
-    min-height: auto !important;
-    border-radius: 26px !important;
-    padding: 20px !important;
-  }
-  .future-welcome-card h2 {
-    font-size: clamp(31px, 9.8vw, 42px) !important;
-    letter-spacing: .01em !important;
-  }
-  .future-welcome-card p {
-    font-size: 14px !important;
-  }
-  .future-welcome-card .grid {
-    display: grid !important;
+  .matsuri-os .matsuri-welcome .grid.max-w-xl {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 10px !important;
   }
-  .future-stat-tile {
-    min-height: 112px !important;
-    padding: 14px 10px !important;
-  }
-  .future-stat-tile:nth-child(5) {
-    grid-column: span 2;
-  }
-  .future-progress-card h3,
-  .future-panel-card h3,
-  .future-mind-capture-home h3 {
-    font-size: 24px !important;
-  }
-  .future-progress-row,
-  .future-list-row,
-  .matsuri-row {
-    min-height: 48px !important;
-    white-space: normal !important;
-  }
-  .future-mind-capture-home textarea {
-    min-height: 180px !important;
-    font-size: 16px !important;
-  }
-  .future-mind-capture-home .grid.lg\:grid-cols-\[minmax\(0\,1\.1fr\)_minmax\(340px\,\.9fr\)\] {
-    grid-template-columns: 1fr !important;
-  }
-  .future-footer-strip {
-    display: none !important;
-  }
-  .future-bg-layer {
-    background-position: 46% center !important;
-    filter: saturate(1.08) contrast(1.05) brightness(.58) !important;
-  }
-  .future-vignette {
-    background:
-      linear-gradient(180deg, rgba(2, 6, 23, .24), rgba(2, 6, 23, .08) 25%, rgba(2, 6, 23, .66)),
-      linear-gradient(90deg, rgba(2, 6, 23, .62), rgba(2, 6, 23, .12) 52%, rgba(2, 6, 23, .46)) !important;
-  }
-  .future-os .safe-bottom {
-    inset-inline: 10px !important;
-    bottom: 10px !important;
-    border: 1px solid rgba(186,224,255,.22) !important;
-    border-radius: 28px !important;
-    background: rgba(3, 12, 30, .72) !important;
-    padding: 8px 8px calc(8px + env(safe-area-inset-bottom)) !important;
-    box-shadow: 0 -16px 50px rgba(0, 8, 28, .42), inset 0 1px 0 rgba(255,255,255,.15) !important;
-  }
-  .future-os .safe-bottom .mx-auto {
-    display: grid !important;
-    max-width: none !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    gap: 4px !important;
-    overflow: visible !important;
-    padding-bottom: 0 !important;
-  }
-  .future-os .safe-bottom button {
-    min-width: 0 !important;
-    border-radius: 20px !important;
-    padding: 8px 4px !important;
-    font-size: 11px !important;
-  }
-  .future-os .safe-bottom button img,
-  .future-os .safe-bottom button span:first-child {
-    width: 28px !important;
-    height: 28px !important;
-    font-size: 24px !important;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1023px) {
-  .future-hero-grid,
-  .future-middle-grid,
-  .future-bottom-grid {
-    grid-template-columns: 1fr 1fr !important;
-  }
-  .future-hero-grid > :first-child,
-  .future-mind-capture-home,
-  .future-bottom-grid > :last-child {
-    grid-column: 1 / -1 !important;
+  .matsuri-os .matsuri-quest,
+  .matsuri-os .matsuri-card {
+    padding: 1rem !important;
   }
 }
