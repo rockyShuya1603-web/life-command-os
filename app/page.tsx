@@ -1695,32 +1695,29 @@ export default function Home() {
       `}</style>
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/85 px-2 py-2 backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-6xl snap-x gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
-          {navItems.filter((item) => ["home", "memos", "todos", "routines", "budget"].includes(item.key)).map((item) => {
+          {navItems.filter((item) => ["home", "memos", "todos", "budget"].includes(item.key)).map((item) => {
             const active = page === item.key;
             return (
-              <div key={item.key} className="contents">
-                <button
-                  onClick={() => setPage(item.key)}
-                  className={`min-w-[76px] snap-start rounded-2xl px-2 py-2 text-center text-[11px] transition sm:min-w-0 sm:flex-1 ${active ? `bg-gradient-to-r ${theme.accent} font-black text-black` : "bg-white/[0.04] text-white/65 hover:bg-white/10"}`}
-                >
-                  <div className="flex justify-center">
-                    <NavIcon icon={item.icon} label={item.label} className="h-8 w-8" />
-                  </div>
-                  <div>{item.label}</div>
-                </button>
-                {item.key === "routines" && (
-                  <button
-                    onClick={() => setQuickAddOpen(true)}
-                    className="mobile-quick-add-nav min-w-[76px] snap-start rounded-2xl px-2 py-2 text-center text-[11px] font-black text-white sm:min-w-0 sm:flex-1"
-                    aria-label="Quick Add"
-                  >
-                    <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xl">＋</div>
-                    <div>追加</div>
-                  </button>
-                )}
-              </div>
+              <button
+                key={item.key}
+                onClick={() => setPage(item.key)}
+                className={`min-w-[76px] snap-start rounded-2xl px-2 py-2 text-center text-[11px] transition sm:min-w-0 sm:flex-1 ${active ? `bg-gradient-to-r ${theme.accent} font-black text-black` : "bg-white/[0.04] text-white/65 hover:bg-white/10"}`}
+              >
+                <div className="flex justify-center">
+                  <NavIcon icon={item.icon} label={item.label} className="h-8 w-8" />
+                </div>
+                <div>{item.label}</div>
+              </button>
             );
           })}
+          <button
+            onClick={() => setQuickAddOpen(true)}
+            className="mobile-quick-add-nav min-w-[76px] snap-start rounded-2xl px-2 py-2 text-center text-[11px] font-black text-white sm:min-w-0 sm:flex-1"
+            aria-label="Quick Add"
+          >
+            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xl">＋</div>
+            <div>追加</div>
+          </button>
         </div>
       </nav>
     </main>
@@ -8513,7 +8510,7 @@ function HomeMindCaptureCard({
                 Mind Capture
               </h3>
               <p className="mt-2 text-sm font-bold text-cyan-50/72">
-                思考を、予定・行動・記録へ変換する。
+                もっと手軽に。ひと言から予定・メモ・TODOへ分ける。
               </p>
             </div>
             <button
@@ -8531,7 +8528,7 @@ function HomeMindCaptureCard({
               setResult(null);
             }}
             className="mt-4 min-h-[150px] w-full resize-none rounded-[1.6rem] border border-cyan-200/18 bg-slate-950/42 px-4 py-4 text-base leading-7 text-white outline-none placeholder:text-cyan-50/38 focus:border-cyan-200/45 focus:bg-slate-950/55 sm:min-h-[170px]"
-            placeholder="頭の中にあることを、そのまま書いてください。予定、買い物、感情、アイデア、出費、全部まとめて大丈夫です。"
+            placeholder="例：明日の午前8:30にジムへ行く / 牛乳買う / メモ：UI直す。一言だけでも大丈夫。"
           />
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
             <button
@@ -8729,15 +8726,17 @@ function BrainDumpPanel({
   }
 
   async function sendInboxItem(item: MindInboxItem, category: MindCaptureCategory) {
+    const ai = inferUniversalAIAction(item.content);
+    const finalCategory = category === "inbox" ? ai.category : category;
     const message = await persistMindCaptureCandidate({
       id: item.id,
-      category,
-      content: item.content,
+      category: finalCategory,
+      content: finalCategory === "calendar" ? (normalizeCalendarTitleForAI(item.content) || item.content) : item.content,
       save: true,
-      confidence: category === "inbox" ? "保留推奨" : "確認が必要",
-      date: null,
-      amount: extractYenAmount(item.content),
-      note: "Mind Inboxから移動",
+      confidence: category === "inbox" ? ai.confidence : "確認が必要",
+      date: finalCategory === "calendar" ? ai.date : inferDateKey(item.content),
+      amount: ai.amount,
+      note: finalCategory === "calendar" && ai.time ? `開始: ${ai.time}\nMind Inboxから移動: ${item.content}` : "Mind Inboxから移動",
       source: "manual",
     });
     const next = readMindInboxItems().filter((row) => row.id !== item.id);
@@ -8821,7 +8820,7 @@ function BrainDumpPanel({
           </div>
           <TextArea
             className="mt-4 min-h-[280px] border-cyan-200/20 bg-slate-950/55 text-base leading-7"
-            placeholder="頭の中にあることを、そのまま書いてください。予定、買い物、感情、アイデア、出費、全部まとめて大丈夫です。"
+            placeholder="例：明日の午前8:30にジムへ行く / 牛乳買う / メモ：UI直す。一言だけでも大丈夫。"
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -8921,21 +8920,45 @@ function BrainDumpPanel({
             <h3 className="text-2xl font-black">Mind Inbox</h3>
             <p className="mt-1 text-sm text-white/55">曖昧なもの・まだ決めたくないものを保留しておく場所。</p>
           </div>
-          <button
-            onClick={() => {
-              localStorage.setItem("lifeMindInboxItems", "[]");
-              setInboxItems([]);
-              showBanner("Mind Inboxを空にしました");
-            }}
-            className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-black text-white"
-          >
-            Inboxを空にする
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={async () => {
+                for (const item of inboxItems.slice(0, 8)) {
+                  const ai = inferUniversalAIAction(item.content);
+                  if (ai.category !== "inbox") await sendInboxItem(item, "inbox");
+                }
+                showBanner("Mind InboxをAI整理しました");
+              }}
+              className="rounded-2xl bg-sky-200 px-4 py-2 text-sm font-black text-black"
+            >
+              AIで自動整理
+            </button>
+            <button
+              onClick={() => {
+                localStorage.setItem("lifeMindInboxItems", "[]");
+                setInboxItems([]);
+                showBanner("Mind Inboxを空にしました");
+              }}
+              className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-black text-white"
+            >
+              Inboxを空にする
+            </button>
+          </div>
         </div>
         {inboxItems.length ? (
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {inboxItems.slice(0, 12).map((item) => (
               <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-sky-300/15 px-3 py-1 text-xs font-black text-sky-50">
+                    AI推定: {mindCaptureCategoryMeta[inferUniversalAIAction(item.content).category].short}
+                  </span>
+                  {inferUniversalAIAction(item.content).date && (
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/55">
+                      {inferUniversalAIAction(item.content).date} {inferUniversalAIAction(item.content).time}
+                    </span>
+                  )}
+                </div>
                 <TextArea
                   className="min-h-20 bg-black/25 p-3 text-sm"
                   value={item.content}
@@ -8943,6 +8966,9 @@ function BrainDumpPanel({
                 />
                 <p className="mt-2 text-xs text-white/40">{new Date(item.created_at).toLocaleString("ja-JP")}</p>
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <button onClick={() => sendInboxItem(item, "inbox")} className="rounded-xl bg-sky-200 px-2 py-2 text-xs font-black text-black">
+                    AI推定先へ
+                  </button>
                   {(["memo", "todo", "calendar", "budget", "shopping", "routine", "diary"] as MindCaptureCategory[]).map((category) => (
                     <button
                       key={category}
@@ -9116,10 +9142,10 @@ function inferMindCaptureCategory(text: string): MindCaptureCategory {
   if (/プロンプト|AIに伝える|依頼文|コピペ/.test(line)) return "promptvault";
   if (/未来の自分|手紙|年末|誕生日|目標日/.test(line)) return "futureletter";
   if (/タイムライン|今日やった|時系列|振り返り/.test(line)) return "timeline";
+  if (/今日|明日|明後日|来週|午前|午後|\d{1,2}[:時]\d{0,2}|予定|予約|集合|面談|病院|歯医者|美容院|会う|打ち合わせ|ジムへ|ジムに|仕事へ/.test(line)) return "calendar";
   if (/朝ルーティン|夜ルーティン|モーニング|ナイトルーティン|寝る前|起床後|習慣に|習慣化|毎朝|毎晩|毎日|ルーティン/.test(line)) return "routine";
   if (/筋トレ|ジム|ワークアウト|ランニング|有酸素|肩|胸|背中|脚|腕|腹筋|レッグ|ベンチ|プレス|スクワット/.test(line)) return "workout";
   if (/買う|買い|購入|欲しい|牛乳|卵|米|パン|日用品|スーパー|コンビニ|Amazon|アマゾン/.test(line)) return "shopping";
-  if (/今日|明日|明後日|来週|\d{1,2}時|予定|予約|集合|面談|病院|歯医者|美容院|会う|打ち合わせ/.test(line)) return "calendar";
   if (/する|やる|確認|連絡|提出|送る|作る|準備|掃除|洗濯|電話|メール|返す|調べる|修正|登録|必要|忘れ/.test(line)) return "todo";
   if (/疲|眠|寝不足|不安|焦|嬉|楽しい|つら|しんど|気分|感情|日記|集中できない/.test(line)) return "diary";
   if (/アイデア|思いついた|企画|ネタ|メモ|考え|構想/.test(line)) return "memo";
@@ -9260,10 +9286,13 @@ async function persistMindCaptureCandidate(candidate: MindCaptureCandidate) {
       return "TODOに保存しました";
     }
     if (candidate.category === "calendar") {
+      const parsed = parseQuickCalendarText(content);
+      const eventDate = candidate.date || parsed.event_date || todayKey();
+      const startNote = parsed.start_time ? `開始: ${parsed.start_time}` : "";
       const { error } = await supabase.from("calendar_events").insert({
-        title: content.slice(0, 100),
-        event_date: candidate.date || todayKey(),
-        note: candidate.note || `Mind Captureから追加: ${content}`,
+        title: (normalizeCalendarTitleForAI(content) || content).slice(0, 100),
+        event_date: eventDate,
+        note: candidate.note || [startNote, `Mind Captureから追加: ${content}`].filter(Boolean).join("\n"),
       });
       if (error) throw error;
       return "カレンダーに保存しました";
@@ -10585,6 +10614,86 @@ function AiNewsUpgradePanel({ result }: { result: string }) {
 }
 
 
+
+function inferUniversalAIAction(text: string, amountOverride = 0): {
+  category: MindCaptureCategory;
+  amount: number | null;
+  date: string | null;
+  time: string;
+  label: string;
+  confidence: MindCaptureConfidence;
+  calendarDraft?: CalendarDraft;
+} {
+  const source = String(text || "").trim();
+  const amount = amountOverride || extractYenAmount(source) || 0;
+  const calendarDraft = parseQuickCalendarText(source);
+  const hasExplicitDate =
+    /今日|明日|明後日|来週|再来週|今週|\d+日後|\d{1,2}月\d{1,2}日|20\d{2}[\/\-年]\d{1,2}[\/\-月]\d{1,2}/.test(source);
+  const hasTime = /午前|午後|朝|昼|夜|\d{1,2}[:時]\d{0,2}/.test(source);
+  const scheduleVerb = /行く|行きたい|行って|予約|予定|集合|会う|通院|出勤|仕事|会議|打ち合わせ|美容院|歯医者|病院|ジム/.test(source);
+  let category: MindCaptureCategory =
+    amount || /円|支払|請求|買った|使った|交通費|カフェ|コンビニ|サブスク|家賃/.test(source) ? "budget" :
+    (hasExplicitDate || hasTime) && scheduleVerb ? "calendar" :
+    /買う|購入|牛乳|卵|日用品|スーパー|ドラッグストア|Amazon|アマゾン/.test(source) ? "shopping" :
+    /やる|TODO|タスク|確認|提出|返信|修正|調べる|作る|準備/.test(source) ? "todo" :
+    /寝る前|起床後|朝ルーティン|夜ルーティン|ルーティン|習慣|毎日|毎週/.test(source) ? "routine" :
+    /疲|眠|不安|嬉|日記|気分|しんど/.test(source) ? "diary" :
+    "memo";
+
+  if ((hasExplicitDate || hasTime) && /ジム|病院|歯医者|美容院|仕事|会議|買い物|カフェ/.test(source)) category = "calendar";
+  if (category === "budget" && !amount && /明日|今日|予定|時|午前|午後/.test(source)) category = "calendar";
+
+  const confidence: MindCaptureConfidence =
+    category === "calendar" && (!calendarDraft.event_date || (!calendarDraft.start_time && /時|午前|午後/.test(source))) ? "確認が必要" :
+    category === "budget" && !amount ? "確認が必要" :
+    source.length <= 3 ? "確認が必要" :
+    "確定候補";
+
+  const labels: Record<MindCaptureCategory, string> = {
+    calendar: "予定",
+    todo: "TODO",
+    shopping: "買い物",
+    diary: "Diary",
+    budget: "家計簿",
+    workout: "ワークアウト",
+    routine: "Routine",
+    promptvault: "依頼文",
+    projectlab: "開発",
+    bugcenter: "バグ",
+    decisionlog: "決断",
+    futureletter: "手紙",
+    timeline: "Timeline",
+    memo: "メモ",
+    inbox: "Mind Inbox",
+  };
+
+  return {
+    category,
+    amount: amount || null,
+    date: category === "calendar" ? calendarDraft.event_date : inferDateKey(source),
+    time: calendarDraft.start_time,
+    label: labels[category],
+    confidence,
+    calendarDraft: category === "calendar" ? calendarDraft : undefined,
+  };
+}
+
+function splitQuickPhrases(text: string) {
+  return String(text || "")
+    .split(/\r?\n|[。！？!?]+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function normalizeCalendarTitleForAI(text: string) {
+  return String(text || "")
+    .replace(/(今日|明日|明後日|来週[日月火水木金土]?|午前|午後|朝|昼|夜|[0-9０-９]{1,2}[:時][0-9０-９]{0,2}|に|へ|行く|行きたい|予定|予約)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+
 function QuickAddFab({
   open,
   onOpen,
@@ -10600,21 +10709,10 @@ function QuickAddFab({
 }) {
   const [text, setText] = useState("");
   const [amount, setAmount] = useState(0);
-  const [quickMode, setQuickMode] = useState<"smart" | "money" | "plan" | "routine">("smart");
+  const [quickMode, setQuickMode] = useState<"smart" | "money" | "plan" | "routine" | "inbox">("smart");
   const [keepOpen, setKeepOpen] = useState(false);
 
-  const detected = useMemo(() => {
-    const source = text.trim();
-    const amountValue = amount || extractYenAmount(source) || 0;
-    const category: MindCaptureCategory =
-      amountValue || /円|支払|請求|買った|使った|交通費|カフェ|コンビニ/.test(source) ? "budget" :
-      /明日|今日|来週|予定|時|月\d{1,2}日|歯医者|病院|仕事|会議|予約|締切/.test(source) ? "calendar" :
-      /買う|購入|牛乳|卵|日用品|スーパー|コンビニ/.test(source) ? "shopping" :
-      /やる|TODO|タスク|確認|提出|返信|修正/.test(source) ? "todo" :
-      /寝る前|朝|夜|ルーティン|習慣|毎日|毎週/.test(source) ? "routine" :
-      "memo";
-    return { category, amountValue };
-  }, [text, amount]);
+  const detected = useMemo(() => inferUniversalAIAction(text, amount), [text, amount]);
 
   const categoryLabels: Record<string, string> = {
     memo: "メモ",
@@ -10625,25 +10723,40 @@ function QuickAddFab({
     routine: "Routine",
     inbox: "Mind Inbox",
     diary: "Diary",
+    workout: "ワークアウト",
+    promptvault: "依頼文",
+    projectlab: "開発",
+    bugcenter: "バグ",
+    decisionlog: "決断",
+    futureletter: "手紙",
+    timeline: "Timeline",
   };
 
   async function save(category: MindCaptureCategory = detected.category) {
     if (!text.trim() && category !== "budget") return;
-    const content = text || `かんたん支出 ${yen(amount)}`;
-    const message = await persistMindCaptureCandidate({
-      id: `quick-${Date.now()}`,
-      category,
-      content,
-      save: true,
-      confidence: detected.category === category ? "確定候補" : "確認が必要",
-      amount: detected.amountValue,
-      date: todayKey(),
-      source: "manual",
-    });
+    const phrases = splitQuickPhrases(text || `かんたん支出 ${yen(amount)}`);
+    const messages: string[] = [];
+    for (const phrase of phrases) {
+      const ai = inferUniversalAIAction(phrase, amount);
+      const finalCategory = category === detected.category ? ai.category : category;
+      const calendarNote = ai.calendarDraft?.start_time ? `開始: ${ai.calendarDraft.start_time}${ai.calendarDraft.end_time ? ` / 終了: ${ai.calendarDraft.end_time}` : ""}` : null;
+      const message = await persistMindCaptureCandidate({
+        id: `quick-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        category: finalCategory,
+        content: finalCategory === "calendar" ? (normalizeCalendarTitleForAI(phrase) || phrase) : phrase,
+        save: true,
+        confidence: ai.confidence,
+        amount: ai.amount,
+        date: finalCategory === "calendar" ? ai.date : inferDateKey(phrase),
+        note: calendarNote || `Quick Addから追加: ${phrase}`,
+        source: "manual",
+      });
+      messages.push(message);
+    }
     setText("");
     setAmount(0);
     await refreshSnapshot("Quick Add同期中...");
-    setGuideDraft(message);
+    setGuideDraft(messages.join(" / "));
     if (!keepOpen) onClose();
   }
 
@@ -10680,7 +10793,7 @@ function QuickAddFab({
             <div className="rounded-3xl border border-white/10 bg-white/8 p-3">
               <p className="text-xs font-black tracking-[0.25em] text-sky-100/55">RAINBOW QUICK ADD</p>
               <p className="mt-2 text-sm leading-6 text-white/65">
-                メモ・TODO・予定・家計簿・買い物・Routineをここから素早く追加。入力内容から候補カテゴリも自動推定するよ。
+                一言・二言でOK。予定・メモ・TODO・家計簿・買い物・Mind Inboxへ、AIっぽく自動で振り分けるよ。
               </p>
             </div>
 
@@ -10690,6 +10803,8 @@ function QuickAddFab({
                 ["money", "支出"],
                 ["plan", "予定"],
                 ["routine", "Routine"],
+                ["inbox", "Inbox"],
+                ["inbox", "Inbox"],
               ] as const).map(([mode, label]) => (
                 <button
                   key={mode}
@@ -10703,7 +10818,7 @@ function QuickAddFab({
 
             <TextArea
               className="min-h-32 text-base"
-              placeholder="例：明日14時に歯医者。カフェで500円使った。牛乳を買う。Vercelエラーを確認する。"
+              placeholder="例：明日の午前8:30にジムへ行く / 牛乳買う / カフェで500円 / あとで考える"
               value={text}
               onChange={(e) => {
                 setText(e.target.value);
@@ -10716,7 +10831,7 @@ function QuickAddFab({
               <div className="rounded-3xl bg-black/20 p-3">
                 <p className="text-xs font-black text-white/45">推定カテゴリ</p>
                 <p className="mt-1 text-lg font-black">{categoryLabels[detected.category] || detected.category}</p>
-                <p className="mt-1 text-xs text-white/45">{detected.amountValue ? `金額候補 ${yen(detected.amountValue)}` : "金額候補なし"}</p>
+                <p className="mt-1 text-xs text-white/45">{detected.amount ? `金額候補 ${yen(detected.amount)}` : "金額候補なし"}</p>
               </div>
               <div className="rounded-3xl bg-black/20 p-3">
                 <p className="text-xs font-black text-white/45">金額クイック</p>
@@ -10749,6 +10864,7 @@ function QuickAddFab({
                 ["shopping", "買い物"],
                 ["calendar", "予定"],
                 ["routine", "Routine"],
+                ["inbox", "Inbox"],
                 ["diary", "Diary"],
                 ["inbox", "Mind Inbox"],
               ] as [MindCaptureCategory, string][]).map(([cat, label]) => (
@@ -11011,8 +11127,13 @@ function parseQuickCalendarText(input: string): CalendarDraft {
     eventDate = toDateKeyFromDate(base);
   }
 
-  const timeMatch = text.match(/(\d{1,2})[:時](\d{2})?/);
-  if (timeMatch) startTime = `${String(Number(timeMatch[1])).padStart(2, "0")}:${String(timeMatch[2] ? Number(timeMatch[2]) : 0).padStart(2, "0")}`;
+  const timeMatch = text.match(/(?:午前|午後)?\s*(\d{1,2})[:時](\d{2})?/);
+  if (timeMatch) {
+    let hour = Number(timeMatch[1]);
+    if (/午後/.test(text) && hour < 12) hour += 12;
+    if (/午前/.test(text) && hour === 12) hour = 0;
+    startTime = `${String(hour).padStart(2, "0")}:${String(timeMatch[2] ? Number(timeMatch[2]) : 0).padStart(2, "0")}`;
+  }
   if (/朝/.test(text) && !startTime) {
     startTime = "08:00";
     confidence = "確認が必要";
@@ -11030,6 +11151,8 @@ function parseQuickCalendarText(input: string): CalendarDraft {
     .replace(/\d+日後/g, "")
     .replace(/\d{1,2}月\d{1,2}日/g, "")
     .replace(/\d{1,2}[:時]\d{0,2}/g, "")
+    .replace(/^(の|に|へ)\s*/g, "")
+    .replace(/(に|へ)?行く|予定|予約/g, "")
     .replace(/に|の予定|予定|で/g, " ")
     .trim();
   if (!title) title = "予定";
@@ -11341,7 +11464,7 @@ function CalendarQuickAddPanel({
           <p className="text-xs font-black tracking-[0.3em] text-sky-100/55">CALENDAR COMMAND</p>
           <h2 className="mt-2 text-2xl font-black">手軽に予定追加</h2>
           <p className="mt-2 text-sm leading-6 text-white/60">
-            自然な日本語から日付・時間・場所・通知・繰り返し候補を作って、確認してから保存するよ。
+            自然な日本語から日付・時間・場所・通知をAIっぽく推定。『明日の午前8:30にジムへ行く』なら明日の予定に入るよ。
           </p>
         </div>
         <div className="calendar-mode-tabs flex flex-wrap gap-2">
