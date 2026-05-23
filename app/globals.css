@@ -3225,3 +3225,18 @@ main {
     min-height: 44px !important;
   }
 }
+
+
+/* ===== v27 Gmail live sync polish ===== */
+@media (max-width: 767px) {
+  .mail-command-page .rounded-3xl,
+  .mail-command-page .rounded-2xl {
+    max-width: 100% !important;
+  }
+
+  .mail-command-page input,
+  .mail-command-page textarea,
+  .mail-command-page select {
+    font-size: 16px !important;
+  }
+}

@@ -11128,26 +11128,8 @@ function MailOAuthBridgePanel() {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function checkGmailOAuth() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/mail/gmail/start", { method: "GET" });
-      const contentType = res.headers.get("content-type") || "";
-      if (res.redirected) {
-        window.location.href = res.url;
-        return;
-      }
-      if (contentType.includes("application/json")) {
-        const json = await res.json();
-        setStatus(json.message || "Gmail OAuthの状態を確認したよ。");
-        return;
-      }
-      setStatus("Gmail OAuth開始URLを確認したよ。環境変数が揃っていればGoogle認証へ進めます。");
-    } catch {
-      setStatus("Gmail OAuth確認に失敗しました。API routeか環境変数を確認してね。");
-    } finally {
-      setLoading(false);
-    }
+  function checkGmailOAuth() {
+    window.location.href = "/api/mail/gmail/start";
   }
 
   return (
@@ -11351,6 +11333,130 @@ function CalendarEventOpsPanel({
 }
 
 
+
+
+function GmailLivePanel({
+  items,
+  persistItems,
+  setCompose,
+}: {
+  items: MailItem[];
+  persistItems: (next: MailItem[]) => void;
+  setCompose: (next: { to: string; cc: string; bcc: string; subject: string; body: string }) => void;
+}) {
+  const [status, setStatus] = useState<{ connected?: boolean; email?: string; message?: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [q, setQ] = useState("");
+  const [remoteMessages, setRemoteMessages] = useState<MailItem[]>([]);
+
+  async function loadStatus() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/mail/gmail/status");
+      const json = await res.json();
+      setStatus(json);
+    } catch {
+      setStatus({ connected: false, message: "Gmail連携状態の確認に失敗しました。" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadMessages() {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ maxResults: "10" });
+      if (q.trim()) params.set("q", q.trim());
+      const res = await fetch(`/api/mail/gmail/messages?${params.toString()}`);
+      const json = await res.json();
+      if (!json.ok) {
+        alert(json.message || "Gmail取得に失敗しました。");
+        return;
+      }
+      const mapped: MailItem[] = (json.messages || []).map((m: any) => ({
+        id: `gmail-${m.id}`,
+        from: m.from || "Gmail",
+        to: m.to || "",
+        subject: m.subject || "(件名なし)",
+        body: m.body || m.snippet || "",
+        receivedAt: m.date || todayKey(),
+        unread: Boolean(m.unread),
+        important: Boolean(m.important),
+        hasAttachment: Boolean(m.hasAttachment),
+        source: "gmail-ready",
+      }));
+      setRemoteMessages(mapped);
+      const known = new Set(items.map((item) => item.id));
+      const merged = [...mapped.filter((item) => !known.has(item.id)), ...items].slice(0, 300);
+      persistItems(merged);
+      setGuideDraft(`Gmailから${mapped.length}件読み込んだよ。`);
+    } catch {
+      alert("Gmail受信箱の取得に失敗しました。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadStatus();
+  }, []);
+
+  return (
+    <div className="rounded-3xl border border-emerald-200/18 bg-emerald-300/10 p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-black tracking-[0.28em] text-emerald-100/60">GMAIL LIVE</p>
+          <h3 className="mt-1 text-xl font-black">Gmail本格連携</h3>
+          <p className="mt-2 text-sm leading-6 text-white/62">
+            OAuth token交換後、Gmail受信箱を安全にサーバー経由で取得するよ。送信も確認画面からだけ行う設計。
+          </p>
+          <p className="mt-2 text-sm font-black text-emerald-50/85">
+            状態: {status?.connected ? `連携済み ${status.email || ""}` : status?.message || "確認中"}
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <button onClick={() => (window.location.href = "/api/mail/gmail/start")} className="rounded-2xl bg-white px-4 py-3 font-black text-black">
+            Gmail再連携
+          </button>
+          <button onClick={loadStatus} disabled={loading} className="rounded-2xl bg-white/10 px-4 py-3 font-black disabled:opacity-50">
+            状態確認
+          </button>
+          <button onClick={loadMessages} disabled={loading || !status?.connected} className="rounded-2xl bg-emerald-200 px-4 py-3 font-black text-black disabled:opacity-50">
+            受信箱取得
+          </button>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_140px]">
+        <Field placeholder="Gmail検索 例: newer_than:7d invoice / from:xxx" value={q} onChange={(e) => setQ(e.target.value)} />
+        <button onClick={loadMessages} disabled={loading || !status?.connected} className="rounded-2xl bg-white/10 px-4 py-3 font-black disabled:opacity-50">
+          検索取得
+        </button>
+      </div>
+      {remoteMessages.length > 0 && (
+        <div className="mt-3 grid gap-2">
+          {remoteMessages.slice(0, 5).map((mail) => (
+            <div key={mail.id} className="rounded-2xl bg-black/22 p-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="truncate font-black">{mail.subject}</p>
+                  <p className="truncate text-xs text-white/45">From: {mail.from}</p>
+                </div>
+                <button
+                  onClick={() => setCompose({ to: mail.from, cc: "", bcc: "", subject: `Re: ${mail.subject}`, body: `\n\n--- 元メール ---\n${mail.body}` })}
+                  className="rounded-xl bg-white/10 px-3 py-2 text-xs font-black"
+                >
+                  返信下書き
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
   const [settings, setSettings] = useState(readMailSettings);
   const [items, setItems] = useState<MailItem[]>(() => readMailItems());
@@ -11425,6 +11531,22 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
     setConfirmSend(false);
   }
 
+  async function sendViaGmailApi() {
+    const res = await fetch("/api/mail/gmail/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(compose),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.ok) {
+      alert(json.message || "Gmail送信に失敗しました。");
+      return;
+    }
+    saveDraft("sent-log");
+    setConfirmSend(false);
+    setGuideDraft("Gmailからメールを送信したよ。");
+  }
+
   async function mailToMemo(item: MailItem) {
     const { error } = await supabase.from("memos").insert({ content: `【メールメモ】${item.subject}\nFrom: ${item.from}\n\n${item.body}` });
     if (error) return alert("メモ保存に失敗: " + error.message);
@@ -11483,6 +11605,7 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
       </GlassCard>
 
       <MailOAuthBridgePanel />
+      <GmailLivePanel items={items} persistItems={persistItems} setCompose={setCompose} />
 
       <div className="grid gap-4 xl:grid-cols-[.9fr_1.1fr]">
         <GlassCard>
@@ -11572,12 +11695,15 @@ function MailPanel({ snapshot, refreshSnapshot, setPage }: PanelProps) {
       {confirmSend && (
         <Modal title="送信前確認" onClose={() => setConfirmSend(false)}>
           <div className="space-y-3">
-            <p className="text-sm text-white/70">この内容でメールアプリを開きますか？実際の送信は外部メールアプリ側で最終確認できます。</p>
+            <p className="text-sm text-white/70">この内容で送信しますか？Gmail APIで送る場合も、この確認画面からだけ送信できる設計です。</p>
             <div className="rounded-2xl bg-black/25 p-3 text-sm">
               <p>宛先: {compose.to}</p>
               <p>件名: {compose.subject}</p>
             </div>
-            <button onClick={openMailto} className="w-full rounded-2xl bg-white px-4 py-3 font-black text-black">メールアプリで確認して送信</button>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button onClick={sendViaGmailApi} className="rounded-2xl bg-emerald-200 px-4 py-3 font-black text-black">Gmail APIで送信</button>
+              <button onClick={openMailto} className="rounded-2xl bg-white/10 px-4 py-3 font-black">メールアプリで確認</button>
+            </div>
           </div>
         </Modal>
       )}

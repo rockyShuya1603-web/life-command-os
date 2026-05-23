@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { exchangeCodeForTokens, getExpiresAt, getGmailProfile, saveTokenRow } from "../_lib/gmail-server";
 
 export const runtime = "nodejs";
 
@@ -9,28 +10,40 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({
-      ready: false,
+      ok: false,
       message: "Gmail OAuthがキャンセルまたは失敗しました。",
       error,
-    });
+    }, { status: 400 });
   }
 
   if (!code) {
     return NextResponse.json({
-      ready: false,
+      ok: false,
       message: "Gmail OAuth code がありません。",
-    });
+    }, { status: 400 });
   }
 
-  return NextResponse.json({
-    ready: false,
-    message:
-      "Gmail OAuth code を受け取りました。次の実装でサーバー側トークン交換と安全な保存を追加します。まだメール本文の自動取得は行いません。",
-    nextSteps: [
-      "GOOGLE_CLIENT_SECRET をサーバー側で使って token endpoint へ交換",
-      "refresh_token をlocalStorageではなく安全なDBへ保存",
-      "必要最小限のGmailスコープで受信/送信APIを呼ぶ",
-      "送信時は必ず確認画面を挟む",
-    ],
-  });
+  try {
+    const tokens = await exchangeCodeForTokens(code);
+    const profile = await getGmailProfile(tokens.access_token);
+
+    await saveTokenRow({
+      email: profile.emailAddress || null,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token || undefined,
+      scope: tokens.scope,
+      token_type: tokens.token_type,
+      expires_at: getExpiresAt(tokens.expires_in),
+    });
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "/";
+    return NextResponse.redirect(`${appUrl.replace(/\/$/, "")}/?gmail=connected`);
+  } catch (err) {
+    return NextResponse.json({
+      ok: false,
+      message: "Gmail token交換または保存に失敗しました。Supabaseテーブルと環境変数を確認してください。",
+      error: err instanceof Error ? err.message : String(err),
+      requiredTable: "gmail_oauth_tokens",
+    }, { status: 500 });
+  }
 }
