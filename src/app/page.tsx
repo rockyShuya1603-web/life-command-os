@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { ThemeKey, themes, getStoredTheme, saveTheme } from "@/lib/themes";
 
@@ -231,7 +231,7 @@ const navItems: { key: PageKey; label: string; icon: string }[] = [
   { key: "budget", label: "家計簿", icon: "👛" },
   { key: "shopping", label: "買い物", icon: "🛒" },
   { key: "belongings", label: "持ち物", icon: "🎒" },
-  { key: "routines", label: "習慣", icon: "🔁" },
+  { key: "routines", label: "Routine", icon: "🌅" },
   { key: "trash", label: "ゴミ", icon: "🗑️" },
   { key: "map", label: "地図", icon: "🗺️" },
   { key: "heatmap", label: "ヒートマップ", icon: "🔥" },
@@ -1527,7 +1527,7 @@ export default function Home() {
       `}</style>
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/85 px-2 py-2 backdrop-blur-xl lg:hidden">
         <div className="mx-auto flex max-w-6xl snap-x gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none]">
-          {navItems.filter((item) => ["home", "memos", "todos", "calendar", "settings"].includes(item.key)).map((item) => {
+          {navItems.filter((item) => ["home", "memos", "todos", "routines", "budget"].includes(item.key)).map((item) => {
             const active = page === item.key;
             return (
               <button
@@ -5506,7 +5506,7 @@ function BudgetPanel({
         )}
       </GlassCard>
       <GuideAiCard
-        themeKey="mirai"
+        themeKey={themeKey}
         message={`家計簿を見たよ。総資産は${yen(totalAssets)}。今月は収入${yen(monthIncome)}、支出${yen(monthExpense)}。${topCategory ? `支出で多いのは「${topCategory[0]}」の${yen(topCategory[1])}。` : "支出データはこれから育つよ。"}${topSource ? ` 収入源では「${topSource[0]}」が目立ってるね。` : ""}`}
       />
       <GlassCard>
@@ -6183,17 +6183,22 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
+  const [routineMode, setRoutineMode] = useState<"morning" | "night">("morning");
+  const [template, setTemplate] = useState("平日朝ルーティン");
+  const [conditionMood, setConditionMood] = useState("Good");
+  const [conditionNote, setConditionNote] = useState("");
   const [undoCheck, setUndoCheck] = useState<RoutineCheck | null>(null);
   const undoTimer = useRef<number | null>(null);
-  const [localRoutineChecks, setLocalRoutineChecks] = useState<RoutineCheck[]>(
-    [],
-  );
+  const [localRoutineChecks, setLocalRoutineChecks] = useState<RoutineCheck[]>([]);
+  const [routineActions, setRoutineActions] = useState<RoutineActionLog[]>(() => readRoutineActionLogs());
+  const [conditionLogs, setConditionLogs] = useState<RoutineConditionLog[]>(() => readRoutineConditionLogs());
   const routines = snapshot?.routines || [];
   const checks = useMemo(() => {
     const base = snapshot?.routineChecks || [];
     const seen = new Set(base.map((c) => c.id));
     return [...localRoutineChecks.filter((c) => !seen.has(c.id)), ...base];
   }, [snapshot?.routineChecks, localRoutineChecks]);
+
   useEffect(() => {
     if (snapshot?.routineChecks?.length)
       setLocalRoutineChecks((current) =>
@@ -6208,22 +6213,67 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
       );
   }, [snapshot?.routineChecks]);
 
+  const morningRoutines = useMemo(
+    () => routines.filter((r) => classifyRoutineSlot(r) === "morning"),
+    [routines],
+  );
+  const nightRoutines = useMemo(
+    () => routines.filter((r) => classifyRoutineSlot(r) === "night"),
+    [routines],
+  );
+  const activeRoutines = routineMode === "morning" ? morningRoutines : nightRoutines;
+  const today = todayKey();
+  const todayActions = routineActions.filter((a) => a.date === today);
+  const activeDone = activeRoutines.filter((r) => checks.some((c) => c.routine_id === r.id && c.check_date === today)).length;
+  const activeCompletion = activeRoutines.length ? Math.round((activeDone / activeRoutines.length) * 100) : 0;
+  const activeMinutes = activeRoutines.length * (routineMode === "morning" ? 4 : 5);
+  const streakDays = calcRoutineGroupStreak(activeRoutines, checks);
+
+  function saveActions(next: RoutineActionLog[]) {
+    setRoutineActions(next);
+    writeRoutineActionLogs(next);
+  }
+
+  function saveConditions(next: RoutineConditionLog[]) {
+    setConditionLogs(next);
+    writeRoutineConditionLogs(next);
+  }
+
   async function add() {
     if (!title.trim()) return;
+    const defaultTime = routineMode === "morning" ? "07:00" : "21:30";
+    const prefix = routineMode === "morning" ? "朝: " : "夜: ";
     const { error } = await supabase
       .from("routines")
       .insert({
-        title,
-        routine_time: time || null,
+        title: title.startsWith("朝:") || title.startsWith("夜:") ? title : `${prefix}${title}`,
+        routine_time: time || defaultTime,
         note: note || null,
         active: true,
       });
-    if (error) return alert("習慣追加失敗: " + error.message);
+    if (error) return alert("Routine追加失敗: " + error.message);
     setTitle("");
     setNote("");
     setGuideDraft(
-      `習慣「${title}」を追加したよ。ここにカードで表示されるから、積み上げが見えるね。`,
+      `Routine「${title}」を追加したよ。朝/夜で迷わず動けるようにしていこう。`,
     );
+    await refreshSnapshot();
+  }
+
+  async function addTemplate() {
+    const items = routineTemplateItems(template);
+    if (!items.length) return;
+    const mode = template.includes("夜") || template.includes("ナイト") ? "night" : "morning";
+    const rows = items.map((name, index) => ({
+      title: `${mode === "morning" ? "朝" : "夜"}: ${name}`,
+      routine_time: mode === "morning" ? `07:${String(index * 4).padStart(2, "0")}` : `21:${String(index * 5).padStart(2, "0")}`,
+      note: `${template}から追加`,
+      active: true,
+    }));
+    const { error } = await supabase.from("routines").insert(rows);
+    if (error) return alert("テンプレート追加失敗: " + error.message);
+    setRoutineMode(mode);
+    setGuideDraft(`${template}をRoutineに追加したよ。必要なものだけ残して育てられるよ。`);
     await refreshSnapshot();
   }
 
@@ -6248,7 +6298,7 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
     if (undoTimer.current) window.clearTimeout(undoTimer.current);
     undoTimer.current = window.setTimeout(() => setUndoCheck(null), 9000);
     setGuideDraft(
-      `「${r.title}」を今日の達成にしたよ。間違えて押したなら、下の取り消しボタンで戻せるよ。`,
+      `「${cleanRoutineTitle(r.title)}」を今日の達成にしたよ。画面には先に反映して、保存は裏側で同期するね。`,
     );
     const { data, error } = await supabase
       .from("routine_checks")
@@ -6263,7 +6313,61 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
       return alert("チェック失敗: " + error.message);
     }
     if (data) setUndoCheck(data as RoutineCheck);
-    void refreshSnapshot("習慣チェック同期中...");
+    window.setTimeout(() => void refreshSnapshot("Routineチェック同期中..."), 140);
+  }
+
+  function logRoutineAction(r: Routine, action: RoutineActionLog["action"]) {
+    const next = [
+      {
+        id: `routine-action-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        routine_id: r.id,
+        title: cleanRoutineTitle(r.title),
+        action,
+        date: todayKey(),
+        created_at: new Date().toISOString(),
+      },
+      ...routineActions,
+    ].slice(0, 300);
+    saveActions(next);
+    const label = action === "skip" ? "スキップ" : action === "tomorrow" ? "明日に回す" : "メモ追加";
+    setGuideDraft(`「${cleanRoutineTitle(r.title)}」を${label}で記録したよ。完璧じゃなくても流れは残せるよ。`);
+  }
+
+  function addRoutineMemo(r: Routine) {
+    const memo = prompt(`「${cleanRoutineTitle(r.title)}」のメモを追加`);
+    if (!memo?.trim()) return;
+    const next = [
+      {
+        id: `routine-action-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        routine_id: r.id,
+        title: cleanRoutineTitle(r.title),
+        action: "memo" as const,
+        memo: memo.trim(),
+        date: todayKey(),
+        created_at: new Date().toISOString(),
+      },
+      ...routineActions,
+    ].slice(0, 300);
+    saveActions(next);
+    setGuideDraft("Routineメモを残したよ。状態の揺れも記録できてる。");
+  }
+
+  function saveCondition() {
+    const next = [
+      {
+        id: `routine-condition-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        mode: routineMode,
+        date: todayKey(),
+        mood: conditionMood,
+        completion: activeCompletion,
+        note: conditionNote.trim(),
+        created_at: new Date().toISOString(),
+      },
+      ...conditionLogs,
+    ].slice(0, 180);
+    saveConditions(next);
+    setConditionNote("");
+    setGuideDraft(`${routineMode === "morning" ? "朝" : "夜"}Routineの状態を保存したよ。明日の自分が少し楽になるね。`);
   }
 
   async function undoLastCheck() {
@@ -6282,155 +6386,309 @@ function RoutinesPanel({ snapshot, refreshSnapshot }: PanelProps) {
     if (undoTimer.current) window.clearTimeout(undoTimer.current);
     setUndoCheck(null);
     setGuideDraft(
-      "直前の習慣チェックを取り消したよ。誤タップでも大丈夫。ちゃんと戻せるようにしたよ。",
+      "直前のRoutineチェックを取り消したよ。誤タップでも戻せるから大丈夫。",
     );
-    void refreshSnapshot("習慣チェック同期中...");
+    void refreshSnapshot("Routineチェック同期中...");
   }
 
   async function del(id: string) {
-    if (!confirm("この習慣を削除していい？")) return;
+    if (!confirm("このRoutineを削除していい？")) return;
     const { error } = await supabase.from("routines").delete().eq("id", id);
     if (error) return alert(error.message);
     await refreshSnapshot();
   }
 
+  const modeLabel = routineMode === "morning" ? "Morning Routine" : "Night Routine";
+  const modeSub =
+    routineMode === "morning"
+      ? "朝に迷わず1日を始めるための起動リスト。"
+      : "反省よりも、明日の自分を軽くするための終了リスト。";
+
   return (
-    <div className="space-y-4">
-      <GlassCard>
-        <h2 className="text-2xl font-black">習慣・ルーティン</h2>
-        <p className="mt-2 text-sm text-white/60">
-          追加した習慣はすぐ下にカード表示。連続日数は色付きカウントで見えるよ。誤タップ時は取り消しもできるよ。
-        </p>
+    <div className="routine-command-page space-y-4">
+      <GlassCard className="future-routine-hero">
+        <div className="grid gap-5 lg:grid-cols-[1fr_420px] lg:items-end">
+          <div>
+            <p className="text-xs font-black tracking-[0.34em] text-sky-100/65">LIFE COMMAND OS / ROUTINE</p>
+            <h2 className="mt-3 text-4xl font-black sm:text-5xl">Routine / ルーティン</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/66">
+              MorningとNightを分けて、毎日の開始と終了を迷わず進めるページ。完璧にやる前提ではなく、最低限版やスキップも記録できるようにしたよ。
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="future-routine-stat">
+              <span>完了率</span>
+              <b>{activeCompletion}%</b>
+            </div>
+            <div className="future-routine-stat">
+              <span>連続</span>
+              <b>{streakDays}日</b>
+            </div>
+            <div className="future-routine-stat">
+              <span>所要目安</span>
+              <b>{activeMinutes}分</b>
+            </div>
+          </div>
+        </div>
       </GlassCard>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button
+          onClick={() => setRoutineMode("morning")}
+          className={`rounded-3xl border px-5 py-4 text-left transition ${routineMode === "morning" ? "border-sky-200/35 bg-sky-300/15" : "border-white/10 bg-white/[0.05]"}`}
+        >
+          <p className="text-xl font-black">🌅 Morning Routine</p>
+          <p className="mt-1 text-sm text-white/58">朝の起動率を上げる</p>
+        </button>
+        <button
+          onClick={() => setRoutineMode("night")}
+          className={`rounded-3xl border px-5 py-4 text-left transition ${routineMode === "night" ? "border-indigo-200/35 bg-indigo-300/15" : "border-white/10 bg-white/[0.05]"}`}
+        >
+          <p className="text-xl font-black">🌙 Night Routine</p>
+          <p className="mt-1 text-sm text-white/58">明日の自分を軽くする</p>
+        </button>
+      </div>
+
+      <GlassCard>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-2xl font-black">{modeLabel}</h3>
+            <p className="mt-1 text-sm text-white/58">{modeSub}</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-[1fr_160px]">
+            <select
+              value={template}
+              onChange={(e) => setTemplate(e.target.value)}
+              className="rounded-2xl border border-white/15 bg-slate-950/90 px-4 py-3 text-sm font-black text-white"
+            >
+              {["平日朝ルーティン", "休日朝ルーティン", "仕事前ルーティン", "疲れている日の短縮版", "ナイトルーティン通常版", "ナイトルーティン最低限版"].map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
+            <button onClick={addTemplate} className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-black">
+              テンプレ追加
+            </button>
+          </div>
+        </div>
+      </GlassCard>
+
       <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
         <Field
-          placeholder="習慣名 例: 朝ラン"
+          placeholder={routineMode === "morning" ? "例: 水を飲む / 今日の予定確認" : "例: 明日の持ち物準備 / 家計簿をつける"}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
         <TimeField value={time} onChange={(e) => setTime(e.target.value)} />
       </div>
       <TextArea
-        placeholder="メモ 任意"
+        placeholder="メモ 任意。最低限版・疲れている日の扱いなども書けるよ。"
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
-      <PrimaryButton onClick={add}>習慣を追加</PrimaryButton>
+      <PrimaryButton onClick={add}>Routineを追加</PrimaryButton>
+
       {undoCheck && (
         <div className="sticky top-3 z-40 rounded-3xl border border-amber-200/30 bg-amber-400/20 p-4 shadow-2xl backdrop-blur-xl">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-black text-amber-100">
-                直前の習慣チェックを記録したよ
-              </p>
-              <p className="text-sm text-white/65">
-                間違えて押した場合は取り消せるよ。
-              </p>
+              <p className="font-black text-amber-100">直前のRoutineチェックを記録したよ</p>
+              <p className="text-sm text-white/65">間違えて押した場合は取り消せるよ。</p>
             </div>
-            <button
-              onClick={undoLastCheck}
-              className="rounded-2xl bg-amber-300 px-4 py-3 font-black text-black"
-            >
+            <button onClick={undoLastCheck} className="rounded-2xl bg-amber-300 px-4 py-3 font-black text-black">
               取り消す
             </button>
           </div>
         </div>
       )}
-      {!routines.length && (
-        <Empty text="まだ習慣がないよ。追加するとここにカードで表示されるよ。" />
+
+      {!activeRoutines.length && (
+        <Empty text={`${modeLabel} はまだ空だよ。テンプレ追加か、1つだけ手入力して始められるよ。`} />
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {routines.map((r) => {
+
+      <div className="routine-card-grid grid gap-3 lg:grid-cols-2">
+        {activeRoutines.map((r) => {
           const stats = calcRoutineStats(r.id, checks);
-          const streak = stats.currentStreak;
-          const streakLabel = stats.doneToday
-            ? "現在連続"
-            : stats.doneYesterday
-              ? "昨日まで継続中"
-              : "現在連続";
-          const statusLabel = stats.doneToday
-            ? "今日達成済み"
-            : stats.doneYesterday
-              ? "昨日の継続あり・今日は未達"
-              : "今日から再開できる";
+          const action = todayActions.find((a) => a.routine_id === r.id);
           return (
-            <GlassCard key={r.id} className="relative overflow-hidden">
-              <div
-                className={`absolute right-4 top-4 rounded-2xl px-4 py-2 text-center font-black text-black shadow-lg ${streak >= 30 ? "bg-fuchsia-300" : streak >= 14 ? "bg-cyan-300" : streak >= 7 ? "bg-emerald-300" : "bg-amber-300"}`}
-              >
-                <p className="text-[10px] leading-none opacity-70">
-                  {streakLabel}
-                </p>
-                <p className="mt-1 text-2xl leading-none">{streak}日</p>
+            <GlassCard key={r.id} className="future-routine-card relative overflow-hidden">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-sky-100/50">{classifyRoutineSlot(r) === "morning" ? "MORNING" : "NIGHT"}</p>
+                  <h3 className="mt-1 truncate pr-2 text-xl font-black">{cleanRoutineTitle(r.title)}</h3>
+                  <p className="mt-1 text-sm text-white/55">{r.routine_time ? `${r.routine_time}ごろ` : "時間なし"}</p>
+                </div>
+                <div className={`rounded-2xl px-4 py-2 text-center font-black text-black ${stats.doneToday ? "bg-emerald-300" : "bg-sky-200"}`}>
+                  <p className="text-[10px] leading-none opacity-70">連続</p>
+                  <p className="mt-1 text-2xl leading-none">{stats.currentStreak}日</p>
+                </div>
               </div>
-              <h3 className="pr-32 text-xl font-black">{r.title}</h3>
-              <p className="mt-1 text-sm text-white/55">
-                {r.routine_time ? `${r.routine_time}ごろ` : "時間なし"}
-              </p>
-              <div
-                className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black ${stats.doneToday ? "bg-emerald-400/20 text-emerald-100" : stats.doneYesterday ? "bg-cyan-400/20 text-cyan-100" : "bg-white/10 text-white/60"}`}
-              >
-                {statusLabel}
+
+              {r.note && <p className="mt-3 whitespace-pre-wrap text-sm text-white/65">{r.note}</p>}
+
+              <div className="mt-4 grid grid-cols-7 gap-1">
+                {stats.recent7.map((day) => (
+                  <div key={day.date} className={`rounded-xl py-2 text-center text-xs font-black ${day.done ? "bg-emerald-300 text-black" : "bg-white/10 text-white/35"}`}>
+                    {Number(day.date.slice(8, 10))}
+                  </div>
+                ))}
               </div>
-              {r.note && (
-                <p className="mt-3 whitespace-pre-wrap text-sm text-white/70">
-                  {r.note}
+
+              {action && (
+                <p className="mt-3 rounded-2xl bg-white/10 px-3 py-2 text-xs font-black text-white/62">
+                  今日の扱い: {action.action === "skip" ? "スキップ" : action.action === "tomorrow" ? "明日に回す" : `メモ ${action.memo || ""}`}
                 </p>
               )}
-              <div className="mt-4 grid grid-cols-2 gap-2 text-center">
-                <div className="rounded-2xl bg-black/25 p-3">
-                  <p className="text-[11px] font-black text-white/45">
-                    累計達成日数
-                  </p>
-                  <p className="mt-1 text-2xl font-black">
-                    {stats.totalDays}日
-                  </p>
-                </div>
-                <div className="rounded-2xl bg-black/25 p-3">
-                  <p className="text-[11px] font-black text-white/45">
-                    最終達成日
-                  </p>
-                  <p className="mt-1 text-lg font-black">
-                    {shortDateLabel(stats.lastDoneDate)}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 rounded-2xl bg-black/20 p-3">
-                <p className="mb-2 text-[11px] font-black text-white/45">
-                  直近7日
-                </p>
-                <div className="grid grid-cols-7 gap-1">
-                  {stats.recent7.map((day) => (
-                    <div
-                      key={day.date}
-                      className={`rounded-xl py-2 text-center text-xs font-black ${day.done ? "bg-emerald-300 text-black" : "bg-white/10 text-white/35"}`}
-                    >
-                      {Number(day.date.slice(8, 10))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => check(r)}
-                  className={`rounded-2xl px-4 py-3 font-black ${stats.doneToday ? "bg-emerald-400 text-black" : "bg-white text-black"}`}
-                >
-                  {stats.doneToday ? "今日達成済み" : "今日できた"}
+
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <button onClick={() => check(r)} className={`rounded-2xl px-4 py-3 text-sm font-black ${stats.doneToday ? "bg-emerald-400 text-black" : "bg-white text-black"}`}>
+                  {stats.doneToday ? "完了済み" : "完了"}
                 </button>
-                <button
-                  onClick={() => del(r.id)}
-                  className="rounded-2xl bg-red-500 px-4 py-3 font-black"
-                >
-                  削除
+                <button onClick={() => logRoutineAction(r, "skip")} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">
+                  スキップ
+                </button>
+                <button onClick={() => logRoutineAction(r, "tomorrow")} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">
+                  明日へ
+                </button>
+                <button onClick={() => addRoutineMemo(r)} className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black">
+                  メモ
                 </button>
               </div>
+              <button onClick={() => del(r.id)} className="mt-2 w-full rounded-2xl bg-red-500/80 px-4 py-3 text-sm font-black">
+                削除
+              </button>
             </GlassCard>
           );
         })}
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1fr_.9fr]">
+        <GlassCard>
+          <h3 className="text-xl font-black">コンディション記録</h3>
+          <p className="mt-1 text-sm text-white/55">Routine完了後に軽く状態を残せるよ。</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-[180px_1fr]">
+            <select
+              value={conditionMood}
+              onChange={(e) => setConditionMood(e.target.value)}
+              className="rounded-2xl border border-white/15 bg-slate-950/90 px-4 py-3 text-sm font-black text-white"
+            >
+              {["Good", "眠気あり", "疲労感あり", "不安少し", "集中できた", "最低限でOK"].map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
+            <Field
+              placeholder="今日の一言"
+              value={conditionNote}
+              onChange={(e) => setConditionNote(e.target.value)}
+            />
+          </div>
+          <button onClick={saveCondition} className="mt-3 w-full rounded-2xl bg-sky-200 px-4 py-3 font-black text-black">
+            状態を保存
+          </button>
+        </GlassCard>
+
+        <GlassCard>
+          <h3 className="text-xl font-black">Routine達成ログ</h3>
+          <div className="mt-4 space-y-2">
+            {conditionLogs.slice(0, 5).map((log) => (
+              <div key={log.id} className="rounded-2xl bg-black/25 p-3">
+                <p className="text-sm font-black">{log.date} / {log.mode === "morning" ? "朝" : "夜"} / {log.completion}%</p>
+                <p className="mt-1 text-xs text-white/55">{log.mood} {log.note}</p>
+              </div>
+            ))}
+            {!conditionLogs.length && <p className="text-sm text-white/55">まだ状態ログはないよ。</p>}
+          </div>
+        </GlassCard>
+      </div>
     </div>
   );
 }
+
+
+type RoutineActionLog = {
+  id: string;
+  routine_id: string;
+  title: string;
+  action: "skip" | "tomorrow" | "memo";
+  date: string;
+  memo?: string;
+  created_at: string;
+};
+
+type RoutineConditionLog = {
+  id: string;
+  mode: "morning" | "night";
+  date: string;
+  mood: string;
+  completion: number;
+  note: string;
+  created_at: string;
+};
+
+function readRoutineActionLogs(): RoutineActionLog[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("lifeRoutineActionLogs") || "[]") as RoutineActionLog[];
+  } catch {
+    return [];
+  }
+}
+
+function writeRoutineActionLogs(items: RoutineActionLog[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("lifeRoutineActionLogs", JSON.stringify(items.slice(0, 300)));
+}
+
+function readRoutineConditionLogs(): RoutineConditionLog[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("lifeRoutineConditionLogs") || "[]") as RoutineConditionLog[];
+  } catch {
+    return [];
+  }
+}
+
+function writeRoutineConditionLogs(items: RoutineConditionLog[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("lifeRoutineConditionLogs", JSON.stringify(items.slice(0, 180)));
+}
+
+function cleanRoutineTitle(title: string) {
+  return String(title || "").replace(/^(朝|夜)\s*[:：]\s*/, "").trim();
+}
+
+function classifyRoutineSlot(r: Routine): "morning" | "night" {
+  const text = `${r.title || ""} ${r.note || ""}`;
+  if (/夜|ナイト|寝る|風呂|明日|スマホを置く|就寝/.test(text)) return "night";
+  if (/朝|モーニング|起床|水を飲む|顔を洗う|朝食|外出準備/.test(text)) return "morning";
+  const hour = Number(String(r.routine_time || "").slice(0, 2));
+  if (Number.isFinite(hour) && hour >= 18) return "night";
+  return "morning";
+}
+
+function routineTemplateItems(name: string) {
+  const map: Record<string, string[]> = {
+    "平日朝ルーティン": ["起床", "水を飲む", "顔を洗う", "歯磨き", "朝食", "今日の予定確認", "Mind Captureで整理", "外出準備"],
+    "休日朝ルーティン": ["起床", "水を飲む", "部屋を少し整える", "朝食", "今日やりたいことを1つ決める", "Mind Captureで整理"],
+    "仕事前ルーティン": ["持ち物確認", "今日の予定確認", "最重要タスクを1つ決める", "外出準備"],
+    "疲れている日の短縮版": ["水を飲む", "歯磨き", "服を整える", "今日の最低限を1つ決める"],
+    "ナイトルーティン通常版": ["風呂", "歯磨き", "明日の予定確認", "明日の服/持ち物準備", "家計簿をつける", "今日のメモ整理", "Mind Captureで頭を空にする", "スマホを置く"],
+    "ナイトルーティン最低限版": ["歯磨き", "明日の予定確認", "持ち物だけ準備", "スマホを置く"],
+  };
+  return map[name] || [];
+}
+
+function calcRoutineGroupStreak(routines: Routine[], checks: RoutineCheck[]) {
+  if (!routines.length) return 0;
+  let streak = 0;
+  for (let i = 0; i < 60; i += 1) {
+    const date = dateMinus(todayKey(), i);
+    const doneCount = routines.filter((r) => checks.some((c) => c.routine_id === r.id && c.check_date === date)).length;
+    if (doneCount > 0) streak += 1;
+    else break;
+  }
+  return streak;
+}
+
 
 function TrashPanel({ snapshot, refreshSnapshot }: PanelProps) {
   const [trashType, setTrashType] = useState("");
@@ -7299,6 +7557,7 @@ type MindCaptureCategory =
   | "diary"
   | "budget"
   | "workout"
+  | "routine"
   | "memo"
   | "inbox";
 
@@ -7344,6 +7603,7 @@ const mindCaptureCategoryMeta: Record<
   diary: { label: "日記/感情ログ候補", short: "日記", emoji: "📖", tone: "border-fuchsia-300/25 bg-fuchsia-400/10" },
   budget: { label: "家計簿候補", short: "家計簿", emoji: "👛", tone: "border-amber-300/25 bg-amber-400/10" },
   workout: { label: "ワークアウトメモ候補", short: "ワークアウト", emoji: "💪", tone: "border-rose-300/25 bg-rose-400/10" },
+  routine: { label: "ルーティン候補", short: "Routine", emoji: "🌅", tone: "border-indigo-300/25 bg-indigo-400/10" },
   memo: { label: "通常メモ候補", short: "メモ", emoji: "📝", tone: "border-blue-300/25 bg-blue-400/10" },
   inbox: { label: "保留ボックス / Mind Inbox", short: "Mind Inbox", emoji: "📥", tone: "border-white/20 bg-white/10" },
 };
@@ -7990,6 +8250,7 @@ function isMindCaptureCategory(value: unknown): value is MindCaptureCategory {
 function inferMindCaptureCategory(text: string): MindCaptureCategory {
   const line = String(text || "");
   if (/(\d{1,3}(?:,\d{3})*|\d+)\s*円|使った|支払|支出|収入|予算|家計簿/.test(line)) return "budget";
+  if (/朝ルーティン|夜ルーティン|モーニング|ナイトルーティン|寝る前|起床後|習慣に|習慣化|毎朝|毎晩|毎日|ルーティン/.test(line)) return "routine";
   if (/筋トレ|ジム|ワークアウト|ランニング|有酸素|肩|胸|背中|脚|腕|腹筋|レッグ|ベンチ|プレス|スクワット/.test(line)) return "workout";
   if (/買う|買い|購入|欲しい|牛乳|卵|米|パン|日用品|スーパー|コンビニ|Amazon|アマゾン/.test(line)) return "shopping";
   if (/今日|明日|明後日|来週|\d{1,2}時|予定|予約|集合|面談|病院|歯医者|美容院|会う|打ち合わせ/.test(line)) return "calendar";
@@ -8040,6 +8301,7 @@ function buildMindCaptureState(text: string, candidates: MindCaptureCandidate[])
   if (/アイデア|思いついた|企画|ネタ|構想/.test(raw)) labels.push("アイデア量多め");
   if (candidates.some((c) => c.category === "calendar")) labels.push("予定整理が必要");
   if (candidates.some((c) => c.category === "budget")) labels.push("お金メモあり");
+  if (candidates.some((c) => c.category === "routine")) labels.push("ルーティン化候補あり");
   if (!labels.length) labels.push("整理しやすい状態");
   return {
     labels: labels.slice(0, 6),
@@ -8177,6 +8439,23 @@ async function persistMindCaptureCandidate(candidate: MindCaptureCandidate) {
       if (error) throw error;
       return "ワークアウトメモに保存しました";
     }
+    if (candidate.category === "routine") {
+      const lower = content.toLowerCase();
+      const routineTime =
+        /夜|寝る前|ナイト/.test(content)
+          ? "21:30"
+          : /朝|起床|モーニング/.test(content)
+            ? "07:00"
+            : null;
+      const { error } = await supabase.from("routines").insert({
+        title: content.slice(0, 80),
+        routine_time: routineTime,
+        note: `Mind Captureから追加: ${content}`,
+        active: true,
+      });
+      if (error) throw error;
+      return "Routineに保存しました";
+    }
     const { error } = await supabase.from("memos").insert({ content });
     if (error) throw error;
     return "メモに保存しました";
@@ -8274,7 +8553,18 @@ function collectGlobalSearchResults(
 ): GlobalSearchResult[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const hit = (text: string) => text.toLowerCase().includes(q);
+  const aliases: Record<string, string[]> = {
+    "先週のカフェ代": ["カフェ"],
+    "今日の支出": ["支出", "家計簿"],
+    "明日の予定": ["明日", "予定"],
+    "未完了の買い物": ["買い物"],
+    "最近書いたアイデア": ["アイデア", "メモ"],
+    "夜ルーティン": ["夜", "Routine", "ルーティン"],
+    "ルーティン達成率": ["Routine", "ルーティン"],
+    "Mind Inbox": ["Mind Inbox", "保留"],
+  };
+  const expanded = [q, ...(aliases[query.trim()] || [])].map((x) => x.toLowerCase());
+  const hit = (text: string) => expanded.some((word) => text.toLowerCase().includes(word));
   const rows: GlobalSearchResult[] = [];
   navItems.forEach((item) => {
     const iconLabel = item.icon.startsWith("/") || item.icon.startsWith("http") ? "🏠" : item.icon;
@@ -8387,7 +8677,27 @@ function collectGlobalSearchResults(
         kind: "record",
       });
   });
-  return rows.slice(0, 60);
+  (snapshot?.routines || []).forEach((r) => {
+    if (hit(`${r.title} ${r.note || ""} ${r.routine_time || ""} Routine ルーティン`))
+      rows.push({
+        page: "routines",
+        title: "Routine",
+        body: `${cleanRoutineTitle(r.title)} ${r.note || ""}`,
+        id: `routine-${r.id}`,
+        kind: "record",
+      });
+  });
+  readMindInboxItems().forEach((item) => {
+    if (hit(`${item.content} Mind Inbox 保留`))
+      rows.push({
+        page: "braindump",
+        title: "Mind Inbox",
+        body: item.content,
+        id: item.id,
+        kind: "record",
+      });
+  });
+  return rows.slice(0, 80);
 }
 
 function GlobalSearchModal({
@@ -8400,9 +8710,10 @@ function GlobalSearchModal({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
   const results = useMemo(
-    () => collectGlobalSearchResults(snapshot, query),
-    [snapshot, query],
+    () => collectGlobalSearchResults(snapshot, deferredQuery),
+    [snapshot, deferredQuery],
   );
   function jump(page: PageKey, id: string) {
     setPage(page);
@@ -8422,17 +8733,17 @@ function GlobalSearchModal({
     }, 250);
   }
   return (
-    <Modal title="全ページ検索" onClose={onClose}>
+    <Modal title="AI検索 / 全ページ検索" onClose={onClose}>
       <div className="space-y-3">
         <Field
           autoFocus
-          placeholder="探したい文字を入力..."
+          placeholder="例: 先週のカフェ代 / 明日の予定 / 夜ルーティン / Mind Inbox"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         {!query.trim() && (
           <p className="text-sm text-white/55">
-            ページ名と記録内容をまとめて探すよ。ページが増えてもここから一瞬で移動できる。
+            メモ、TODO、家計簿、予定、Routine、持ち物、Mind Inboxをまとめて探せるよ。関連ページへそのまま移動できる。
           </p>
         )}
         <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">

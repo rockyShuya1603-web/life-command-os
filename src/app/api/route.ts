@@ -121,7 +121,7 @@ export async function POST(req: Request) {
     const mode = String(body.mode || "");
     const aiModes = [
       "memoAI", "diaryAI", "guideAI", "budgetAI", "emotionAI", "weeklyReportAI", "todayAnalysisAI",
-      "memoSmartAI", "memoToTodosAI", "todoAI", "belongingsAI", "brainDumpAI", "mindCaptureAI", "navigationAI", "gentleNoticeAI", "emotionSpendingAI", "happinessBudgetAI", "mindMapAI", "lifeArchiveAI", "reversePlanAI", "futureSelfAI", "doingOrderAI", "imageScheduleAI", "imageToTodosAI", "receiptToBudgetAI", "aiNews",
+      "memoSmartAI", "memoToTodosAI", "todoAI", "belongingsAI", "brainDumpAI", "mindCaptureAI", "navigationAI", "gentleNoticeAI", "emotionSpendingAI", "happinessBudgetAI", "mindMapAI", "lifeArchiveAI", "reversePlanAI", "futureSelfAI", "doingOrderAI", "imageScheduleAI", "imageToTodosAI", "receiptToBudgetAI", "routineAI", "searchAI", "aiNews",
     ];
     if (!aiModes.includes(mode)) return NextResponse.json({ error: "mode が不正です" }, { status: 400 });
 
@@ -149,14 +149,15 @@ export async function POST(req: Request) {
 形式:
 {
   "candidates": [
-    {"category":"calendar|todo|shopping|diary|budget|workout|memo|inbox","content":"短い保存内容","confidence":"確定候補|確認が必要|保留推奨","date":"YYYY-MM-DD|null","amount":1234|null,"note":"補足|null"}
+    {"category":"calendar|todo|shopping|diary|budget|workout|routine|memo|inbox","content":"短い保存内容","confidence":"確定候補|確認が必要|保留推奨","date":"YYYY-MM-DD|null","amount":1234|null,"note":"補足|null"}
   ],
   "state": {"labels":["やること多め"],"summary":"診断ではなく整理補助としての短い要約"}
 }
 重要:
 - 自動保存はしない前提なので、保存しやすい粒度に分割する
 - 曖昧な内容はinboxまたは confidence=保留推奨
-- 予定、TODO、買い物、感情/日記、出費、筋トレ、通常メモ、Mind Inboxに分類
+- 予定、TODO、買い物、感情/日記、出費、筋トレ、ルーティン候補、通常メモ、Mind Inboxに分類
+- 毎朝/毎晩/寝る前/起床後/習慣化したい内容はroutineに分類
 - 金額は数字でamountに入れる。金額不明ならnull
 - 日付が不明ならdateはnull。推測しすぎない
 - 日本語で返す`,
@@ -253,7 +254,9 @@ export async function POST(req: Request) {
       : mode === "guideAI" ? "あなたはLife Command OSの現在AIです。メモ・TODO・予定・家計簿・習慣・日記を横断し、①今日の状態 ②今見るとよいページ ③小さく進める一手を、しゅうやくんに寄り添う優しい口調で180〜300字で返してください。命令口調は禁止。曖昧なデータは推測しすぎず、記録整理の補助として扱ってください。"
       : mode === "emotionAI" ? "あなたはLife Command OSの感情分析AIです。疲労感・怒り・不安・前向きさ・達成感の傾向を優しく読み、120〜220字で返してください。命令口調は禁止。"
       : mode === "weeklyReportAI" ? "あなたはLife Command OSの週間レポートAIです。直近7日間を読み、今週の流れ、良かった点、少し整える点を180〜320字で返してください。"
-      : mode === "todayAnalysisAI" ? "あなたはLife Command OSの今日分析AIです。今日のメモ・TODO・予定・出費・習慣・日記を横断し、脳内負荷、行動の詰まり、回復の必要性、次に開くとよいページを180〜300字で優しく整理してください。診断ではなく補助表示として返してください。"
+      : mode === "todayAnalysisAI" ? "あなたはLife Command OSの今日分析AIです。今日のメモ・TODO・予定・出費・Routine・日記を横断し、脳内負荷、行動の詰まり、回復の必要性、次に開くとよいページを180〜300字で優しく整理してください。診断ではなく補助表示として返してください。"
+      : mode === "routineAI" ? "あなたはLife Command OSのRoutine AIです。Morning RoutineとNight Routineの達成状況を読み、責めずに、今日は何を最低限できれば十分かを180〜260字で優しく提案してください。命令口調は禁止。"
+      : mode === "searchAI" ? "あなたはLife Command OSのAI検索補助です。検索語から関連しそうなページ名と見る順番を短く提案してください。実データの断定はせず、検索補助として返してください。"
       : mode === "memoSmartAI" ? "メモを読み、要約、重要キーワード、TODO候補、予定候補、持ち物候補に分けて、日本語で具体的に整理してください。優しい案内係の口調。"
       : mode === "memoToTodosAI" ? 'メモからTODOだけを抽出するAIです。JSONだけ返してください。形式は {"todos":[{"title":"TODO名","priority":"low|normal|high","due_date":"YYYY-MM-DD|null"}]}。曖昧な日付はnullにしてください。'
       : mode === "todoAI" ? "TODO一覧を見て、優先順位、今日やると軽くなる順番、後回しでよいものを優しく整理してください。命令口調は禁止。120〜240字。"

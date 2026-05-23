@@ -2179,3 +2179,103 @@ body {
     min-height: 58px;
   }
 }
+
+
+/* ===== v20 Life OS performance + Routine + theme stability ===== */
+html,
+body {
+  overflow-x: hidden;
+}
+.future-os,
+.matsuri-os {
+  overflow-x: hidden !important;
+}
+.future-os > .relative.z-10,
+.matsuri-os > .relative.z-10 {
+  max-width: min(1540px, calc(100vw - 12px)) !important;
+  box-sizing: border-box;
+}
+.matsuri-card,
+.future-ai-navigator,
+.future-budget-hero,
+.future-routine-card,
+.future-routine-hero {
+  contain: layout paint;
+}
+@supports (content-visibility: auto) {
+  .routine-card-grid > .matsuri-card,
+  .belongings-fast-grid > .matsuri-card,
+  .budget-command-page > .matsuri-card {
+    content-visibility: auto;
+    contain-intrinsic-size: 360px;
+  }
+}
+.routine-command-page,
+.routine-command-page * {
+  min-width: 0;
+}
+.future-routine-hero {
+  border-color: rgba(186,224,255,.22) !important;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(125,211,252,.16), transparent 34%),
+    radial-gradient(circle at 92% 10%, rgba(129,140,248,.14), transparent 30%),
+    linear-gradient(135deg, rgba(8,28,68,.42), rgba(2,8,28,.62)) !important;
+}
+.future-routine-stat {
+  border: 1px solid rgba(186,224,255,.14);
+  border-radius: 22px;
+  background: rgba(2,8,28,.32);
+  padding: 14px;
+  text-align: center;
+}
+.future-routine-stat span {
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(224,242,254,.56);
+}
+.future-routine-stat b {
+  display: block;
+  margin-top: 4px;
+  font-size: clamp(22px, 3vw, 34px);
+}
+.future-routine-card {
+  border-color: rgba(186,224,255,.16) !important;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(125,211,252,.12), transparent 32%),
+    linear-gradient(135deg, rgba(8,28,68,.36), rgba(2,8,28,.58)) !important;
+}
+.routine-card-grid button,
+.future-os button,
+.matsuri-os button {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.global-ai-search-button {
+  box-shadow: 0 0 30px rgba(96,165,250,.18);
+}
+@media (max-width: 767px) {
+  .future-os > .relative.z-10,
+  .matsuri-os > .relative.z-10 {
+    max-width: 100% !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+  .routine-card-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .future-routine-hero {
+    border-radius: 26px !important;
+  }
+  .future-routine-stat {
+    padding: 12px 8px;
+  }
+  .safe-bottom .mx-auto {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+  }
+  .safe-bottom button {
+    min-width: 0 !important;
+  }
+}
