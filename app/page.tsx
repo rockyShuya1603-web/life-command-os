@@ -8081,7 +8081,7 @@ type MindCaptureCandidate = {
   date?: string | null;
   amount?: number | null;
   note?: string | null;
-  source?: "ai" | "local";
+  source?: "ai" | "local" | "manual";
 };
 
 type MindCaptureState = {
