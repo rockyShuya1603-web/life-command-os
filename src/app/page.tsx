@@ -1697,27 +1697,31 @@ export default function Home() {
 
 
 
-      <nav id="image-mobile-nav-v39" className="lg:hidden" aria-label="スマホ下部ナビ">
-        <div className="image-mobile-nav-grid-v39">
-          <button type="button" onClick={() => setPage("home")} className={`image-mobile-nav-item-v39 ${page === "home" ? "is-active" : ""}`} aria-label="ホーム">
-            <span className="image-mobile-nav-icon-v39">🏠</span><b>ホーム</b>
+
+
+
+
+      <nav id="image-mobile-nav-v40" className="lg:hidden" aria-label="スマホ下部ナビ">
+        <div className="image-mobile-nav-grid-v40">
+          <button type="button" onClick={() => setPage("home")} className={`image-mobile-nav-item-v40 image-mobile-nav-home-v40 ${page === "home" ? "is-active" : ""}`} aria-label="ホーム">
+            <img src="/mobile-home-button-v40.png" alt="ホーム" />
           </button>
-          <button type="button" onClick={() => setPage("memos")} className={`image-mobile-nav-item-v39 ${page === "memos" ? "is-active" : ""}`} aria-label="メモ">
-            <span className="image-mobile-nav-icon-v39">📝</span><b>メモ</b>
+          <button type="button" onClick={() => setPage("memos")} className={`image-mobile-nav-item-v40 ${page === "memos" ? "is-active" : ""}`} aria-label="メモ">
+            <span className="image-mobile-nav-icon-v40">📝</span><b>メモ</b>
           </button>
-          <button type="button" onClick={() => setPage("todos")} className={`image-mobile-nav-item-v39 ${page === "todos" ? "is-active" : ""}`} aria-label="TODO">
-            <span className="image-mobile-nav-icon-v39">☑️</span><b>TODO</b>
+          <button type="button" onClick={() => setPage("todos")} className={`image-mobile-nav-item-v40 ${page === "todos" ? "is-active" : ""}`} aria-label="TODO">
+            <span className="image-mobile-nav-icon-v40">✅</span><b>TODO</b>
           </button>
-          <button type="button" onClick={() => setPage("calendar")} className={`image-mobile-nav-item-v39 ${page === "calendar" ? "is-active" : ""}`} aria-label="カレンダー">
-            <span className="image-mobile-nav-icon-v39">📅</span><b>カレンダー</b>
+          <button type="button" onClick={() => setPage("calendar")} className={`image-mobile-nav-item-v40 ${page === "calendar" ? "is-active" : ""}`} aria-label="カレンダー">
+            <span className="image-mobile-nav-icon-v40">📅</span><b>予定</b>
           </button>
-          <button type="button" onClick={() => setCommandOpen(true)} className="image-mobile-nav-item-v39" aria-label="もっと">
-            <span className="image-mobile-nav-icon-v39">•••</span><b>もっと</b>
+          <button type="button" onClick={() => setCommandOpen(true)} className={`image-mobile-nav-item-v40 ${page === "settings" ? "is-active" : ""}`} aria-label="もっと">
+            <span className="image-mobile-nav-icon-v40">•••</span><b>もっと</b>
           </button>
         </div>
       </nav>
       <button
-        id="image-floating-quickadd-v39"
+        id="image-floating-quickadd-v40"
         type="button"
         onClick={() => setQuickAddOpen(true)}
         className="lg:hidden"
