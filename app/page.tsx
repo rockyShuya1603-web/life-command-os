@@ -1693,60 +1693,41 @@ export default function Home() {
           background: transparent;
         }
       `}</style>
-      <nav className="safe-bottom mobile-bottom-nav-v373 fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/88 px-2 py-2 backdrop-blur-xl lg:hidden">
-        <div className="mobile-bottom-v373 mx-auto grid w-full max-w-6xl grid-cols-5 gap-1.5">
-          <button
-            type="button"
-            onClick={() => setPage("home")}
-            className={`mobile-bottom-item-v373 ${page === "home" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.04] text-white/70"}`}
-            aria-label="ホーム"
-          >
-            <span className="mobile-bottom-icon-v373">🏠</span>
-            <span className="mobile-bottom-label-v373">ホーム</span>
+      <nav className="lc-mobile-nav-final fixed inset-x-0 bottom-0 z-[99999] border-t border-white/10 bg-black/92 px-2 py-2 backdrop-blur-xl lg:hidden">
+        <div className="lc-mobile-nav-final-grid mx-auto grid w-full grid-cols-5 gap-1.5">
+          <button type="button" onClick={() => setPage("home")} className={`lc-mobile-nav-final-item ${page === "home" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.05] text-white/75"}`} aria-label="ホーム">
+            <span className="lc-mobile-nav-final-icon">🏠</span>
+            <span className="lc-mobile-nav-final-label">ホーム</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setPage("memos")}
-            className={`mobile-bottom-item-v373 ${page === "memos" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.04] text-white/70"}`}
-            aria-label="メモ"
-          >
-            <span className="mobile-bottom-icon-v373">📝</span>
-            <span className="mobile-bottom-label-v373">メモ</span>
+          <button type="button" onClick={() => setPage("memos")} className={`lc-mobile-nav-final-item ${page === "memos" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.05] text-white/75"}`} aria-label="メモ">
+            <span className="lc-mobile-nav-final-icon">📝</span>
+            <span className="lc-mobile-nav-final-label">メモ</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setPage("todos")}
-            className={`mobile-bottom-item-v373 ${page === "todos" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.04] text-white/70"}`}
-            aria-label="TODO"
-          >
-            <span className="mobile-bottom-icon-v373">✅</span>
-            <span className="mobile-bottom-label-v373">TODO</span>
+          <button type="button" onClick={() => setPage("todos")} className={`lc-mobile-nav-final-item ${page === "todos" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.05] text-white/75"}`} aria-label="TODO">
+            <span className="lc-mobile-nav-final-icon">✅</span>
+            <span className="lc-mobile-nav-final-label">TODO</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => setPage("budget")}
-            className={`mobile-bottom-item-v373 ${page === "budget" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.04] text-white/70"}`}
-            aria-label="家計簿"
-          >
-            <span className="mobile-bottom-icon-v373">💰</span>
-            <span className="mobile-bottom-label-v373">家計簿</span>
+          <button type="button" onClick={() => setPage("budget")} className={`lc-mobile-nav-final-item ${page === "budget" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.05] text-white/75"}`} aria-label="家計簿">
+            <span className="lc-mobile-nav-final-icon">💰</span>
+            <span className="lc-mobile-nav-final-label">家計簿</span>
           </button>
-
           <button
             type="button"
             onClick={() => setQuickAddOpen(true)}
-            className="mobile-bottom-item-v373 mobile-quick-add-v373 text-white"
+            className="lc-mobile-nav-final-item lc-mobile-nav-final-add text-white"
+            style={{
+              background: "conic-gradient(from 180deg, #38bdf8, #818cf8, #c084fc, #f472b6, #fb7185, #fbbf24, #34d399, #38bdf8)",
+              color: "white",
+              boxShadow: "0 0 32px rgba(125, 211, 252, .5), inset 0 0 0 1px rgba(255,255,255,.3)",
+            }}
             aria-label="Quick Add"
           >
-            <span className="mobile-bottom-icon-v373 mobile-quick-plus-v373">＋</span>
-            <span className="mobile-bottom-label-v373">追加</span>
+            <span className="lc-mobile-nav-final-icon lc-mobile-nav-final-plus">＋</span>
+            <span className="lc-mobile-nav-final-label">追加</span>
           </button>
         </div>
       </nav>
-    </main>
+</main>
   );
 }
 
@@ -2330,11 +2311,6 @@ function HomePanel({
           </button>
         </GlassCard>
       </div>
-
-            <div className="home-weather-front">
-        <WeatherCard />
-      </div>
-
 <HomeMindCaptureCard refreshSnapshot={refreshSnapshot} setPage={setPage} />
 
       <GlassCard className="future-launch-card p-5">
