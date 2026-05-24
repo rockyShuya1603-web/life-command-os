@@ -2126,6 +2126,7 @@ function HomePanel({
   const [loading, setLoading] = useState(false);
   const [quickMemo, setQuickMemo] = useState("");
   const [savingQuickMemo, setSavingQuickMemo] = useState(false);
+  const [showPageDrawer, setShowPageDrawer] = useState(false);
 
   async function refreshGuide() {
     setLoading(true);
@@ -2247,6 +2248,37 @@ function HomePanel({
 
   return (
     <div className={`matsuri-dashboard ${themeKey === "mirai" ? "future-dashboard future-home-v14 future-home-v16" : ""} space-y-4`}>
+      <GlassCard className="life-page-drawer-toggle p-3 sm:p-4">
+        <button
+          type="button"
+          onClick={() => setShowPageDrawer((value) => !value)}
+          className="flex w-full items-center justify-between gap-3 rounded-2xl bg-black/20 px-4 py-3 text-left font-black"
+        >
+          <span>📚 全ページ一覧</span>
+          <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
+            {showPageDrawer ? "閉じる" : "開く"}
+          </span>
+        </button>
+        {showPageDrawer && (
+          <div className="life-page-drawer-grid mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            {navItems.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => {
+                  setPage(item.key);
+                  setShowPageDrawer(false);
+                }}
+                className="rounded-2xl border border-white/10 bg-black/20 px-3 py-3 text-left text-sm font-black text-white/85 transition hover:bg-white/10"
+              >
+                <span className="mr-2">{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </GlassCard>
+
       <div className="future-hero-grid">
         <GlassCard className="future-welcome-card matsuri-welcome relative min-h-[292px] overflow-hidden p-6 sm:p-8">
           <div className="relative z-10 max-w-3xl">
@@ -14205,13 +14237,23 @@ function AiNewsPanel() {
 
   return (
     <div className="space-y-4">
+      <GuideAiCard
+        themeKey="mirai"
+        message={
+          result ||
+          "AIニュース案内係だよ。上の『今日のニュースを聞く』で、しゅうやくんが聞きたい話題を優先して読み上げるね。苦手な話題は下の一覧で外せるよ。"
+        }
+        loading={loading}
+        onRefresh={loadNews}
+      />
+
       <GlassCard>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-xs font-black text-pink-100/70">癒し系案内AI</p>
-            <h2 className="mt-1 text-3xl font-black">AIニュース</h2>
+            <p className="text-xs font-black text-pink-100/70">聞きたい / 聞きたくない一覧</p>
+            <h2 className="mt-1 text-3xl font-black">AIニュース設定</h2>
             <p className="mt-2 text-sm leading-7 text-white/65">
-              聞きたいニュースと聞きたくないニュースを保存して、好みに合う話題だけをやさしくまとめるページ。
+              案内係AIの読み上げコーナーを一番上にして、下でニュースの好みを調整できるようにしたよ。
             </p>
           </div>
           <button
@@ -14223,6 +14265,7 @@ function AiNewsPanel() {
           </button>
         </div>
       </GlassCard>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <GlassCard>
           <p className="text-sm font-black text-emerald-100">
@@ -14236,7 +14279,7 @@ function AiNewsPanel() {
               setPrefs(next);
               savePrefs(next);
             }}
-            placeholder="例: 筋トレ、ランニング、サウナ、睡眠、健康、運動科学"
+            placeholder="例: 生成AI、ChatGPT、アプリ開発、UI/UX、プログラミング"
           />
           <p className="mt-2 text-xs text-white/45">
             入力すると自動保存されるよ。
@@ -14261,24 +14304,18 @@ function AiNewsPanel() {
           </p>
         </GlassCard>
       </div>
+
       {saved && (
         <p className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-black text-emerald-100">
           好みを保存したよ。
         </p>
       )}
-      <GuideAiCard
-        themeKey="mirai"
-        message={
-          result ||
-          "しゅうやくんの好みに合わせて、筋トレ・ランニング・サウナ系のニュースを中心にやさしく案内するね。苦手な政治・事故・事件系は避ける設定にできるよ。"
-        }
-        loading={loading}
-        onRefresh={loadNews}
-      />
+
       <AiNewsUpgradePanel result={result} />
     </div>
   );
 }
+
 
 function SettingsPanel({
   themeKey,
