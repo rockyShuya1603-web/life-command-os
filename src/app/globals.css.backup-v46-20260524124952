@@ -4079,7 +4079,1986 @@ main {
 }
 
 
-/* ===== v46 mobile rollback compact fix: no duplicate search / no tall habit tracker ===== */
+/* ===== HARD FIX: final single mobile bottom nav ===== */
+@media (max-width: 767px) {
+  nav.safe-bottom,
+  .safe-bottom,
+  .lc-mobile-nav-final,
+  .mobile-bottom-nav-v373,
+  .force-mobile-nav-v374,
+  [class*="mobile-bottom-nav"],
+  [class*="force-mobile-nav"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  #hard-mobile-nav {
+    display: block !important;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 999999 !important;
+    padding: 8px 8px max(8px, env(safe-area-inset-bottom)) !important;
+    background: rgba(2, 6, 23, 0.94) !important;
+    border-top: 1px solid rgba(255,255,255,0.12) !important;
+    backdrop-filter: blur(18px) !important;
+  }
+
+  #hard-mobile-nav .hard-mobile-nav-grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  #hard-mobile-nav .hard-mobile-nav-item {
+    min-width: 0 !important;
+    min-height: 56px !important;
+    border-radius: 16px !important;
+    border: 0 !important;
+    background: rgba(255,255,255,0.06) !important;
+    color: rgba(255,255,255,0.78) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08) !important;
+    touch-action: manipulation !important;
+  }
+
+  #hard-mobile-nav .hard-mobile-nav-item span {
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 20px !important;
+    line-height: 1 !important;
+  }
+
+  #hard-mobile-nav .hard-mobile-nav-item b {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-weight: 900 !important;
+  }
+
+  #hard-mobile-nav .hard-mobile-nav-item.is-active {
+    background: linear-gradient(135deg, #7dd3fc, #c084fc) !important;
+    color: #020617 !important;
+  }
+
+  #hard-mobile-nav .hard-mobile-nav-add {
+    background: conic-gradient(from 180deg, #38bdf8, #818cf8, #c084fc, #f472b6, #fb7185, #fbbf24, #34d399, #38bdf8) !important;
+    color: white !important;
+    box-shadow: 0 0 28px rgba(125, 211, 252, .45), inset 0 0 0 1px rgba(255,255,255,.24) !important;
+  }
+
+  #hard-mobile-nav .hard-mobile-nav-add span {
+    border-radius: 999px !important;
+    background: rgba(2,6,23,.26) !important;
+    color: white !important;
+    font-size: 24px !important;
+    text-shadow: 0 2px 12px rgba(0,0,0,.5) !important;
+  }
+
+  main {
+    padding-bottom: calc(86px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+
+/* ===== v39 mobile UI based on reference image ===== */
+@media (max-width: 767px) {
+  :root {
+    --v39-card-bg: rgba(8, 27, 56, .58);
+    --v39-card-border: rgba(125, 211, 252, .30);
+    --v39-card-glow: rgba(56, 189, 248, .26);
+  }
+
+  .future-os .relative.z-10.mx-auto.flex {
+    display: block !important;
+    max-width: 100% !important;
+    padding: .75rem .95rem calc(7.7rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .future-os .min-w-0.flex-1 {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .future-os .future-main-stage {
+    margin-top: 0 !important;
+    padding: 0 !important;
+  }
+
+  .future-top-hud {
+    display: grid !important;
+    grid-template-columns: 1fr auto auto !important;
+    align-items: center !important;
+    gap: .75rem !important;
+    margin: 0 auto 1rem !important;
+    padding: .95rem .45rem .4rem !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .future-brand-lockup {
+    position: relative !important;
+    min-width: 0 !important;
+    padding-left: 3.2rem !important;
+  }
+
+  .future-brand-lockup::before {
+    content: "" !important;
+    position: absolute !important;
+    left: .05rem !important;
+    top: 50% !important;
+    width: 2.55rem !important;
+    height: 2.55rem !important;
+    border-radius: 999px !important;
+    transform: translateY(-50%) !important;
+    background: conic-gradient(from 210deg, #38bdf8, #818cf8, #c084fc, #34d399, #38bdf8) !important;
+    box-shadow: 0 0 28px rgba(96, 165, 250, .8), inset 0 0 0 7px rgba(15, 23, 42, .42) !important;
+  }
+
+  .future-brand-lockup p:first-child {
+    font-size: 1.35rem !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  .future-brand-lockup p:nth-child(2) {
+    display: none !important;
+  }
+
+  .future-search-pill {
+    grid-column: 1 / -1 !important;
+    order: 8 !important;
+    width: 100% !important;
+    height: 3.25rem !important;
+    justify-content: flex-start !important;
+    gap: .75rem !important;
+    border-radius: 999px !important;
+    padding: 0 1rem !important;
+    border: 1px solid rgba(255,255,255,.22) !important;
+    background: rgba(255,255,255,.14) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 16px 42px rgba(2,6,23,.20) !important;
+    backdrop-filter: blur(20px) saturate(1.3) !important;
+  }
+
+  .future-search-pill span:first-child {
+    font-size: 2.2rem !important;
+  }
+
+  .future-search-pill span:last-child {
+    font-size: 1rem !important;
+    color: rgba(255,255,255,.72) !important;
+  }
+
+  .future-hud-widgets {
+    grid-column: 2 / -1 !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: .55rem !important;
+  }
+
+  .future-weather-chip,
+  .future-clock-chip {
+    display: none !important;
+  }
+
+  .future-icon-button,
+  .future-avatar {
+    width: 3rem !important;
+    height: 3rem !important;
+    min-width: 3rem !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(125,211,252,.34) !important;
+    background: rgba(12, 32, 65, .54) !important;
+    box-shadow: 0 0 26px rgba(96,165,250,.24), inset 0 1px 0 rgba(255,255,255,.18) !important;
+  }
+
+  .future-avatar {
+    font-size: 1.1rem !important;
+  }
+
+  .future-mode-row {
+    display: none !important;
+  }
+
+  .future-dashboard {
+    max-width: 760px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: .9rem !important;
+  }
+
+  .future-hero-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: .9rem !important;
+  }
+
+  .future-welcome-card,
+  .future-progress-card,
+  .future-panel-card,
+  .future-bottom-grid > .matsuri-card {
+    border: 1px solid var(--v39-card-border) !important;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.14), rgba(56,189,248,.06) 38%, rgba(2,6,23,.40)) !important;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.05),
+      0 18px 54px rgba(2,6,23,.38),
+      0 0 32px var(--v39-card-glow),
+      inset 0 1px 0 rgba(255,255,255,.22) !important;
+    backdrop-filter: blur(22px) saturate(1.25) !important;
+  }
+
+  .future-welcome-card {
+    width: 89% !important;
+    margin-left: auto !important;
+    margin-right: .1rem !important;
+    min-height: auto !important;
+    border-radius: 1.45rem !important;
+    padding: 1.25rem !important;
+  }
+
+  .future-kicker {
+    font-size: .77rem !important;
+    letter-spacing: .26em !important;
+    color: rgba(186,230,253,.78) !important;
+  }
+
+  .future-welcome-card h2 {
+    margin-top: 1rem !important;
+    font-size: clamp(2.15rem, 9.5vw, 3.15rem) !important;
+    line-height: 1.04 !important;
+    letter-spacing: -.04em !important;
+  }
+
+  .future-welcome-card p {
+    font-size: .9rem !important;
+    line-height: 1.82 !important;
+  }
+
+  .future-welcome-card .grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: .5rem !important;
+    margin-top: 1rem !important;
+  }
+
+  .future-stat-tile {
+    border-radius: .9rem !important;
+    padding: .65rem .25rem !important;
+    background: rgba(255,255,255,.08) !important;
+  }
+
+  .future-stat-tile > div {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    font-size: 1rem !important;
+  }
+
+  .future-stat-tile p:nth-of-type(1) {
+    font-size: .58rem !important;
+  }
+
+  .future-stat-tile p:nth-of-type(2) {
+    font-size: .72rem !important;
+  }
+
+  .future-progress-card,
+  .future-middle-grid .future-panel-card {
+    width: 76% !important;
+    margin-left: auto !important;
+    margin-right: .1rem !important;
+    border-radius: 1.45rem !important;
+    padding: 1rem !important;
+  }
+
+  .future-progress-card h3,
+  .future-panel-card h3 {
+    font-size: 1.18rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .future-progress-card .mt-5 {
+    margin-top: .85rem !important;
+  }
+
+  .future-progress-row,
+  .future-list-row {
+    min-height: 0 !important;
+    border-radius: 1rem !important;
+    padding: .65rem .75rem !important;
+    font-size: .78rem !important;
+  }
+
+  .future-progress-row span:nth-child(2),
+  .future-list-row span:last-child {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .future-launch-card,
+  .future-mind-capture-home,
+  .future-middle-grid > .future-panel-card:nth-child(3),
+  .future-motivation-card,
+  .future-footer-strip {
+    display: none !important;
+  }
+
+  .future-middle-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: .9rem !important;
+  }
+
+  .future-bottom-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: .65rem !important;
+    width: 92% !important;
+    margin-left: auto !important;
+    margin-right: .1rem !important;
+  }
+
+  .future-bottom-grid > .matsuri-card {
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 1.25rem !important;
+    padding: .9rem !important;
+    min-height: 9.5rem !important;
+  }
+
+  .future-bottom-grid > .matsuri-card:last-child {
+    order: -1 !important;
+  }
+
+  .future-bottom-grid h3,
+  .future-bottom-grid .matsuri-card h3 {
+    font-size: 1rem !important;
+  }
+
+  .future-bottom-grid .text-xl,
+  .future-bottom-grid .text-2xl,
+  .future-bottom-grid .text-3xl {
+    font-size: 1.25rem !important;
+  }
+
+  .future-bottom-grid .grid {
+    gap: .25rem !important;
+  }
+
+  .future-bottom-grid .grid > div {
+    padding: .35rem !important;
+  }
+
+  #image-mobile-nav-v39 {
+    display: block !important;
+    position: fixed !important;
+    left: 1.1rem !important;
+    right: 1.1rem !important;
+    bottom: max(.8rem, env(safe-area-inset-bottom)) !important;
+    z-index: 999990 !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255,255,255,.18) !important;
+    background: linear-gradient(135deg, rgba(8, 25, 55, .72), rgba(2, 8, 23, .82)) !important;
+    box-shadow: 0 0 38px rgba(56,189,248,.25), inset 0 1px 0 rgba(255,255,255,.18) !important;
+    backdrop-filter: blur(20px) saturate(1.35) !important;
+    padding: .48rem !important;
+  }
+
+  #image-mobile-nav-v39 .image-mobile-nav-grid-v39 {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: .25rem !important;
+  }
+
+  #image-mobile-nav-v39 .image-mobile-nav-item-v39 {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    min-height: 3.2rem !important;
+    border: 0 !important;
+    border-radius: 1.2rem !important;
+    background: transparent !important;
+    color: rgba(226,232,240,.66) !important;
+    font-size: .68rem !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    gap: .08rem !important;
+  }
+
+  #image-mobile-nav-v39 .image-mobile-nav-item-v39.is-active {
+    background: linear-gradient(135deg, rgba(96,165,250,.78), rgba(125,211,252,.35)) !important;
+    color: white !important;
+    box-shadow: 0 0 22px rgba(96,165,250,.38), inset 0 1px 0 rgba(255,255,255,.28) !important;
+  }
+
+  #image-mobile-nav-v39 .image-mobile-nav-icon-v39 {
+    display: flex !important;
+    width: 1.65rem !important;
+    height: 1.65rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.1rem !important;
+  }
+
+  #image-mobile-nav-v39 b {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-weight: 900 !important;
+  }
+
+  #image-floating-quickadd-v39 {
+    display: flex !important;
+    position: fixed !important;
+    right: 1.3rem !important;
+    bottom: calc(5.95rem + env(safe-area-inset-bottom)) !important;
+    z-index: 999991 !important;
+    width: 4.2rem !important;
+    height: 4.2rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255,255,255,.28) !important;
+    background: conic-gradient(from 180deg, #38bdf8, #818cf8, #c084fc, #f472b6, #38bdf8) !important;
+    box-shadow: 0 0 34px rgba(125,211,252,.48), 0 0 60px rgba(168,85,247,.32), inset 0 1px 0 rgba(255,255,255,.3) !important;
+    color: white !important;
+    font-size: 2.3rem !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+  }
+
+  #image-floating-quickadd-v39 span {
+    display: flex !important;
+    width: 3.25rem !important;
+    height: 3.25rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    background: rgba(32, 43, 88, .30) !important;
+    text-shadow: 0 2px 16px rgba(0,0,0,.42) !important;
+  }
+
+  nav.safe-bottom,
+  .safe-bottom,
+  #hard-mobile-nav,
+  .lc-mobile-nav-final,
+  .mobile-bottom-nav-v373,
+  .force-mobile-nav-v374,
+  [class*="mobile-bottom-nav"],
+  [class*="force-mobile-nav"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .quick-add-fab {
+    display: none !important;
+  }
+
+  main {
+    padding-bottom: calc(7.5rem + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+
+/* ===== v40 mobile UI polish + home image button ===== */
+@media (max-width: 767px) {
+  :root {
+    --v40-card-border: rgba(125, 211, 252, 0.28);
+    --v40-card-glow: rgba(96, 165, 250, 0.24);
+  }
+
+  /* overall vertical compaction */
+  main {
+    padding-bottom: calc(8.6rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .matsuri-dashboard,
+  .future-dashboard,
+  .future-hero-grid,
+  .future-bottom-grid,
+  .matsuri-hero {
+    gap: .85rem !important;
+  }
+
+  .matsuri-welcome,
+  .future-welcome-card,
+  .future-progress-card,
+  .future-panel-card,
+  .matsuri-quest,
+  .matsuri-card,
+  .future-bottom-grid > div,
+  .future-bottom-grid > section,
+  .future-bottom-grid > article {
+    border-radius: 1.45rem !important;
+    box-shadow:
+      0 18px 48px rgba(2, 6, 23, 0.32),
+      0 0 22px var(--v40-card-glow),
+      inset 0 1px 0 rgba(255,255,255,.16) !important;
+  }
+
+  .matsuri-welcome,
+  .future-welcome-card {
+    min-height: auto !important;
+    padding: 1.15rem !important;
+  }
+
+  .matsuri-welcome h2,
+  .future-welcome-card h2 {
+    font-size: clamp(1.95rem, 8vw, 2.8rem) !important;
+    line-height: 1.08 !important;
+    margin-top: .65rem !important;
+  }
+
+  .matsuri-welcome p,
+  .future-welcome-card p {
+    line-height: 1.72 !important;
+  }
+
+  .matsuri-hero,
+  .future-hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .matsuri-dashboard > .grid,
+  .future-dashboard > .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .matsuri-dashboard > .grid:last-child,
+  .future-bottom-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .matsuri-dashboard > .grid:last-child > :first-child,
+  .future-bottom-grid > :first-child,
+  .future-bottom-grid > :nth-child(2) {
+    min-height: 0 !important;
+  }
+
+  .matsuri-dashboard > .grid:last-child > :nth-child(n+3),
+  .future-bottom-grid > :nth-child(n+3) {
+    display: none !important;
+  }
+
+  .future-top-hud {
+    padding-top: .35rem !important;
+    margin-bottom: .75rem !important;
+  }
+
+  .future-search-pill,
+  .future-search-bar,
+  .future-search {
+    min-height: 3rem !important;
+    border-radius: 999px !important;
+  }
+
+  /* hide legacy mobile nav variations */
+  nav.safe-bottom,
+  .safe-bottom,
+  #hard-mobile-nav,
+  .hard-mobile-nav,
+  .lc-mobile-nav-final,
+  #image-mobile-nav-v39,
+  [class*="mobile-bottom-nav"],
+  [class*="force-mobile-nav"],
+  [class*="lc-mobile-nav-final"],
+  [class*="hard-mobile-nav"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .quick-add-fab,
+  #image-floating-quickadd-v39 {
+    display: none !important;
+  }
+
+  #image-mobile-nav-v40 {
+    display: block !important;
+    position: fixed !important;
+    left: .8rem !important;
+    right: .8rem !important;
+    bottom: max(.55rem, env(safe-area-inset-bottom)) !important;
+    z-index: 999990 !important;
+    border-radius: 1.8rem !important;
+    border: 1px solid rgba(255,255,255,.18) !important;
+    background: linear-gradient(135deg, rgba(6, 23, 52, .88), rgba(4, 12, 32, .92)) !important;
+    box-shadow: 0 0 38px rgba(56,189,248,.18), inset 0 1px 0 rgba(255,255,255,.15) !important;
+    backdrop-filter: blur(20px) saturate(1.35) !important;
+    padding: .52rem !important;
+  }
+
+  #image-mobile-nav-v40 .image-mobile-nav-grid-v40 {
+    display: grid !important;
+    grid-template-columns: 1.18fr 1fr 1fr 1fr 1fr !important;
+    gap: .28rem !important;
+    align-items: end !important;
+  }
+
+  #image-mobile-nav-v40 .image-mobile-nav-item-v40 {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    min-height: 4.1rem !important;
+    border: 0 !important;
+    border-radius: 1.35rem !important;
+    background: transparent !important;
+    color: rgba(226,232,240,.78) !important;
+    font-size: .72rem !important;
+    font-weight: 900 !important;
+    line-height: 1.05 !important;
+    gap: .15rem !important;
+    padding: .35rem .2rem !important;
+  }
+
+  #image-mobile-nav-v40 .image-mobile-nav-item-v40.is-active:not(.image-mobile-nav-home-v40) {
+    background: linear-gradient(135deg, rgba(96,165,250,.42), rgba(125,211,252,.18)) !important;
+    color: white !important;
+    box-shadow: 0 0 22px rgba(96,165,250,.24), inset 0 1px 0 rgba(255,255,255,.2) !important;
+  }
+
+  #image-mobile-nav-v40 .image-mobile-nav-icon-v40 {
+    display: flex !important;
+    width: 1.8rem !important;
+    height: 1.8rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.2rem !important;
+  }
+
+  #image-mobile-nav-v40 .image-mobile-nav-item-v40 b {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-weight: 900 !important;
+  }
+
+  #image-mobile-nav-v40 .image-mobile-nav-home-v40 {
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  #image-mobile-nav-v40 .image-mobile-nav-home-v40 img {
+    display: block !important;
+    width: 100% !important;
+    max-width: 5.1rem !important;
+    height: auto !important;
+    object-fit: contain !important;
+    filter: drop-shadow(0 0 10px rgba(125,211,252,.24));
+    opacity: .92 !important;
+  }
+
+  #image-mobile-nav-v40 .image-mobile-nav-home-v40.is-active img {
+    opacity: 1 !important;
+    transform: translateY(-1px) scale(1.02) !important;
+    filter: drop-shadow(0 0 18px rgba(125,211,252,.36));
+  }
+
+  #image-floating-quickadd-v40 {
+    display: flex !important;
+    position: fixed !important;
+    right: 1.05rem !important;
+    bottom: calc(6.15rem + env(safe-area-inset-bottom)) !important;
+    z-index: 999991 !important;
+    width: 4.35rem !important;
+    height: 4.35rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255,255,255,.28) !important;
+    background: conic-gradient(from 180deg, #5eead4, #38bdf8, #818cf8, #c084fc, #f472b6, #fb7185, #fbbf24, #5eead4) !important;
+    box-shadow: 0 0 34px rgba(125,211,252,.44), 0 0 64px rgba(168,85,247,.28), inset 0 1px 0 rgba(255,255,255,.3) !important;
+    color: white !important;
+    font-size: 2.25rem !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+  }
+
+  #image-floating-quickadd-v40 span {
+    display: flex !important;
+    width: 3.35rem !important;
+    height: 3.35rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    background: rgba(15, 23, 42, .36) !important;
+    text-shadow: 0 2px 16px rgba(0,0,0,.42) !important;
+  }
+}
+
+
+/* ===== v41 mobile unified UI / reference image direction ===== */
+@media (max-width: 767px) {
+  :root {
+    --life-v41-deep: rgba(4, 14, 35, .88);
+    --life-v41-card: rgba(9, 28, 62, .58);
+    --life-v41-card-strong: rgba(8, 22, 52, .72);
+    --life-v41-border: rgba(125, 211, 252, .30);
+    --life-v41-glow: rgba(96, 165, 250, .28);
+    --life-v41-purple: rgba(168, 85, 247, .28);
+  }
+
+  main {
+    padding-bottom: calc(8.7rem + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden !important;
+  }
+
+  .future-os .relative.z-10.mx-auto.flex,
+  .matsuri-app .relative.z-10.mx-auto.flex,
+  .relative.z-10.mx-auto.flex {
+    display: block !important;
+    max-width: 100% !important;
+    padding: .72rem .88rem calc(8.5rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  aside,
+  .future-sidebar,
+  .matsuri-sidebar,
+  [class*="sidebar"] {
+    display: none !important;
+  }
+
+  .future-os .min-w-0.flex-1,
+  .matsuri-app .min-w-0.flex-1,
+  .min-w-0.flex-1 {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .future-main-stage,
+  .matsuri-main-stage {
+    margin-top: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Top HUD closer to the reference image */
+  .future-top-hud {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    align-items: center !important;
+    gap: .68rem !important;
+    margin: 0 auto .86rem !important;
+    padding: .65rem .32rem .35rem !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .future-brand-lockup {
+    position: relative !important;
+    min-width: 0 !important;
+    padding-left: 3.05rem !important;
+  }
+
+  .future-brand-lockup::before {
+    content: "" !important;
+    position: absolute !important;
+    left: .05rem !important;
+    top: 50% !important;
+    width: 2.45rem !important;
+    height: 2.45rem !important;
+    border-radius: 999px !important;
+    transform: translateY(-50%) !important;
+    background: conic-gradient(from 210deg, #38bdf8, #818cf8, #c084fc, #34d399, #38bdf8) !important;
+    box-shadow: 0 0 28px rgba(96,165,250,.75), inset 0 0 0 7px rgba(15,23,42,.42) !important;
+  }
+
+  .future-brand-lockup p:first-child {
+    font-size: 1.34rem !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+    letter-spacing: -.03em !important;
+  }
+
+  .future-brand-lockup p:nth-child(2) {
+    display: none !important;
+  }
+
+  .future-search-pill {
+    grid-column: 1 / -1 !important;
+    order: 10 !important;
+    height: 3.05rem !important;
+    width: 100% !important;
+    justify-content: flex-start !important;
+    border-radius: 999px !important;
+    padding: 0 1rem !important;
+    gap: .72rem !important;
+    border: 1px solid rgba(255,255,255,.22) !important;
+    background: rgba(255,255,255,.14) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 16px 42px rgba(2,6,23,.18) !important;
+    backdrop-filter: blur(20px) saturate(1.25) !important;
+  }
+
+  .future-search-pill span:first-child {
+    font-size: 2.05rem !important;
+  }
+
+  .future-search-pill span:last-child {
+    font-size: 1rem !important;
+    color: rgba(255,255,255,.70) !important;
+  }
+
+  .future-hud-widgets {
+    grid-column: 2 / -1 !important;
+    justify-content: flex-end !important;
+    gap: .52rem !important;
+  }
+
+  .future-weather-chip,
+  .future-clock-chip,
+  .future-mode-row {
+    display: none !important;
+  }
+
+  .future-icon-button,
+  .future-avatar {
+    width: 2.85rem !important;
+    height: 2.85rem !important;
+    min-width: 2.85rem !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(125,211,252,.34) !important;
+    background: rgba(12,32,65,.56) !important;
+    box-shadow: 0 0 24px rgba(96,165,250,.24), inset 0 1px 0 rgba(255,255,255,.18) !important;
+  }
+
+  /* Home compact dashboard */
+  .future-dashboard,
+  .matsuri-dashboard {
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: .75rem !important;
+  }
+
+  .future-hero-grid,
+  .matsuri-hero {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: .72rem !important;
+  }
+
+  .future-welcome-card,
+  .future-progress-card,
+  .future-panel-card,
+  .future-bottom-grid > .matsuri-card,
+  .matsuri-card,
+  .matsuri-quest,
+  .matsuri-welcome {
+    border: 1px solid var(--life-v41-border) !important;
+    background:
+      radial-gradient(circle at 16% 0%, rgba(125,211,252,.22), transparent 42%),
+      linear-gradient(135deg, rgba(255,255,255,.13), rgba(56,189,248,.055) 40%, rgba(2,6,23,.42)) !important;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.045),
+      0 16px 44px rgba(2,6,23,.34),
+      0 0 26px var(--life-v41-glow),
+      inset 0 1px 0 rgba(255,255,255,.20) !important;
+    backdrop-filter: blur(21px) saturate(1.22) !important;
+  }
+
+  .future-welcome-card,
+  .matsuri-welcome {
+    width: min(92%, 24rem) !important;
+    margin-left: auto !important;
+    margin-right: .05rem !important;
+    min-height: auto !important;
+    border-radius: 1.48rem !important;
+    padding: 1.05rem !important;
+  }
+
+  .future-kicker {
+    font-size: .72rem !important;
+    letter-spacing: .24em !important;
+    color: rgba(186,230,253,.76) !important;
+  }
+
+  .future-welcome-card h2,
+  .matsuri-welcome h2 {
+    margin-top: .78rem !important;
+    font-size: clamp(1.92rem, 8.5vw, 2.72rem) !important;
+    line-height: 1.06 !important;
+    letter-spacing: -.04em !important;
+  }
+
+  .future-welcome-card p,
+  .matsuri-welcome p {
+    font-size: .86rem !important;
+    line-height: 1.68 !important;
+  }
+
+  .future-welcome-card .grid,
+  .matsuri-welcome .grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: .43rem !important;
+    margin-top: .85rem !important;
+  }
+
+  .future-stat-tile,
+  .matsuri-stat-tile {
+    border-radius: .85rem !important;
+    padding: .58rem .2rem !important;
+    background: rgba(255,255,255,.075) !important;
+  }
+
+  .future-stat-tile > div {
+    width: 2rem !important;
+    height: 2rem !important;
+    font-size: .96rem !important;
+  }
+
+  .future-stat-tile p:nth-of-type(1) {
+    font-size: .55rem !important;
+  }
+
+  .future-stat-tile p:nth-of-type(2) {
+    font-size: .68rem !important;
+  }
+
+  .future-progress-card,
+  .future-middle-grid .future-panel-card {
+    width: min(78%, 21rem) !important;
+    margin-left: auto !important;
+    margin-right: .05rem !important;
+    border-radius: 1.42rem !important;
+    padding: .9rem !important;
+  }
+
+  .future-progress-card h3,
+  .future-panel-card h3,
+  .matsuri-card h3 {
+    font-size: 1.1rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .future-progress-card .mt-5 {
+    margin-top: .72rem !important;
+  }
+
+  .future-progress-row,
+  .future-list-row,
+  .matsuri-list-row {
+    min-height: 0 !important;
+    border-radius: .95rem !important;
+    padding: .55rem .68rem !important;
+    font-size: .76rem !important;
+  }
+
+  .future-progress-row span:nth-child(2),
+  .future-list-row span:last-child {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .future-launch-card,
+  .future-mind-capture-home,
+  .future-middle-grid > .future-panel-card:nth-child(3),
+  .future-motivation-card,
+  .future-footer-strip {
+    display: none !important;
+  }
+
+  .future-middle-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: .74rem !important;
+  }
+
+  .future-bottom-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: .56rem !important;
+    width: min(94%, 25rem) !important;
+    margin-left: auto !important;
+    margin-right: .05rem !important;
+  }
+
+  .future-bottom-grid > .matsuri-card {
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 1.2rem !important;
+    padding: .78rem !important;
+    min-height: 8.1rem !important;
+  }
+
+  .future-bottom-grid > .matsuri-card:nth-child(n+3) {
+    display: none !important;
+  }
+
+  .future-bottom-grid h3,
+  .future-bottom-grid .matsuri-card h3 {
+    font-size: .95rem !important;
+  }
+
+  .future-bottom-grid .text-xl,
+  .future-bottom-grid .text-2xl,
+  .future-bottom-grid .text-3xl {
+    font-size: 1.18rem !important;
+  }
+
+  .future-bottom-grid .grid {
+    gap: .2rem !important;
+  }
+
+  .future-bottom-grid .grid > div {
+    padding: .3rem !important;
+  }
+
+  /* Memo / TODO / Calendar mobile page unification */
+  .future-page-shell,
+  .matsuri-page-shell,
+  .page-shell,
+  section[class*="Panel"],
+  section[class*="panel"],
+  .glass-card,
+  .matsuri-card {
+    border-color: var(--life-v41-border) !important;
+  }
+
+  .future-os input,
+  .future-os textarea,
+  .future-os select,
+  .matsuri-app input,
+  .matsuri-app textarea,
+  .matsuri-app select {
+    border-radius: 1.1rem !important;
+    border: 1px solid rgba(125,211,252,.22) !important;
+    background: rgba(2,6,23,.34) !important;
+    color: white !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08) !important;
+  }
+
+  .future-os button,
+  .matsuri-app button {
+    touch-action: manipulation !important;
+  }
+
+  [data-page="memos"],
+  [data-page="todos"],
+  [data-page="calendar"] {
+    border-radius: 1.5rem !important;
+  }
+
+  /* Final mobile nav */
+  nav.safe-bottom,
+  .safe-bottom,
+  #hard-mobile-nav,
+  #image-mobile-nav-v39,
+  #image-mobile-nav-v40,
+  .lc-mobile-nav-final,
+  .mobile-bottom-nav-v373,
+  .force-mobile-nav-v374,
+  [class*="mobile-bottom-nav"],
+  [class*="force-mobile-nav"],
+  [class*="hard-mobile-nav"] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .quick-add-fab,
+  #image-floating-quickadd-v39,
+  #image-floating-quickadd-v40 {
+    display: none !important;
+  }
+
+  #life-mobile-nav-v41 {
+    display: block !important;
+    position: fixed !important;
+    left: .78rem !important;
+    right: .78rem !important;
+    bottom: max(.55rem, env(safe-area-inset-bottom)) !important;
+    z-index: 999990 !important;
+    border-radius: 1.75rem !important;
+    border: 1px solid rgba(255,255,255,.18) !important;
+    background: linear-gradient(135deg, rgba(6,23,52,.88), rgba(4,12,32,.93)) !important;
+    box-shadow: 0 0 38px rgba(56,189,248,.18), inset 0 1px 0 rgba(255,255,255,.15) !important;
+    backdrop-filter: blur(20px) saturate(1.35) !important;
+    padding: .48rem !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-grid {
+    display: grid !important;
+    grid-template-columns: 1.16fr 1fr 1fr 1fr 1fr !important;
+    gap: .26rem !important;
+    align-items: end !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 0 !important;
+    min-height: 4.05rem !important;
+    border: 0 !important;
+    border-radius: 1.3rem !important;
+    background: transparent !important;
+    color: rgba(226,232,240,.78) !important;
+    font-size: .7rem !important;
+    font-weight: 900 !important;
+    line-height: 1.05 !important;
+    gap: .13rem !important;
+    padding: .32rem .16rem !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-item.is-active:not(.life-mobile-nav-v41-home) {
+    background: linear-gradient(135deg, rgba(96,165,250,.42), rgba(125,211,252,.18)) !important;
+    color: white !important;
+    box-shadow: 0 0 22px rgba(96,165,250,.24), inset 0 1px 0 rgba(255,255,255,.2) !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-icon {
+    display: flex !important;
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.15rem !important;
+  }
+
+  #life-mobile-nav-v41 b {
+    display: block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    font-weight: 900 !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-home {
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-home img {
+    display: block !important;
+    width: 100% !important;
+    max-width: 5.05rem !important;
+    height: auto !important;
+    object-fit: contain !important;
+    filter: drop-shadow(0 0 10px rgba(125,211,252,.24)) !important;
+    opacity: .92 !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-home.is-active img {
+    opacity: 1 !important;
+    transform: translateY(-1px) scale(1.02) !important;
+    filter: drop-shadow(0 0 18px rgba(125,211,252,.36)) !important;
+  }
+
+  #life-floating-quickadd-v41 {
+    display: flex !important;
+    position: fixed !important;
+    right: 1.05rem !important;
+    bottom: calc(6.05rem + env(safe-area-inset-bottom)) !important;
+    z-index: 999991 !important;
+    width: 4.15rem !important;
+    height: 4.15rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(255,255,255,.28) !important;
+    background: conic-gradient(from 180deg, #5eead4, #38bdf8, #818cf8, #c084fc, #f472b6, #fb7185, #fbbf24, #5eead4) !important;
+    box-shadow: 0 0 34px rgba(125,211,252,.44), 0 0 64px rgba(168,85,247,.28), inset 0 1px 0 rgba(255,255,255,.3) !important;
+    color: white !important;
+    font-size: 2.2rem !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+  }
+
+  #life-floating-quickadd-v41 span {
+    display: flex !important;
+    width: 3.18rem !important;
+    height: 3.18rem !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 999px !important;
+    background: rgba(15,23,42,.36) !important;
+    text-shadow: 0 2px 16px rgba(0,0,0,.42) !important;
+  }
+}
+
+
+/* ===== v42 mobile proportion fix / closer to ideal ===== */
+@media (max-width: 767px) {
+  main {
+    padding-bottom: calc(7.4rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  .future-top-hud {
+    gap: .6rem !important;
+    padding: .38rem 0 .28rem !important;
+    margin-bottom: .62rem !important;
+  }
+
+  .future-brand-lockup {
+    padding-left: 3rem !important;
+  }
+
+  .future-brand-lockup p:first-child {
+    font-size: 1.22rem !important;
+  }
+
+  .future-search-pill {
+    height: 2.82rem !important;
+    margin-top: .08rem !important;
+  }
+
+  .future-icon-button,
+  .future-avatar {
+    width: 2.65rem !important;
+    height: 2.65rem !important;
+    min-width: 2.65rem !important;
+  }
+
+  .future-dashboard,
+  .matsuri-dashboard {
+    gap: .62rem !important;
+  }
+
+  /* make the page less vertically stretched */
+  .future-welcome-card,
+  .matsuri-welcome,
+  .future-progress-card,
+  .future-panel-card,
+  .future-bottom-grid,
+  .future-bottom-grid > .matsuri-card {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .future-welcome-card,
+  .matsuri-welcome {
+    padding: .95rem .95rem .82rem !important;
+    border-radius: 1.32rem !important;
+  }
+
+  .future-welcome-card h2,
+  .matsuri-welcome h2 {
+    font-size: clamp(1.55rem, 7.5vw, 2.18rem) !important;
+    margin-top: .52rem !important;
+    margin-bottom: .2rem !important;
+  }
+
+  .future-welcome-card p,
+  .matsuri-welcome p {
+    font-size: .82rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .future-welcome-card .grid,
+  .matsuri-welcome .grid {
+    gap: .34rem !important;
+    margin-top: .68rem !important;
+  }
+
+  .future-stat-tile,
+  .matsuri-stat-tile {
+    padding: .48rem .16rem !important;
+    min-height: 5.2rem !important;
+  }
+
+  .future-progress-card {
+    padding: .84rem .88rem .78rem !important;
+    border-radius: 1.28rem !important;
+  }
+
+  .future-progress-card .mt-5,
+  .future-panel-card .mt-5,
+  .matsuri-card .mt-5 {
+    margin-top: .55rem !important;
+  }
+
+  .future-progress-row,
+  .future-list-row,
+  .matsuri-list-row {
+    padding: .5rem .62rem !important;
+    min-height: auto !important;
+  }
+
+  .future-middle-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: .56rem !important;
+  }
+
+  .future-middle-grid > .future-panel-card {
+    min-width: 0 !important;
+    padding: .82rem !important;
+    border-radius: 1.24rem !important;
+  }
+
+  .future-middle-grid > .future-panel-card h3 {
+    font-size: 1rem !important;
+  }
+
+  .future-middle-grid > .future-panel-card .space-y-3,
+  .future-middle-grid > .future-panel-card .space-y-4 {
+    gap: .35rem !important;
+  }
+
+  .future-middle-grid > .future-panel-card:nth-child(1) {
+    min-height: 10.9rem !important;
+  }
+
+  .future-middle-grid > .future-panel-card:nth-child(2) {
+    min-height: 10.9rem !important;
+  }
+
+  .future-bottom-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: .56rem !important;
+  }
+
+  .future-bottom-grid > .matsuri-card {
+    min-height: 8rem !important;
+    padding: .75rem !important;
+  }
+
+  /* keep only one weather block visible if duplicate variants exist */
+  .home-weather-front + .home-weather-front,
+  .future-weather-card + .future-weather-card {
+    display: none !important;
+  }
+
+  /* use bottom nav exactly like target */
+  #life-mobile-nav-v41 {
+    left: .68rem !important;
+    right: .68rem !important;
+    bottom: max(.48rem, env(safe-area-inset-bottom)) !important;
+    border-radius: 1.58rem !important;
+    padding: .42rem .44rem !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: .1rem !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-home img {
+    max-width: 4.5rem !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-item {
+    min-height: 4rem !important;
+    border-radius: 1.1rem !important;
+    padding: .32rem .12rem !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-icon {
+    width: 1.58rem !important;
+    height: 1.58rem !important;
+    font-size: 1.08rem !important;
+  }
+
+  #life-mobile-nav-v41 b {
+    font-size: .74rem !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-home {
+    background: linear-gradient(135deg, rgba(96,165,250,.34), rgba(125,211,252,.16)) !important;
+    box-shadow: 0 0 20px rgba(96,165,250,.18), inset 0 1px 0 rgba(255,255,255,.18) !important;
+  }
+
+  /* quick add as smaller floating orb like the ideal */
+  #life-floating-quickadd-v41 {
+    width: 3.72rem !important;
+    height: 3.72rem !important;
+    right: 1rem !important;
+    bottom: calc(5.75rem + env(safe-area-inset-bottom)) !important;
+  }
+
+  #life-floating-quickadd-v41 span {
+    width: 2.92rem !important;
+    height: 2.92rem !important;
+    font-size: 2rem !important;
+  }
+
+  /* if target page supports a dedicated calendar label, make it longer but keep compact */
+  #life-mobile-nav-v41 .life-mobile-nav-v41-item[aria-label="カレンダー"] b {
+    font-size: .72rem !important;
+  }
+}
+
+
+/* ===== v43 mobile UI real fix: readable compact smartphone layout ===== */
+@media (max-width: 430px) {
+  main {
+    padding-bottom: calc(6.8rem + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden !important;
+  }
+
+  .future-dashboard,
+  .matsuri-dashboard {
+    gap: 0.7rem !important;
+  }
+
+  .future-welcome-card,
+  .matsuri-welcome {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 0.9rem !important;
+    border-radius: 1.25rem !important;
+  }
+
+  .future-welcome-card h2,
+  .matsuri-welcome h2 {
+    font-size: clamp(1.5rem, 7vw, 2rem) !important;
+    line-height: 1.15 !important;
+    margin-bottom: 0.2rem !important;
+  }
+
+  .future-welcome-card p,
+  .matsuri-welcome p {
+    font-size: 0.82rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .future-stat-tile,
+  .matsuri-stat-tile {
+    min-height: 4.8rem !important;
+    padding: 0.45rem 0.2rem !important;
+  }
+
+  .future-progress-card {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 0.85rem !important;
+    border-radius: 1.2rem !important;
+  }
+
+  .future-progress-row,
+  .future-list-row,
+  .matsuri-list-row {
+    padding: 0.5rem 0.65rem !important;
+    border-radius: 0.95rem !important;
+    min-height: auto !important;
+  }
+
+  /* 最重要：小さいスマホでは予定/メモを1カラムに戻して文字崩れを防ぐ */
+  .future-middle-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.7rem !important;
+    width: 100% !important;
+  }
+
+  .future-middle-grid > .future-panel-card {
+    min-width: 0 !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 0.85rem !important;
+    border-radius: 1.2rem !important;
+    min-height: auto !important;
+  }
+
+  .future-middle-grid > .future-panel-card h3 {
+    font-size: 1.05rem !important;
+    line-height: 1.2 !important;
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+    white-space: nowrap !important;
+  }
+
+  .future-panel-card .flex.items-start.justify-between,
+  .future-panel-card .flex.items-center.justify-between {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+  }
+
+  .future-panel-card .flex.items-start.justify-between > *:first-child,
+  .future-panel-card .flex.items-center.justify-between > *:first-child {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  .future-panel-card .flex.items-start.justify-between > *:last-child,
+  .future-panel-card .flex.items-center.justify-between > *:last-child {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    font-size: 0.82rem !important;
+  }
+
+  .future-panel-card .space-y-3 > *,
+  .future-panel-card .space-y-4 > * {
+    min-width: 0 !important;
+  }
+
+  .future-panel-card p,
+  .future-panel-card span,
+  .future-panel-card button,
+  .future-list-row,
+  .future-progress-row {
+    writing-mode: horizontal-tb !important;
+    text-orientation: mixed !important;
+  }
+
+  .future-list-row span,
+  .future-progress-row span {
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* 下段だけ2カラム寄せ */
+  .future-bottom-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.65rem !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .future-bottom-grid > .matsuri-card {
+    min-height: 8.6rem !important;
+    padding: 0.8rem !important;
+    border-radius: 1.2rem !important;
+  }
+
+  .future-bottom-grid > .matsuri-card:nth-child(n+3) {
+    display: none !important;
+  }
+
+  /* Quick Add：理想画像寄せの小さめ虹色オーブ */
+  #life-floating-quickadd-v41,
+  #life-floating-quickadd-v42,
+  #life-floating-quickadd-v43,
+  #image-floating-quickadd-v40,
+  #image-floating-quickadd-v39 {
+    display: flex !important;
+    width: 3.6rem !important;
+    height: 3.6rem !important;
+    right: 0.95rem !important;
+    bottom: calc(5.55rem + env(safe-area-inset-bottom)) !important;
+    border-radius: 9999px !important;
+    background: conic-gradient(from 180deg, #60a5fa, #a78bfa, #f472b6, #f59e0b, #34d399, #60a5fa) !important;
+    box-shadow:
+      0 0 0 3px rgba(255,255,255,0.08),
+      0 10px 30px rgba(96,165,250,0.35),
+      0 0 30px rgba(167,139,250,0.35) !important;
+    z-index: 999991 !important;
+  }
+
+  #life-floating-quickadd-v41 span,
+  #life-floating-quickadd-v42 span,
+  #life-floating-quickadd-v43 span,
+  #image-floating-quickadd-v40 span,
+  #image-floating-quickadd-v39 span {
+    width: 2.85rem !important;
+    height: 2.85rem !important;
+    border-radius: 9999px !important;
+    background: rgba(8, 16, 40, 0.55) !important;
+    font-size: 2rem !important;
+    color: white !important;
+  }
+
+  /* 下部ナビ：高さを抑える */
+  #life-mobile-nav-v41,
+  #life-mobile-nav-v42,
+  #life-mobile-nav-v43,
+  #image-mobile-nav-v40,
+  #image-mobile-nav-v39,
+  #hard-mobile-nav {
+    display: block !important;
+    left: 0.7rem !important;
+    right: 0.7rem !important;
+    bottom: max(0.45rem, env(safe-area-inset-bottom)) !important;
+    padding: 0.42rem !important;
+    border-radius: 1.5rem !important;
+    background: rgba(4, 12, 34, 0.92) !important;
+    backdrop-filter: blur(18px) saturate(1.25) !important;
+    z-index: 999990 !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-grid,
+  #life-mobile-nav-v42 .life-mobile-nav-v42-grid,
+  #life-mobile-nav-v43 .life-mobile-nav-v43-grid,
+  #image-mobile-nav-v40 .image-mobile-nav-grid-v40,
+  #image-mobile-nav-v39 .image-mobile-nav-grid-v39,
+  #hard-mobile-nav .hard-mobile-nav-grid {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 0.18rem !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-item,
+  #life-mobile-nav-v42 .life-mobile-nav-v42-item,
+  #life-mobile-nav-v43 .life-mobile-nav-v43-item,
+  #image-mobile-nav-v40 .image-mobile-nav-item-v40,
+  #image-mobile-nav-v39 .image-mobile-nav-item-v39,
+  #hard-mobile-nav .hard-mobile-nav-item {
+    min-height: 4.05rem !important;
+    padding: 0.28rem 0.15rem !important;
+    border-radius: 1rem !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-icon,
+  #life-mobile-nav-v42 .life-mobile-nav-v42-icon,
+  #life-mobile-nav-v43 .life-mobile-nav-v43-icon,
+  #image-mobile-nav-v40 .image-mobile-nav-icon-v40,
+  #image-mobile-nav-v39 .image-mobile-nav-icon-v39,
+  #hard-mobile-nav .hard-mobile-nav-icon {
+    width: 1.45rem !important;
+    height: 1.45rem !important;
+    font-size: 1.08rem !important;
+  }
+
+  #life-mobile-nav-v41 b,
+  #life-mobile-nav-v42 b,
+  #life-mobile-nav-v43 b,
+  #image-mobile-nav-v40 b,
+  #image-mobile-nav-v39 b,
+  #hard-mobile-nav b {
+    font-size: 0.72rem !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  #life-mobile-nav-v41 .life-mobile-nav-v41-home,
+  #life-mobile-nav-v42 .life-mobile-nav-v42-home,
+  #life-mobile-nav-v43 .life-mobile-nav-v43-home,
+  #image-mobile-nav-v40 .image-mobile-nav-home-v40,
+  #image-mobile-nav-v39 .image-mobile-nav-home-v39,
+  #hard-mobile-nav .hard-mobile-nav-item.is-active {
+    background: linear-gradient(135deg, rgba(96,165,250,.34), rgba(125,211,252,.12)) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 0 18px rgba(96,165,250,.18) !important;
+  }
+
+  .home-weather-front + .home-weather-front,
+  .future-weather-card + .future-weather-card {
+    display: none !important;
+  }
+}
+
+/* 少し広いスマホでは予定/メモだけ2カラムに戻して理想画像寄せ */
+@media (min-width: 431px) and (max-width: 767px) {
+  .future-middle-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.7rem !important;
+  }
+
+  .future-middle-grid > .future-panel-card h3 {
+    writing-mode: horizontal-tb !important;
+    white-space: nowrap !important;
+  }
+}
+
+
+/* ===== v44 mobile compact fix: stop tall layout + suppress duplicate mobile blocks ===== */
+@media (max-width: 430px) {
+  html, body {
+    overflow-x: hidden !important;
+  }
+
+  main {
+    padding-bottom: calc(6.4rem + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden !important;
+  }
+
+  /* ホーム全体を縦1カラム前提に強制。細長い2カラム崩れを止める */
+  .future-dashboard,
+  .future-home-stack,
+  .matsuri-dashboard {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+
+  /* 旧/重複モバイルUI候補を強めに抑制 */
+  .mobile-home-legacy,
+  .mobile-home-clone,
+  .future-mobile-clone,
+  .home-weather-front + .home-weather-front,
+  .future-weather-card + .future-weather-card,
+  .life-mobile-header-clone,
+  .duplicate-mobile-block {
+    display: none !important;
+  }
+
+  /* 上部 */
+  .future-topbar,
+  .future-hero-shell,
+  .future-welcome-card,
+  .matsuri-welcome,
+  .future-search-wrap,
+  .life-page-drawer-toggle {
+    width: 100% !important;
+    margin: 0 !important;
+    padding-left: 0.95rem !important;
+    padding-right: 0.95rem !important;
+    border-radius: 1.25rem !important;
+  }
+
+  .future-welcome-card,
+  .matsuri-welcome {
+    padding-top: 0.95rem !important;
+    padding-bottom: 0.95rem !important;
+    overflow: hidden !important;
+  }
+
+  .future-welcome-card h2,
+  .matsuri-welcome h2 {
+    font-size: clamp(1.7rem, 8vw, 2.2rem) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.02em !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .future-welcome-card p,
+  .matsuri-welcome p {
+    font-size: 0.9rem !important;
+    line-height: 1.5 !important;
+    opacity: 0.92 !important;
+  }
+
+  /* メトリクスを2列 or 3列で見やすく */
+  .future-stats-grid,
+  .future-stat-grid,
+  .matsuri-stat-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.55rem !important;
+  }
+
+  .future-stat-tile,
+  .matsuri-stat-tile {
+    min-height: 4.4rem !important;
+    padding: 0.55rem 0.35rem !important;
+    border-radius: 1rem !important;
+  }
+
+  /* 進行カード */
+  .future-progress-card,
+  .future-panel-card,
+  .matsuri-card,
+  .future-section-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0.9rem !important;
+    border-radius: 1.2rem !important;
+    overflow: hidden !important;
+  }
+
+  .future-progress-card h3,
+  .future-panel-card h3,
+  .matsuri-card h3,
+  .future-section-card h3 {
+    font-size: 1.05rem !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+    writing-mode: horizontal-tb !important;
+  }
+
+  .future-progress-card .flex.items-center.justify-between,
+  .future-progress-card .flex.items-start.justify-between,
+  .future-panel-card .flex.items-center.justify-between,
+  .future-panel-card .flex.items-start.justify-between,
+  .matsuri-card .flex.items-center.justify-between,
+  .matsuri-card .flex.items-start.justify-between {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+  }
+
+  /* 中央の予定/メモ/その他は全部1カラム */
+  .future-middle-grid,
+  .future-bottom-grid,
+  .future-home-grid,
+  .future-grid-2,
+  .future-grid-3 {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .future-list-row,
+  .future-progress-row,
+  .matsuri-list-row {
+    min-height: auto !important;
+    padding: 0.58rem 0.68rem !important;
+    border-radius: 0.95rem !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* 習慣トラッカーが縦長すぎるのでコンパクト化 */
+  .habit-tracker-card,
+  .routine-summary-card,
+  .future-habit-card {
+    max-height: none !important;
+  }
+
+  .habit-tracker-card .space-y-4,
+  .routine-summary-card .space-y-4,
+  .future-habit-card .space-y-4 {
+    gap: 0.55rem !important;
+  }
+
+  /* フローティング追加ボタン */
+  #life-floating-quickadd-v41,
+  #life-floating-quickadd-v42,
+  #life-floating-quickadd-v43,
+  #image-floating-quickadd-v40,
+  #image-floating-quickadd-v39 {
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    right: 0.95rem !important;
+    bottom: calc(5.45rem + env(safe-area-inset-bottom)) !important;
+    border-radius: 9999px !important;
+    background: conic-gradient(from 180deg, #60a5fa, #a78bfa, #f472b6, #f59e0b, #34d399, #60a5fa) !important;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.09), 0 10px 30px rgba(96,165,250,.35), 0 0 24px rgba(244,114,182,.30) !important;
+    z-index: 999991 !important;
+  }
+
+  #life-floating-quickadd-v41 span,
+  #life-floating-quickadd-v42 span,
+  #life-floating-quickadd-v43 span,
+  #image-floating-quickadd-v40 span,
+  #image-floating-quickadd-v39 span {
+    width: 2.76rem !important;
+    height: 2.76rem !important;
+    border-radius: 9999px !important;
+    background: rgba(8, 16, 40, 0.56) !important;
+    color: #fff !important;
+    font-size: 1.95rem !important;
+  }
+
+  /* 下部ナビ */
+  #hard-mobile-nav,
+  #life-mobile-nav-v41,
+  #life-mobile-nav-v42,
+  #life-mobile-nav-v43,
+  #image-mobile-nav-v40,
+  #image-mobile-nav-v39 {
+    left: 0.7rem !important;
+    right: 0.7rem !important;
+    bottom: max(0.45rem, env(safe-area-inset-bottom)) !important;
+    padding: 0.45rem !important;
+    border-radius: 1.55rem !important;
+    background: rgba(4, 12, 34, 0.94) !important;
+    backdrop-filter: blur(18px) saturate(1.2) !important;
+    z-index: 999990 !important;
+  }
+
+  #hard-mobile-nav .hard-mobile-nav-grid,
+  #life-mobile-nav-v41 .life-mobile-nav-v41-grid,
+  #life-mobile-nav-v42 .life-mobile-nav-v42-grid,
+  #life-mobile-nav-v43 .life-mobile-nav-v43-grid,
+  #image-mobile-nav-v40 .image-mobile-nav-grid-v40,
+  #image-mobile-nav-v39 .image-mobile-nav-grid-v39 {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 0.16rem !important;
+  }
+
+  #hard-mobile-nav .hard-mobile-nav-item,
+  #life-mobile-nav-v41 .life-mobile-nav-v41-item,
+  #life-mobile-nav-v42 .life-mobile-nav-v42-item,
+  #life-mobile-nav-v43 .life-mobile-nav-v43-item,
+  #image-mobile-nav-v40 .image-mobile-nav-item-v40,
+  #image-mobile-nav-v39 .image-mobile-nav-item-v39 {
+    min-height: 4rem !important;
+    padding: 0.28rem 0.12rem !important;
+    border-radius: 1rem !important;
+  }
+
+  #hard-mobile-nav .hard-mobile-nav-icon,
+  #life-mobile-nav-v41 .life-mobile-nav-v41-icon,
+  #life-mobile-nav-v42 .life-mobile-nav-v42-icon,
+  #life-mobile-nav-v43 .life-mobile-nav-v43-icon,
+  #image-mobile-nav-v40 .image-mobile-nav-icon-v40,
+  #image-mobile-nav-v39 .image-mobile-nav-icon-v39 {
+    width: 1.42rem !important;
+    height: 1.42rem !important;
+    font-size: 1.05rem !important;
+  }
+
+  #hard-mobile-nav b,
+  #life-mobile-nav-v41 b,
+  #life-mobile-nav-v42 b,
+  #life-mobile-nav-v43 b,
+  #image-mobile-nav-v40 b,
+  #image-mobile-nav-v39 b {
+    font-size: 0.72rem !important;
+    white-space: nowrap !important;
+    line-height: 1.05 !important;
+  }
+
+  /* ホーム上部のロゴ/ベル/プロフィール重なり軽減 */
+  .home-top-head,
+  .future-home-header,
+  .life-header-row {
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) auto auto !important;
+    gap: 0.5rem !important;
+    align-items: center !important;
+  }
+
+  .home-top-head h1,
+  .future-home-header h1,
+  .life-header-row h1 {
+    font-size: 1.05rem !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
+
+/* 431px以上のスマホでも詰まりすぎないように少しだけ整える */
+@media (min-width: 431px) and (max-width: 767px) {
+  .future-middle-grid,
+  .future-bottom-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.8rem !important;
+  }
+}
+
+/* ===== v45 mobile duplicate header fix + compact home + AI entry polish ===== */
 @media (max-width: 767px) {
   html,
   body {
@@ -4088,35 +6067,34 @@ main {
 
   main {
     overflow-x: hidden !important;
-    padding-bottom: calc(6.7rem + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(6.6rem + env(safe-area-inset-bottom)) !important;
   }
 
-  /* 検索欄付近のダブり原因になりやすい追加カードをスマホでは消す */
+  /* 旧スマホ上部UI / 追加した全ページ一覧カードが重なって見える問題を抑制 */
   .life-page-drawer-toggle,
   .home-page-drawer-toggle,
   .mobile-page-drawer-toggle,
-  .future-page-drawer-toggle {
+  .future-page-drawer-toggle,
+  .home-weather-front + .home-weather-front,
+  .future-weather-card + .future-weather-card,
+  .future-top-hud + .future-top-hud,
+  .home-top-head + .home-top-head,
+  .future-search-pill + .future-search-pill,
+  .life-mobile-header-clone,
+  .future-mobile-clone,
+  .mobile-home-clone,
+  .duplicate-mobile-block {
     display: none !important;
     visibility: hidden !important;
     pointer-events: none !important;
   }
 
-  /* 重複表示だけ消す */
-  .future-top-hud + .future-top-hud,
-  .home-top-head + .home-top-head,
-  .future-search-pill + .future-search-pill,
-  .home-weather-front + .home-weather-front,
-  .future-weather-card + .future-weather-card {
-    display: none !important;
-  }
-
-  /* 上部HUDは1つだけ、軽量化 */
   .future-top-hud {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto auto !important;
     align-items: center !important;
     gap: .55rem !important;
-    margin: 0 0 .7rem !important;
+    margin: 0 0 .75rem !important;
     padding: .45rem .25rem .25rem !important;
     border: 0 !important;
     background: transparent !important;
@@ -4130,7 +6108,7 @@ main {
   }
 
   .future-brand-lockup p:first-child {
-    font-size: clamp(1.08rem, 5.4vw, 1.35rem) !important;
+    font-size: clamp(1.1rem, 5.4vw, 1.36rem) !important;
     line-height: 1.05 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -4175,11 +6153,9 @@ main {
     font-size: .95rem !important;
   }
 
-  /* ホームを理想画像寄せ：縦に伸びすぎない密度へ */
   .future-dashboard,
   .matsuri-dashboard {
     width: 100% !important;
-    max-width: 100% !important;
     gap: .72rem !important;
   }
 
@@ -4200,8 +6176,8 @@ main {
 
   .future-welcome-card h2,
   .matsuri-welcome h2 {
-    font-size: clamp(1.65rem, 7.6vw, 2.2rem) !important;
-    line-height: 1.08 !important;
+    font-size: clamp(1.72rem, 8.3vw, 2.28rem) !important;
+    line-height: 1.1 !important;
     letter-spacing: -.03em !important;
     margin-top: .45rem !important;
     margin-bottom: .25rem !important;
@@ -4212,39 +6188,22 @@ main {
 
   .future-welcome-card p,
   .matsuri-welcome p {
-    font-size: .84rem !important;
-    line-height: 1.45 !important;
+    font-size: .86rem !important;
+    line-height: 1.5 !important;
   }
 
-  /* v45の2列巨大タイルを解除。理想画像みたいに5つ横並びへ */
   .future-welcome-card .grid,
   .matsuri-welcome .grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    gap: .42rem !important;
-    margin-top: .72rem !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: .55rem !important;
+    margin-top: .75rem !important;
   }
 
   .future-stat-tile,
   .matsuri-stat-tile {
-    min-height: 4.35rem !important;
-    padding: .42rem .14rem !important;
-    border-radius: .88rem !important;
-  }
-
-  .future-stat-tile > div {
-    width: 1.95rem !important;
-    height: 1.95rem !important;
-    font-size: .95rem !important;
-  }
-
-  .future-stat-tile p:nth-of-type(1),
-  .matsuri-stat-tile p:nth-of-type(1) {
-    font-size: .55rem !important;
-  }
-
-  .future-stat-tile p:nth-of-type(2),
-  .matsuri-stat-tile p:nth-of-type(2) {
-    font-size: .7rem !important;
+    min-height: 4.7rem !important;
+    padding: .5rem .3rem !important;
+    border-radius: 1rem !important;
   }
 
   .future-progress-card,
@@ -4253,8 +6212,8 @@ main {
     width: 100% !important;
     min-width: 0 !important;
     margin: 0 !important;
-    padding: .84rem !important;
-    border-radius: 1.18rem !important;
+    padding: .88rem !important;
+    border-radius: 1.2rem !important;
     overflow: hidden !important;
   }
 
@@ -4268,22 +6227,22 @@ main {
     white-space: nowrap !important;
   }
 
-  /* 予定/メモは狭い端末でも縦書き崩れしない2カラム */
-  .future-middle-grid {
+  .future-middle-grid,
+  .future-home-grid,
+  .future-grid-2,
+  .future-grid-3 {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: .62rem !important;
+    grid-template-columns: 1fr !important;
+    gap: .72rem !important;
     width: 100% !important;
     margin: 0 !important;
   }
 
   .future-middle-grid > .future-panel-card {
-    min-width: 0 !important;
     width: 100% !important;
-    min-height: 9.2rem !important;
-    max-height: 11rem !important;
-    padding: .78rem !important;
-    overflow: hidden !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
   }
 
   .future-panel-card .flex.items-start.justify-between,
@@ -4294,14 +6253,16 @@ main {
     flex-direction: row !important;
     align-items: flex-start !important;
     justify-content: space-between !important;
-    gap: .45rem !important;
+    gap: .5rem !important;
   }
 
   .future-panel-card .flex.items-start.justify-between > *:last-child,
-  .future-panel-card .flex.items-center.justify-between > *:last-child {
+  .future-panel-card .flex.items-center.justify-between > *:last-child,
+  .matsuri-card .flex.items-start.justify-between > *:last-child,
+  .matsuri-card .flex.items-center.justify-between > *:last-child {
     white-space: nowrap !important;
     flex: 0 0 auto !important;
-    font-size: .72rem !important;
+    font-size: .82rem !important;
   }
 
   .future-list-row,
@@ -4321,61 +6282,38 @@ main {
   .future-progress-row,
   .matsuri-list-row {
     min-height: auto !important;
-    padding: .48rem .58rem !important;
-    border-radius: .86rem !important;
+    padding: .56rem .68rem !important;
+    border-radius: .95rem !important;
   }
 
-  /* 天気/習慣は2カラム。ただし習慣トラッカーを絶対に縦長に戻さない */
   .future-bottom-grid {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-columns: 1fr 1fr !important;
     gap: .62rem !important;
     width: 100% !important;
     margin: 0 !important;
   }
 
-  .future-bottom-grid > .matsuri-card,
-  .future-bottom-grid > * {
-    min-width: 0 !important;
-    min-height: 7.6rem !important;
-    max-height: 9.2rem !important;
-    padding: .72rem !important;
-    border-radius: 1.12rem !important;
-    overflow: hidden !important;
+  .future-bottom-grid > .matsuri-card {
+    min-height: 8.1rem !important;
+    padding: .75rem !important;
+    border-radius: 1.15rem !important;
   }
 
-  .future-bottom-grid > *:nth-child(n+3) {
+  .future-bottom-grid > .matsuri-card:nth-child(n+3) {
     display: none !important;
   }
 
-  .future-bottom-grid h3,
-  .future-bottom-grid .matsuri-card h3 {
-    font-size: .95rem !important;
-    line-height: 1.15 !important;
-  }
-
-  .future-bottom-grid .text-xl,
-  .future-bottom-grid .text-2xl,
-  .future-bottom-grid .text-3xl {
-    font-size: 1.12rem !important;
-  }
-
-  .future-bottom-grid .space-y-4,
-  .future-bottom-grid .space-y-3 {
-    gap: .32rem !important;
-  }
-
-  /* Quick Add */
   #life-floating-quickadd-v41,
   #life-floating-quickadd-v42,
   #life-floating-quickadd-v43,
   #image-floating-quickadd-v40,
   #image-floating-quickadd-v39 {
     display: flex !important;
-    width: 3.48rem !important;
-    height: 3.48rem !important;
+    width: 3.52rem !important;
+    height: 3.52rem !important;
     right: .95rem !important;
-    bottom: calc(5.35rem + env(safe-area-inset-bottom)) !important;
+    bottom: calc(5.42rem + env(safe-area-inset-bottom)) !important;
     border-radius: 9999px !important;
     background: conic-gradient(from 180deg, #60a5fa, #a78bfa, #f472b6, #f59e0b, #34d399, #60a5fa) !important;
     box-shadow: 0 0 0 3px rgba(255,255,255,.08), 0 10px 30px rgba(96,165,250,.34), 0 0 26px rgba(244,114,182,.28) !important;
@@ -4387,15 +6325,14 @@ main {
   #life-floating-quickadd-v43 span,
   #image-floating-quickadd-v40 span,
   #image-floating-quickadd-v39 span {
-    width: 2.68rem !important;
-    height: 2.68rem !important;
+    width: 2.74rem !important;
+    height: 2.74rem !important;
     border-radius: 9999px !important;
     background: rgba(8,16,40,.56) !important;
     color: #fff !important;
-    font-size: 1.9rem !important;
+    font-size: 1.95rem !important;
   }
 
-  /* 下部ナビ */
   #hard-mobile-nav,
   #life-mobile-nav-v41,
   #life-mobile-nav-v42,
@@ -4428,8 +6365,8 @@ main {
   #life-mobile-nav-v43 .life-mobile-nav-v43-item,
   #image-mobile-nav-v40 .image-mobile-nav-item-v40,
   #image-mobile-nav-v39 .image-mobile-nav-item-v39 {
-    min-height: 3.9rem !important;
-    padding: .23rem .1rem !important;
+    min-height: 3.95rem !important;
+    padding: .25rem .1rem !important;
     border-radius: 1rem !important;
   }
 
@@ -4445,9 +6382,21 @@ main {
   }
 }
 
-/* かなり細い端末だけは予定/メモを1カラムに逃がす */
-@media (max-width: 374px) {
-  .future-middle-grid {
-    grid-template-columns: 1fr !important;
-  }
+/* ===== v45 smart AI helper chips/cards polish ===== */
+.smart-ai-chip,
+.ai-command-chip,
+.life-ai-chip {
+  border-radius: 999px !important;
+  border: 1px solid rgba(125,211,252,.22) !important;
+  background: rgba(15,23,42,.38) !important;
+  color: rgba(226,232,240,.94) !important;
+}
+
+.smart-ai-result-card,
+.ai-command-result-card,
+.life-ai-result-card {
+  border-radius: 1.25rem !important;
+  border: 1px solid rgba(125,211,252,.26) !important;
+  background: linear-gradient(135deg, rgba(15,23,42,.72), rgba(30,64,175,.28)) !important;
+  box-shadow: 0 16px 40px rgba(2,6,23,.28), inset 0 1px 0 rgba(255,255,255,.12) !important;
 }
