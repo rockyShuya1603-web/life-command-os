@@ -1734,6 +1734,49 @@ export default function Home() {
         <span>＋</span>
       </button>
 
+
+      <button
+        id="life-floating-quickadd-v49"
+        type="button"
+        onClick={() => setQuickAddOpen(true)}
+        className="lg:hidden"
+        aria-label="Quick Add"
+      >
+        <span>＋</span>
+      </button>
+
+
+      <nav id="life-mobile-nav-v51" className="lg:hidden" aria-label="スマホ下部ナビ v51">
+        <div className="life-mobile-nav-v51-grid">
+          <button type="button" onClick={() => setPage("home")} className={page === "home" ? "is-active" : ""}>
+            <span className="life-mobile-nav-v51-icon">🏠</span><b>ホーム</b>
+          </button>
+          <button type="button" onClick={() => setPage("memos")} className={page === "memos" ? "is-active" : ""}>
+            <span className="life-mobile-nav-v51-icon">📝</span><b>メモ</b>
+          </button>
+          <button type="button" onClick={() => setPage("todos")} className={page === "todos" ? "is-active" : ""}>
+            <span className="life-mobile-nav-v51-icon">✅</span><b>TODO</b>
+          </button>
+          <button type="button" onClick={() => setPage("calendar")} className={page === "calendar" ? "is-active" : ""}>
+            <span className="life-mobile-nav-v51-icon">📅</span><b>カレンダー</b>
+          </button>
+          <button type="button" onClick={() => setCommandOpen(true)}>
+            <span className="life-mobile-nav-v51-icon">•••</span><b>もっと</b>
+          </button>
+        </div>
+      </nav>
+
+
+      <button
+        id="life-floating-quickadd-v51"
+        type="button"
+        onClick={() => setQuickAddOpen(true)}
+        className="lg:hidden"
+        aria-label="Quick Add"
+      >
+        <span>＋</span>
+      </button>
+
 </main>
   );
 }
