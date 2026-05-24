@@ -1717,7 +1717,7 @@ export default function Home() {
             <span className="life-mobile-nav-v41-icon">✅</span><b>TODO</b>
           </button>
           <button type="button" onClick={() => setPage("calendar")} className={`life-mobile-nav-v41-item ${page === "calendar" ? "is-active" : ""}`} aria-label="カレンダー">
-            <span className="life-mobile-nav-v41-icon">📅</span><b>予定</b>
+            <span className="life-mobile-nav-v41-icon">📅</span><b>カレンダー</b>
           </button>
           <button type="button" onClick={() => setCommandOpen(true)} className="life-mobile-nav-v41-item" aria-label="もっと">
             <span className="life-mobile-nav-v41-icon">•••</span><b>もっと</b>
