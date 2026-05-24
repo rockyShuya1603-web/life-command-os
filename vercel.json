@@ -1,8 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/mail/gmail/sync",
-      "schedule": "0 9 * * *"
+      "path": "/api/mail/gmail/auto-sync",
+      "schedule": "0 3 * * *"
     }
   ]
 }
