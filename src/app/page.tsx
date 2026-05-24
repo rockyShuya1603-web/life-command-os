@@ -1693,40 +1693,27 @@ export default function Home() {
           background: transparent;
         }
       `}</style>
-      <nav className="lc-mobile-nav-final fixed inset-x-0 bottom-0 z-[99999] border-t border-white/10 bg-black/92 px-2 py-2 backdrop-blur-xl lg:hidden">
-        <div className="lc-mobile-nav-final-grid mx-auto grid w-full grid-cols-5 gap-1.5">
-          <button type="button" onClick={() => setPage("home")} className={`lc-mobile-nav-final-item ${page === "home" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.05] text-white/75"}`} aria-label="ホーム">
-            <span className="lc-mobile-nav-final-icon">🏠</span>
-            <span className="lc-mobile-nav-final-label">ホーム</span>
+
+      <div id="hard-mobile-nav" className="lg:hidden">
+        <div className="hard-mobile-nav-grid">
+          <button type="button" onClick={() => setPage("home")} className={`hard-mobile-nav-item ${page === "home" ? "is-active" : ""}`}>
+            <span>🏠</span><b>ホーム</b>
           </button>
-          <button type="button" onClick={() => setPage("memos")} className={`lc-mobile-nav-final-item ${page === "memos" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.05] text-white/75"}`} aria-label="メモ">
-            <span className="lc-mobile-nav-final-icon">📝</span>
-            <span className="lc-mobile-nav-final-label">メモ</span>
+          <button type="button" onClick={() => setPage("memos")} className={`hard-mobile-nav-item ${page === "memos" ? "is-active" : ""}`}>
+            <span>📝</span><b>メモ</b>
           </button>
-          <button type="button" onClick={() => setPage("todos")} className={`lc-mobile-nav-final-item ${page === "todos" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.05] text-white/75"}`} aria-label="TODO">
-            <span className="lc-mobile-nav-final-icon">✅</span>
-            <span className="lc-mobile-nav-final-label">TODO</span>
+          <button type="button" onClick={() => setPage("todos")} className={`hard-mobile-nav-item ${page === "todos" ? "is-active" : ""}`}>
+            <span>✅</span><b>TODO</b>
           </button>
-          <button type="button" onClick={() => setPage("budget")} className={`lc-mobile-nav-final-item ${page === "budget" ? `bg-gradient-to-r ${theme.accent} text-black` : "bg-white/[0.05] text-white/75"}`} aria-label="家計簿">
-            <span className="lc-mobile-nav-final-icon">💰</span>
-            <span className="lc-mobile-nav-final-label">家計簿</span>
+          <button type="button" onClick={() => setPage("budget")} className={`hard-mobile-nav-item ${page === "budget" ? "is-active" : ""}`}>
+            <span>💰</span><b>家計簿</b>
           </button>
-          <button
-            type="button"
-            onClick={() => setQuickAddOpen(true)}
-            className="lc-mobile-nav-final-item lc-mobile-nav-final-add text-white"
-            style={{
-              background: "conic-gradient(from 180deg, #38bdf8, #818cf8, #c084fc, #f472b6, #fb7185, #fbbf24, #34d399, #38bdf8)",
-              color: "white",
-              boxShadow: "0 0 32px rgba(125, 211, 252, .5), inset 0 0 0 1px rgba(255,255,255,.3)",
-            }}
-            aria-label="Quick Add"
-          >
-            <span className="lc-mobile-nav-final-icon lc-mobile-nav-final-plus">＋</span>
-            <span className="lc-mobile-nav-final-label">追加</span>
+          <button type="button" onClick={() => setQuickAddOpen(true)} className="hard-mobile-nav-item hard-mobile-nav-add">
+            <span>＋</span><b>追加</b>
           </button>
         </div>
-      </nav>
+      </div>
+
 </main>
   );
 }
