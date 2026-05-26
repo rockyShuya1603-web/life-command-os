@@ -3,6 +3,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { ThemeKey, themes, getStoredTheme, saveTheme } from "@/lib/themes";
+import LifeLevelGachaV52 from "./components/LifeLevelGachaV52";
 
 type PageKey =
   | "home"
@@ -1777,6 +1778,8 @@ export default function Home() {
         <span>＋</span>
       </button>
 
+
+      <LifeLevelGachaV52 />
 </main>
   );
 }
