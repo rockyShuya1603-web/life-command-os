@@ -4,6 +4,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { supabase } from "@/lib/supabase";
 import { ThemeKey, themes, getStoredTheme, saveTheme } from "@/lib/themes";
 import LifeLevelGachaV52 from "./components/LifeLevelGachaV52";
+import LifeCommandV53Enhancements from "./components/LifeCommandV53Enhancements";
 
 type PageKey =
   | "home"
@@ -1780,6 +1781,8 @@ export default function Home() {
 
 
       <LifeLevelGachaV52 />
+
+      <LifeCommandV53Enhancements page={page as any} setPage={setPage} />
 </main>
   );
 }
