@@ -4658,3 +4658,281 @@ main {
     margin-bottom: .85rem !important;
   }
 }
+
+/* ===== v57 emergency rollback stable ===== */
+/* v53-v56で追加した下部/上部の重複UIを非表示。元の画面を優先して戻す。 */
+.life-v53-shell,
+.life-v54-search-overlay,
+.life-v55-top-injected,
+.life-v56-top-ai,
+.life-v56-page {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* 既存メモページを壊さないため、v57は独立ルートに退避 */
+.life-v57-page {
+  min-height: 100vh;
+  padding: 1rem;
+  color: white;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(125, 211, 252, .22), transparent 34%),
+    linear-gradient(135deg, #061225, #172554 54%, #0f172a);
+}
+
+.life-v57-wrap {
+  width: min(100%, 980px);
+  margin: 0 auto 4rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.life-v57-card {
+  border: 1px solid rgba(125,211,252,.22);
+  border-radius: 1.35rem;
+  padding: 1rem;
+  background: rgba(15, 23, 42, .62);
+  box-shadow: 0 18px 50px rgba(2,6,23,.28), inset 0 1px 0 rgba(255,255,255,.1);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.life-v57-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .8rem;
+}
+
+.life-v57-head p {
+  margin: 0 0 .28rem;
+  font-size: .72rem;
+  letter-spacing: .18em;
+  font-weight: 950;
+  color: rgba(186,230,253,.86);
+}
+
+.life-v57-head h1,
+.life-v57-head h2 {
+  margin: 0;
+  line-height: 1.1;
+  letter-spacing: -.03em;
+}
+
+.life-v57-head small {
+  display: block;
+  margin-top: .35rem;
+  color: rgba(226,232,240,.7);
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.life-v57-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
+.life-v57-nav a,
+.life-v57-nav button,
+.life-v57-form button,
+.life-v57-check button,
+.life-v57-routine button,
+.life-v57-search button {
+  border: 0;
+  border-radius: .9rem;
+  padding: .72rem .9rem;
+  font-weight: 950;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.life-v57-nav a,
+.life-v57-nav button {
+  color: rgba(226,232,240,.88);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+.life-v57-form {
+  display: grid;
+  gap: .65rem;
+  margin-top: .9rem;
+}
+
+.life-v57-form input,
+.life-v57-form textarea,
+.life-v57-search input {
+  width: 100%;
+  border: 1px solid rgba(125,211,252,.22);
+  border-radius: 1rem;
+  background: rgba(2,6,23,.38);
+  color: white;
+  padding: .85rem .95rem;
+  font-weight: 850;
+  outline: none;
+}
+
+.life-v57-form textarea {
+  resize: vertical;
+  min-height: 9rem;
+  line-height: 1.6;
+}
+
+.life-v57-form button,
+.life-v57-check button,
+.life-v57-routine button,
+.life-v57-search button.primary {
+  color: #061225;
+  background: linear-gradient(135deg, #bae6fd, #a7f3d0);
+}
+
+.life-v57-toast {
+  border-radius: .9rem;
+  padding: .65rem .8rem;
+  color: #d1fae5;
+  background: rgba(16,185,129,.13);
+  border: 1px solid rgba(52,211,153,.22);
+  font-weight: 950;
+}
+
+.life-v57-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: .75rem;
+}
+
+.life-v57-check,
+.life-v57-routine,
+.life-v57-result {
+  border-radius: 1.1rem;
+  padding: .85rem;
+  background: rgba(2,6,23,.28);
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+.life-v57-check-title {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .6rem;
+  align-items: center;
+}
+
+.life-v57-check-title span,
+.life-v57-routine-title span {
+  width: 2.35rem;
+  height: 2.35rem;
+  display: grid;
+  place-items: center;
+  border-radius: .9rem;
+  background: rgba(255,255,255,.08);
+}
+
+.life-v57-check-title b,
+.life-v57-routine-title b {
+  display: block;
+}
+
+.life-v57-check-title small,
+.life-v57-routine-title small {
+  color: rgba(226,232,240,.62);
+  font-weight: 800;
+}
+
+.life-v57-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: .32rem;
+  margin: .7rem 0;
+}
+
+.life-v57-week em {
+  height: 1.9rem;
+  display: grid;
+  place-items: center;
+  border-radius: .65rem;
+  background: rgba(255,255,255,.06);
+  color: rgba(226,232,240,.55);
+  font-size: .72rem;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.life-v57-week em.on {
+  color: #052e2b;
+  background: linear-gradient(135deg, #67e8f9, #86efac);
+}
+
+.life-v57-routines {
+  display: grid;
+  gap: .75rem;
+}
+
+.life-v57-routine-title {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: .65rem;
+  align-items: center;
+  width: 100%;
+  background: transparent;
+  color: white;
+  border: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.life-v57-routine ol {
+  margin: .75rem 0 0;
+  color: rgba(226,232,240,.76);
+  line-height: 1.75;
+  font-weight: 800;
+}
+
+.life-v57-search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .55rem;
+  margin-top: .9rem;
+}
+
+.life-v57-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-top: .65rem;
+}
+
+.life-v57-chips button {
+  color: rgba(226,232,240,.88);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.1);
+}
+
+.life-v57-result {
+  margin-top: .8rem;
+}
+
+.life-v57-result h3 {
+  margin: 0 0 .65rem;
+  line-height: 1.5;
+}
+
+.life-v57-result ul {
+  margin: .65rem 0 0;
+  padding-left: 1.1rem;
+  color: rgba(226,232,240,.76);
+  line-height: 1.6;
+}
+
+@media (max-width: 767px) {
+  .life-v57-page {
+    padding: .75rem;
+  }
+  .life-v57-grid,
+  .life-v57-search {
+    grid-template-columns: 1fr;
+  }
+  .life-v57-head {
+    flex-direction: column;
+  }
+}
