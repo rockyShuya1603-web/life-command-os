@@ -1247,11 +1247,6 @@ export default function Home() {
     <main
       className={`relative min-h-screen overflow-hidden bg-gradient-to-br ${theme.bg} ${visual.shell} ${(themeKey === "mirai" ? "future-os" : (themeKey === "hanabi" || themeKey === "natsumatsuri") ? "matsuri-os" : "")} text-white`}
     >
-      <div className="life-v55-top-injected">
-        <LifeTopSearchBoostV54 setPage={setPage} />
-        <LifeCommandV53Enhancements page={page as any} setPage={setPage} />
-      </div>
-
       {appNotice && (
         <div className="fixed inset-x-3 top-3 z-[100] mx-auto max-w-md rounded-3xl border border-white/15 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl">
           <p className="text-sm font-black text-white">{appNotice.title}</p>
@@ -1787,6 +1782,9 @@ export default function Home() {
 
 
       <LifeLevelGachaV52 />
+
+      <LifeTopSearchBoostV54 setPage={setPage} />
+      <LifeCommandV53Enhancements page={page as any} setPage={setPage} />
 </main>
   );
 }

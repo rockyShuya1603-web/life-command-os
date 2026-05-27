@@ -4625,3 +4625,36 @@ main {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+
+
+/* ===== v55 memo composer true top fix ===== */
+.life-v55-top-injected {
+  order: -2147483647 !important;
+}
+
+.life-v54-top-slot,
+.life-v54-memo-first,
+.life-v53-shell[data-life-v53] {
+  order: -2147483647 !important;
+}
+
+/* メモページ上部で余白が大きくならないように調整 */
+.life-v55-top-injected .life-v53-shell,
+.life-v54-top-slot.life-v53-shell {
+  margin-top: 0 !important;
+  margin-bottom: 1rem !important;
+}
+
+/* 万一、既存ページ側に並び順指定があってもメモ入力を先頭へ */
+.life-v54-memo-first {
+  margin-top: 0 !important;
+}
+
+@media (max-width: 767px) {
+  .life-v55-top-injected .life-v53-shell,
+  .life-v54-top-slot.life-v53-shell {
+    margin-top: .25rem !important;
+    margin-bottom: .85rem !important;
+  }
+}
