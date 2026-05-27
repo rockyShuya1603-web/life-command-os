@@ -1,27 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type PrizeType = "quote" | "badge" | "trophy" | "miss";
+type Prize = { id: string; type: PrizeType; title: string; body: string; rarity: "N" | "R" | "SR" | "SSR"; createdAt: string };
 type RoutineKey = "morning" | "reading" | "training" | "diary" | "night";
-
-type Prize = {
-  id: string;
-  type: PrizeType;
-  title: string;
-  body: string;
-  rarity: "N" | "R" | "SR" | "SSR";
-  createdAt: string;
-};
-
-type Routine = {
-  key: RoutineKey;
-  title: string;
-  emoji: string;
-  point: number;
-  description: string;
-};
-
+type Routine = { key: RoutineKey; title: string; emoji: string; point: number; description: string };
 type LifeState = {
   level: number;
   exp: number;
@@ -32,9 +16,11 @@ type LifeState = {
   doneDates: Record<RoutineKey, string[]>;
   prizes: Prize[];
   recentLogs: string[];
+  updatedAt?: string;
 };
 
 const STORAGE_KEY = "life-command-os-v52-life-level";
+const USER_KEY = "life-command-os-user-id";
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
 const routines: Routine[] = [
@@ -76,49 +62,63 @@ function initialState(): LifeState {
     doneDates: { morning: [], reading: [], training: [], diary: [], night: [] },
     prizes: [],
     recentLogs: [],
+    updatedAt: new Date().toISOString(),
   };
 }
 
-function expRequired(level: number) {
-  return 80 + (level - 1) * 35;
+function expRequired(level: number) { return 80 + (level - 1) * 35; }
+function userId() {
+  if (typeof window === "undefined") return "shuya";
+  const existing = localStorage.getItem(USER_KEY);
+  if (existing) return existing;
+  localStorage.setItem(USER_KEY, "shuya");
+  return "shuya";
+}
+
+function normalizeState(input: Partial<LifeState> | null | undefined): LifeState {
+  const base = initialState();
+  return {
+    ...base,
+    ...(input ?? {}),
+    doneDates: { ...base.doneDates, ...(input?.doneDates ?? {}) },
+    prizes: input?.prizes ?? [],
+    recentLogs: input?.recentLogs ?? [],
+    updatedAt: input?.updatedAt ?? new Date().toISOString(),
+  };
 }
 
 function loadState(): LifeState {
   if (typeof window === "undefined") return initialState();
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return initialState();
-    const parsed = JSON.parse(raw) as Partial<LifeState>;
-    return {
-      ...initialState(),
-      ...parsed,
-      doneDates: { ...initialState().doneDates, ...(parsed.doneDates ?? {}) },
-      prizes: parsed.prizes ?? [],
-      recentLogs: parsed.recentLogs ?? [],
-    };
-  } catch {
-    return initialState();
-  }
+    return normalizeState(JSON.parse(raw));
+  } catch { return initialState(); }
+}
+
+function saveLocal(state: LifeState) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function makePrize(): Prize {
   const roll = Math.random();
+  let pool: Array<Omit<Prize, "id" | "type" | "createdAt">>;
   let type: PrizeType;
-  let pool: { title: string; body: string; rarity: Prize["rarity"] }[];
   if (roll < 0.38) { type = "quote"; pool = quotePool; }
   else if (roll < 0.68) { type = "badge"; pool = badgePool; }
   else if (roll < 0.82) { type = "trophy"; pool = trophyPool; }
   else { type = "miss"; pool = missPool; }
   const picked = pool[Math.floor(Math.random() * pool.length)];
-  return { id: `prize-${Date.now()}-${Math.random().toString(16).slice(2)}`, type, ...picked, createdAt: new Date().toISOString() };
+  return { id: `prize-${Date.now()}-${Math.random().toString(16).slice(2)}`, type, title: picked.title, body: picked.body, rarity: picked.rarity, createdAt: new Date().toISOString() };
 }
 
 function addLog(state: LifeState, log: string): LifeState {
-  return { ...state, recentLogs: [`${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} ${log}`, ...state.recentLogs].slice(0, 8) };
+  return { ...state, recentLogs: [`${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} ${log}`, ...state.recentLogs].slice(0, 8), updatedAt: new Date().toISOString() };
 }
 
 function addExpToState(state: LifeState, amount: number, label: string): LifeState {
-  let next = { ...state, exp: state.exp + amount, totalExp: state.totalExp + amount };
+  let next = { ...state, exp: state.exp + amount, totalExp: state.totalExp + amount, updatedAt: new Date().toISOString() };
   let leveled = 0;
   while (next.exp >= expRequired(next.level)) {
     next.exp -= expRequired(next.level);
@@ -142,42 +142,61 @@ function recentSevenDays() {
 
 export default function LifeLevelGachaV52() {
   const [state, setState] = useState<LifeState>(() => initialState());
+  const [syncStatus, setSyncStatus] = useState("local");
   const [expandedRoutine, setExpandedRoutine] = useState<RoutineKey | null>("morning");
   const [gachaOpen, setGachaOpen] = useState(false);
   const [rolling, setRolling] = useState(false);
   const [result, setResult] = useState<Prize | null>(null);
   const [readingInput, setReadingInput] = useState(10);
-  const days = useMemo(() => recentSevenDays(), []);
-
-  useEffect(() => { setState(loadState()); }, []);
+  const hydrated = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const local = loadState();
+    setState(local);
+    hydrated.current = true;
+
+    fetch(`/api/life/level?userId=${encodeURIComponent(userId())}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.ok && data.state) {
+          const cloud = normalizeState(data.state);
+          const localTime = new Date(local.updatedAt ?? 0).getTime();
+          const cloudTime = new Date(cloud.updatedAt ?? 0).getTime();
+          const winner = cloudTime >= localTime || cloud.totalExp >= local.totalExp ? cloud : local;
+          setState(winner);
+          saveLocal(winner);
+          setSyncStatus("cloud");
+        } else {
+          setSyncStatus("local");
+        }
+      })
+      .catch(() => setSyncStatus("local"));
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated.current) return;
+    saveLocal(state);
     (window as unknown as { lifeV52AddExp?: (amount: number, label?: string) => void }).lifeV52AddExp = (amount, label = "外部アクション") => {
       setState((prev) => addExpToState(prev, amount, label));
     };
-  }, [state]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const onClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      const text = target?.innerText ?? "";
-      if (!text || target?.closest?.("[data-life-auto-xp]")) return;
-      const lower = text.toLowerCase();
-      const done = text.includes("完了") || text.includes("達成") || text.includes("保存しました") || text.includes("チェック") || lower.includes("done");
-      if (!done) return;
-      if (text.includes("TODO") || text.includes("タスク")) setState((prev) => addExpToState(prev, 10, "TODO達成"));
-      else if (text.includes("Diary") || text.includes("日記")) setState((prev) => addExpToState(prev, 12, "Diary記録"));
-      else if (text.includes("習慣") || text.includes("ルーティン")) setState((prev) => addExpToState(prev, 10, "習慣・ルーティン達成"));
-    };
-    document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
-  }, []);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      fetch("/api/life/level", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userId(), state }),
+      })
+        .then((res) => res.json())
+        .then((data) => setSyncStatus(data?.ok ? "synced" : "local"))
+        .catch(() => setSyncStatus("local"));
+    }, 900);
+  }, [state]);
 
   const required = expRequired(state.level);
   const progress = Math.min(100, Math.round((state.exp / required) * 100));
+  const days = useMemo(() => recentSevenDays(), []);
 
   const completeRoutine = (routine: Routine) => {
     const today = todayKey();
@@ -185,7 +204,7 @@ export default function LifeLevelGachaV52() {
       const done = new Set(prev.doneDates[routine.key] ?? []);
       const already = done.has(today);
       done.add(today);
-      let next: LifeState = { ...prev, doneDates: { ...prev.doneDates, [routine.key]: Array.from(done).slice(-30) } };
+      let next: LifeState = { ...prev, doneDates: { ...prev.doneDates, [routine.key]: Array.from(done).slice(-30) }, updatedAt: new Date().toISOString() };
       next = already ? addLog(next, `${routine.title}は今日は達成済み`) : addExpToState(next, routine.point, `${routine.title}達成`);
       return next;
     });
@@ -196,7 +215,7 @@ export default function LifeLevelGachaV52() {
     if (minutes <= 0) return;
     const gained = Math.floor(minutes / 10);
     setState((prev) => {
-      let next: LifeState = { ...prev, readingMinutes: prev.readingMinutes + minutes, readingGachaPoints: prev.readingGachaPoints + gained };
+      let next: LifeState = { ...prev, readingMinutes: prev.readingMinutes + minutes, readingGachaPoints: prev.readingGachaPoints + gained, updatedAt: new Date().toISOString() };
       next = addExpToState(next, Math.max(5, gained * 10), `音読 ${minutes}分`);
       if (gained > 0) next = addLog(next, `📖 音読ガチャポイント +${gained}`);
       return next;
@@ -204,21 +223,25 @@ export default function LifeLevelGachaV52() {
   };
 
   const canGacha = state.gachaTickets > 0 || state.readingGachaPoints > 0;
-
   const startGacha = () => {
     if (!canGacha || rolling) return;
-    setGachaOpen(true); setRolling(true); setResult(null);
-    setState((prev) => prev.readingGachaPoints > 0 ? { ...prev, readingGachaPoints: prev.readingGachaPoints - 1 } : { ...prev, gachaTickets: Math.max(0, prev.gachaTickets - 1) });
+    setGachaOpen(true);
+    setRolling(true);
+    setResult(null);
+    setState((prev) => prev.readingGachaPoints > 0 ? { ...prev, readingGachaPoints: prev.readingGachaPoints - 1, updatedAt: new Date().toISOString() } : { ...prev, gachaTickets: Math.max(0, prev.gachaTickets - 1), updatedAt: new Date().toISOString() });
     window.setTimeout(() => {
       const prize = makePrize();
-      setResult(prize); setRolling(false);
-      setState((prev) => ({ ...addLog(prev, `🎁 ${prize.title}を獲得`), prizes: [prize, ...prev.prizes].slice(0, 50) }));
+      setResult(prize);
+      setRolling(false);
+      setState((prev) => ({ ...addLog(prev, `🎁 ${prize.title}を獲得`), prizes: [prize, ...prev.prizes].slice(0, 50), updatedAt: new Date().toISOString() }));
     }, 2200);
   };
 
   const closeGacha = () => {
-    setGachaOpen(false); setResult(null); setRolling(false);
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    setGachaOpen(false);
+    setResult(null);
+    setRolling(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -228,7 +251,7 @@ export default function LifeLevelGachaV52() {
           <div>
             <p className="life-v52-kicker">LIFE LEVEL</p>
             <h2>Life レベル {state.level}</h2>
-            <p className="life-v52-muted">TODO / Diary / 習慣・ルーティンで経験値が貯まるよ。</p>
+            <p className="life-v52-muted">PC/スマホ同期: {syncStatus === "synced" || syncStatus === "cloud" ? "同期済み" : "ローカル保存中"}</p>
           </div>
           <div className="life-v52-level-orb"><span>Lv</span><b>{state.level}</b></div>
         </div>
@@ -255,7 +278,12 @@ export default function LifeLevelGachaV52() {
                   <button className="life-v52-routine-main" type="button" onClick={() => setExpandedRoutine(open ? null : routine.key)}>
                     <span className="life-v52-routine-emoji">{routine.emoji}</span><span><b>{routine.title}</b><small>{routine.description}</small></span><em>{todayDone ? "済" : `+${routine.point}`}</em>
                   </button>
-                  {open && <div className="life-v52-routine-detail"><div className="life-v52-week">{days.map((day) => <span key={day} className={done.has(day) ? "done" : ""}>{new Date(day).getDate()}</span>)}</div><button type="button" onClick={() => completeRoutine(routine)}>{todayDone ? "今日は達成済み" : "今日できた"}</button></div>}
+                  {open && (
+                    <div className="life-v52-routine-detail">
+                      <div className="life-v52-week">{days.map((day) => <span key={day} className={done.has(day) ? "done" : ""}>{new Date(day).getDate()}</span>)}</div>
+                      <button type="button" onClick={() => completeRoutine(routine)}>{todayDone ? "今日は達成済み" : "今日できた"}</button>
+                    </div>
+                  )}
                 </article>
               );
             })}
@@ -265,19 +293,35 @@ export default function LifeLevelGachaV52() {
         <div className="life-v52-card">
           <div className="life-v52-section-head"><div><p className="life-v52-kicker">READING</p><h3>音読ポイント</h3></div><span className="life-v52-chip">10分 = 1P</span></div>
           <div className="life-v52-reading-box"><div><b>{state.readingMinutes}</b><span>累計音読分</span></div><div><b>{state.readingGachaPoints}</b><span>音読ガチャP</span></div></div>
-          <div className="life-v52-reading-form"><input type="number" min={0} step={5} value={readingInput} onChange={(event) => setReadingInput(Number(event.target.value))} aria-label="音読分数" /><button type="button" onClick={addReading}>音読を記録</button></div>
+          <div className="life-v52-reading-form">
+            <input type="number" min={0} step={5} value={readingInput} onChange={(event) => setReadingInput(Number(event.target.value))} aria-label="音読分数" />
+            <button type="button" onClick={addReading}>音読を記録</button>
+          </div>
           <p className="life-v52-muted">10分ごとに音読ガチャポイント。Life XPも同時に貯まるよ。</p>
         </div>
       </div>
 
       <div className="life-v52-card life-v52-prize-card">
         <div className="life-v52-section-head"><div><p className="life-v52-kicker">COLLECTION</p><h3>ガチャ景品</h3></div><span className="life-v52-chip">{state.prizes.length}個</span></div>
-        {state.prizes.length === 0 ? <p className="life-v52-muted">まだ景品はないよ。音読やLifeレベルアップでガチャを引こう。</p> : <div className="life-v52-prizes">{state.prizes.slice(0, 8).map((prize) => <article key={prize.id} className={`life-v52-prize type-${prize.type}`}><span>{prize.rarity}</span><b>{prize.title}</b><small>{prize.body}</small></article>)}</div>}
+        {state.prizes.length === 0 ? <p className="life-v52-muted">まだ景品はないよ。音読やLifeレベルアップでガチャを引こう。</p> : (
+          <div className="life-v52-prizes">{state.prizes.slice(0, 8).map((prize) => <article key={prize.id} className={`life-v52-prize type-${prize.type}`}><span>{prize.rarity}</span><b>{prize.title}</b><small>{prize.body}</small></article>)}</div>
+        )}
       </div>
 
-      <div className="life-v52-card life-v52-log-card"><div className="life-v52-section-head"><h3>最近の成長ログ</h3></div>{state.recentLogs.length === 0 ? <p className="life-v52-muted">TODO・Diary・ルーティン・音読をこなすとここに記録されるよ。</p> : <ul>{state.recentLogs.map((log, index) => <li key={`${log}-${index}`}>{log}</li>)}</ul>}</div>
+      <div className="life-v52-card life-v52-log-card">
+        <div className="life-v52-section-head"><h3>最近の成長ログ</h3></div>
+        {state.recentLogs.length === 0 ? <p className="life-v52-muted">TODO・Diary・ルーティン・音読をこなすとここに記録されるよ。</p> : <ul>{state.recentLogs.map((log, index) => <li key={`${log}-${index}`}>{log}</li>)}</ul>}
+      </div>
 
-      {gachaOpen && <div className="life-v52-gacha-overlay" role="dialog" aria-modal="true"><div className={`life-v52-gacha-modal ${rolling ? "is-rolling" : "is-result"}`}>{rolling ? <><div className="life-v52-gacha-orb">🎰</div><h2>ガチャ演出中...</h2><p>未来港から景品を召喚しているよ</p></> : result ? <button type="button" className="life-v52-gacha-result" onClick={closeGacha}><span>{result.rarity}</span><h2>{result.title}</h2><p>{result.body}</p><small>タップしてホームへ戻る</small></button> : null}</div></div>}
+      {gachaOpen && (
+        <div className="life-v52-gacha-overlay" role="dialog" aria-modal="true">
+          <div className={`life-v52-gacha-modal ${rolling ? "is-rolling" : "is-result"}`}>
+            {rolling ? <><div className="life-v52-gacha-orb">🎰</div><h2>ガチャ演出中...</h2><p>未来港から景品を召喚しているよ</p></> : result ? (
+              <button type="button" className="life-v52-gacha-result" onClick={closeGacha}><span>{result.rarity}</span><h2>{result.title}</h2><p>{result.body}</p><small>タップしてホームへ戻る</small></button>
+            ) : null}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

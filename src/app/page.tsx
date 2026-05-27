@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { ThemeKey, themes, getStoredTheme, saveTheme } from "@/lib/themes";
 import LifeLevelGachaV52 from "./components/LifeLevelGachaV52";
 import LifeCommandV53Enhancements from "./components/LifeCommandV53Enhancements";
+import LifeTopSearchBoostV54 from "./components/LifeTopSearchBoostV54";
 
 type PageKey =
   | "home"
@@ -1782,6 +1783,7 @@ export default function Home() {
 
       <LifeLevelGachaV52 />
 
+      <LifeTopSearchBoostV54 setPage={setPage} />
       <LifeCommandV53Enhancements page={page as any} setPage={setPage} />
 </main>
   );

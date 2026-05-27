@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 type MemoItem = { id: string; title: string; body: string; tags: string[]; createdAt: string };
 type CheckItem = { id: string; title: string; emoji: string; points: number; doneDates: string[]; steps?: string[] };
-type SearchResult = { ok: boolean; mode: string; intent: string; summary: string; suggestions: string[]; actions: string[] };
 
 const MEMO_KEY = "life-command-os-v53-memos";
 const HABIT_KEY = "life-command-os-v53-habits";
@@ -48,29 +47,8 @@ function save<T>(key: string, value: T) {
 
 function addXp(points: number, label: string) {
   if (typeof window === "undefined") return;
-  const fn = (window as any).lifeV52AddExp;
+  const fn = (window as unknown as { lifeV52AddExp?: (amount: number, label?: string) => void }).lifeV52AddExp;
   if (typeof fn === "function") fn(points, label);
-}
-
-function fallbackSearch(query: string, memos: MemoItem[]): SearchResult {
-  const intent =
-    /支出|家計|円|交通費|カフェ|買った|使った/.test(query) ? "money" :
-    /予定|明日|今日|来週|カレンダー|何時/.test(query) ? "calendar" :
-    /TODO|タスク|やること|未完了|完了/.test(query) ? "todo" :
-    /習慣|ルーティン|音読|継続/.test(query) ? "habit-routine" :
-    /メール|Gmail|返信|受信/.test(query) ? "mail" :
-    /メモ|記録|日記|Diary/.test(query) ? "memo" : "general";
-
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const related = memos.filter((m) => words.some((w) => `${m.title} ${m.body} ${m.tags.join(" ")}`.toLowerCase().includes(w))).slice(0, 3);
-  return {
-    ok: true,
-    mode: "local-fallback",
-    intent,
-    summary: `「${query}」を ${intent} 系として検索しました。${related.length ? `関連メモ: ${related.map((m) => `「${m.title}」`).join("、")}` : "関連メモはまだ少ないです。"}`,
-    suggestions: ["関連カードを表示", "TODO/予定/家計簿へ変換", "次の行動を1つに絞る"],
-    actions: intent === "habit-routine" ? ["習慣ページへ", "ルーティンページへ", "音読ポイント確認"] : ["メモに保存", "TODO化", "関連ページへ移動"],
-  };
 }
 
 export default function LifeCommandV53Enhancements({ page, setPage }: { page?: any; setPage?: (p: any) => void }) {
@@ -83,9 +61,6 @@ export default function LifeCommandV53Enhancements({ page, setPage }: { page?: a
   const [tags, setTags] = useState("");
   const [toast, setToast] = useState("");
   const [openRoutine, setOpenRoutine] = useState("morning");
-  const [query, setQuery] = useState("");
-  const [result, setResult] = useState<SearchResult | null>(null);
-  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     setMemos(load(MEMO_KEY, []));
@@ -100,7 +75,6 @@ export default function LifeCommandV53Enhancements({ page, setPage }: { page?: a
   const isMemo = ["memo", "memos", "notes"].includes(pageKey);
   const isHabit = ["habit", "habits", "習慣"].includes(pageKey);
   const isRoutine = ["routine", "routines", "ルーティン"].includes(pageKey);
-  const showSearch = ["home", "search", "ai-search", "memo", "memos"].includes(pageKey);
   const days = recentDays();
 
   const saveMemo = () => {
@@ -109,17 +83,21 @@ export default function LifeCommandV53Enhancements({ page, setPage }: { page?: a
       setTimeout(() => setToast(""), 1400);
       return;
     }
+
     const memo: MemoItem = {
       id: `memo-${Date.now()}`,
       title: title.trim() || body.trim().slice(0, 24) || "無題メモ",
       body: body.trim(),
-      tags: tags.split(/[,\s、]+/).map((t) => t.trim()).filter(Boolean),
+      tags: tags.split(/[,\\s、]+/).map((t) => t.trim()).filter(Boolean),
       createdAt: new Date().toISOString(),
     };
+
     setMemos((prev) => [memo, ...prev].slice(0, 100));
     addXp(8, "メモ作成");
     window.dispatchEvent(new CustomEvent("life-command-memo-created", { detail: memo }));
-    setTitle(""); setBody(""); setTags("");
+    setTitle("");
+    setBody("");
+    setTags("");
     setToast("メモに保存しました");
     setTimeout(() => setToast(""), 1600);
   };
@@ -130,7 +108,10 @@ export default function LifeCommandV53Enhancements({ page, setPage }: { page?: a
       if (h.id !== id) return h;
       const done = new Set(h.doneDates);
       if (done.has(today)) done.delete(today);
-      else { done.add(today); addXp(h.points, `習慣：${h.title}`); }
+      else {
+        done.add(today);
+        addXp(h.points, `習慣：${h.title}`);
+      }
       return { ...h, doneDates: Array.from(done).slice(-60) };
     }));
   };
@@ -140,40 +121,25 @@ export default function LifeCommandV53Enhancements({ page, setPage }: { page?: a
     setRoutines((prev) => prev.map((r) => {
       if (r.id !== id) return r;
       const done = new Set(r.doneDates);
-      if (!done.has(today)) { done.add(today); addXp(r.points, `ルーティン：${r.title}`); }
+      if (!done.has(today)) {
+        done.add(today);
+        addXp(r.points, `ルーティン：${r.title}`);
+      }
       return { ...r, doneDates: Array.from(done).slice(-60) };
     }));
   };
 
-  const runSearch = async () => {
-    const q = query.trim();
-    if (!q) return;
-    setSearching(true);
-    try {
-      const res = await fetch("/api/life-ai/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, clientMemos: memos.slice(0, 20) }),
-      });
-      setResult(await res.json());
-    } catch {
-      setResult(fallbackSearch(q, memos));
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  if (!isMemo && !isHabit && !isRoutine && !showSearch) return null;
+  if (!isMemo && !isHabit && !isRoutine) return null;
 
   return (
-    <section className="life-v53-shell" data-life-v53>
+    <section className="life-v53-shell life-v54-top-slot" data-life-v53>
       {isMemo && (
-        <div className="life-v53-card">
+        <div className="life-v53-card life-v54-memo-first">
           <div className="life-v53-head">
             <div>
               <p className="life-v53-kicker">MEMO QUICK WRITE</p>
               <h2>メモをすぐ書く</h2>
-              <p>過去メモを見るだけじゃなく、このページから新しいメモを書けるようにしたよ。</p>
+              <p>メモページの一番上から、そのまま新しいメモを書けるようにしたよ。</p>
             </div>
             <span>{memos.length}件</span>
           </div>
@@ -247,31 +213,6 @@ export default function LifeCommandV53Enhancements({ page, setPage }: { page?: a
               })}
             </div>
           )}
-        </div>
-      )}
-
-      {showSearch && (
-        <div className="life-v53-card">
-          <div className="life-v53-head">
-            <div>
-              <p className="life-v53-kicker">AI SEARCH BOOST</p>
-              <h2>AI検索強化</h2>
-              <p>メモ・予定・TODO・家計簿・習慣・ルーティンを横断する検索入口。</p>
-            </div>
-          </div>
-          <div className="life-v53-ai-input">
-            <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") runSearch(); }} placeholder="例）先週の支出 / 明日の予定 / 未完了TODO / 音読の記録" />
-            <button type="button" onClick={runSearch} disabled={searching}>{searching ? "検索中" : "AI検索"}</button>
-          </div>
-          <div className="life-v53-chips">
-            {["先週の支出", "明日の予定", "未完了TODO", "音読の記録", "最近の開発メモ"].map((s) => <button key={s} type="button" onClick={() => setQuery(s)}>{s}</button>)}
-          </div>
-          {result && <div className="life-v53-result">
-            <span>{result.intent}</span>
-            <h3>{result.summary}</h3>
-            <div>{result.actions?.map((a) => <button key={a} type="button">{a}</button>)}</div>
-            <ul>{result.suggestions?.map((s) => <li key={s}>{s}</li>)}</ul>
-          </div>}
         </div>
       )}
     </section>
