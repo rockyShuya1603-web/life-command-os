@@ -16,7 +16,7 @@ type LifeState = {
   doneDates: Record<RoutineKey, string[]>;
   prizes: Prize[];
   recentLogs: string[];
-  updatedAt: string;
+  updatedAt?: string;
 };
 
 const STORAGE_KEY = "life-command-os-v52-life-level";
@@ -114,12 +114,7 @@ function makePrize(): Prize {
 }
 
 function addLog(state: LifeState, log: string): LifeState {
-  const next: LifeState = {
-    ...state,
-    recentLogs: [`${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} ${log}`, ...state.recentLogs].slice(0, 8),
-    updatedAt: new Date().toISOString(),
-  };
-  return next;
+  return { ...state, recentLogs: [`${new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })} ${log}`, ...state.recentLogs].slice(0, 8), updatedAt: new Date().toISOString() };
 }
 
 function addExpToState(state: LifeState, amount: number, label: string): LifeState {
