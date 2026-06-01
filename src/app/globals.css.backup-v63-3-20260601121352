@@ -5478,34 +5478,3 @@ main {
 .life-cal-v61-cyan{background:rgba(125,211,252,.22);color:#e0f2fe}.life-cal-v61-purple{background:rgba(196,181,253,.22);color:#ede9fe}.life-cal-v61-amber{background:rgba(251,191,36,.20);color:#fef3c7}.life-cal-v61-emerald{background:rgba(52,211,153,.20);color:#d1fae5}.life-cal-v61-rose{background:rgba(251,113,133,.20);color:#ffe4e6}.life-cal-v61-muted{color:rgba(226,232,240,.52);background:rgba(255,255,255,.06)}
 .life-cal-v61-timeline{position:relative;display:grid;gap:1.1rem;margin-top:1rem;padding:1rem 0}.life-cal-v61-line{position:absolute;top:0;bottom:0;left:50%;width:3px;transform:translateX(-50%);border-radius:999px;background:linear-gradient(#7dd3fc,#c4b5fd,#fbbf24);box-shadow:0 0 22px rgba(125,211,252,.28)}.life-cal-v61-node{width:min(44%,30rem);border:1px solid rgba(255,255,255,.12);border-radius:1rem;background:rgba(2,6,23,.34);padding:.85rem;box-shadow:0 14px 30px rgba(2,6,23,.24)}.life-cal-v61-node.left{justify-self:start}.life-cal-v61-node.right{justify-self:end}.life-cal-v61-node.center{justify-self:center;text-align:center}.life-cal-v61-node span{display:inline-grid;place-items:center;border-radius:999px;background:rgba(125,211,252,.12);color:#bae6fd;padding:.25rem .55rem;font-size:.72rem;font-weight:950}.life-cal-v61-node b{display:block;margin-top:.5rem;font-size:1rem}.life-cal-v61-node small{display:block;margin-top:.3rem;color:rgba(226,232,240,.54);font-weight:800}.life-cal-v61-node.todo{border-color:rgba(52,211,153,.20)}
 @media(max-width:767px){.life-v61-memo-anchor,.life-v61-calendar-anchor{width:100%;margin:.35rem auto .85rem}.rich-memo-v61-card,.life-cal-v61-shell{border-radius:1.2rem;padding:.85rem}.rich-memo-v61-head,.rich-memo-v61-file,.life-cal-v61-head,.life-cal-v61-datebar{align-items:flex-start;grid-template-columns:1fr;flex-direction:column}.rich-memo-v61-ai,.rich-memo-v61-subgrid,.rich-memo-v61-actions,.life-cal-v61-add{grid-template-columns:1fr}.rich-memo-v61-attachments article{grid-template-columns:3.7rem 1fr auto}.rich-memo-v61-attachments img,.rich-memo-v61-fileicon{width:3.7rem;height:3.7rem}.life-cal-v61-week{grid-template-columns:1fr}.life-cal-v61-month{min-height:3rem}.life-cal-v61-week button{min-height:auto;grid-template-columns:2.5rem 2.5rem 1fr auto;justify-content:start;padding:.7rem}.life-cal-v61-all-day,.life-cal-v61-hour{grid-template-columns:4.2rem 1fr}.life-cal-v61-now{left:4.2rem}.life-cal-v61-now span{left:-4.2rem}.life-cal-v61-line{left:.65rem}.life-cal-v61-node,.life-cal-v61-node.left,.life-cal-v61-node.right,.life-cal-v61-node.center{width:calc(100% - 1.8rem);justify-self:end}}
-
-
-/* ===== v63.3 memo readability ===== */
-#memo-create-top-v63,
-#memo-list-search-v63 {
-  color: white !important;
-}
-
-#memo-create-top-v63 ~ * button,
-#memo-list-search-v63 button,
-#memo-create-top-v63 button,
-.calendar-timeline-v63 button {
-  color: rgba(255,255,255,.96) !important;
-}
-
-#memo-create-top-v63 ~ * button:disabled,
-#memo-list-search-v63 button:disabled {
-  color: rgba(255,255,255,.45) !important;
-}
-
-#memo-create-top-v63 ~ * input,
-#memo-create-top-v63 ~ * textarea,
-#memo-list-search-v63 input {
-  color: white !important;
-}
-
-#memo-create-top-v63 ~ * input::placeholder,
-#memo-create-top-v63 ~ * textarea::placeholder,
-#memo-list-search-v63 input::placeholder {
-  color: rgba(255,255,255,.45) !important;
-}

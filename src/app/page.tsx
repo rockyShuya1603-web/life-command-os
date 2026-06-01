@@ -2882,6 +2882,15 @@ function MemosPanel({ snapshot, refreshSnapshot }: PanelProps) {
   const recognitionRef = useRef<any>(null);
   const memos = snapshot?.memos || [];
   const [memoSearch, setMemoSearch] = useState("");
+  const createTodoFromMemoV633 = async () => {
+    const text = content.trim();
+    if (!text) return;
+    const title = text.split(/\n|。|！|!/).map((line) => line.trim()).filter(Boolean)[0]?.slice(0, 60) || "メモからTODO";
+    await supabase.from("todos").insert({ title, done: false, priority: "medium" });
+    setContent("");
+    await refreshSnapshot();
+  };
+
   const visibleMemos = useMemo(() => {
     const query = memoSearch.trim().toLowerCase();
     if (!query) return memos;
@@ -3095,7 +3104,7 @@ function MemosPanel({ snapshot, refreshSnapshot }: PanelProps) {
           </button>
         </div>
         {residentAiOn && (
-          <div className="mt-4 grid gap-2 sm:grid-cols-[180px_1fr]">
+          <div className="mt-4 grid gap-2 sm:grid-cols-[180px_1fr] text-white">
             <select
               value={memoAiMode}
               onChange={(e) => setMemoAiMode(e.target.value as any)}
@@ -4074,6 +4083,43 @@ function CalendarTimelineInlineV63({
     return toDateKey(d);
   };
 
+  const normalizeClock = (value?: string | null) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    const colon = raw.match(/(\d{1,2})[:：](\d{2})/);
+    if (colon) return `${String(Number(colon[1])).padStart(2, "0")}:${String(Number(colon[2])).padStart(2, "0")}`;
+
+    const japanese = raw.match(/(午前|午後)?\s*(\d{1,2})\s*時\s*(\d{1,2})?\s*分?/);
+    if (japanese) {
+      let hour = Number(japanese[2]);
+      const minute = japanese[3] ? Number(japanese[3]) : 0;
+      if (japanese[1] === "午後" && hour < 12) hour += 12;
+      return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    }
+
+    return "";
+  };
+
+  const inferTimeFromText = (text: string) => {
+    const normalized = normalizeClock(text);
+    if (normalized) return normalized;
+
+    if (/昼|昼分|ランチ|昼食|昼ごはん|昼ご飯/.test(text)) return "12:00";
+    if (/朝|起床|午前/.test(text)) return "08:00";
+    if (/午前中/.test(text)) return "10:00";
+    if (/夕方|退勤/.test(text)) return "17:30";
+    if (/夜|夕食|晩ごはん|晩ご飯/.test(text)) return "19:00";
+    if (/寝る|就寝/.test(text)) return "23:00";
+
+    return "";
+  };
+
+  const eventTime = (event: EventItem) =>
+    normalizeClock(event.start_time) || inferTimeFromText(`${event.title || ""} ${event.note || ""}`);
+
+  const todoTime = (todo: Todo) =>
+    normalizeClock(todo.due_time) || inferTimeFromText(`${todo.title || ""} ${todo.priority || ""}`);
+
   const weekDays = useMemo(() => {
     const d = new Date(`${selected}T00:00:00`);
     const start = new Date(d);
@@ -4089,7 +4135,7 @@ function CalendarTimelineInlineV63({
     () =>
       events
         .filter((event) => event.event_date === selected)
-        .sort((a, b) => (a.start_time || "99:99").localeCompare(b.start_time || "99:99")),
+        .sort((a, b) => (eventTime(a) || "99:99").localeCompare(eventTime(b) || "99:99")),
     [events, selected],
   );
 
@@ -4097,28 +4143,28 @@ function CalendarTimelineInlineV63({
     () =>
       todos
         .filter((todo) => !todo.done && (todo.due_date || getCreatedDateKey(todo.created_at)) === selected)
-        .sort((a, b) => (a.due_time || "99:99").localeCompare(b.due_time || "99:99")),
+        .sort((a, b) => (todoTime(a) || "99:99").localeCompare(todoTime(b) || "99:99")),
     [todos, selected],
   );
 
-  const allDayEvents = dayEvents.filter((event) => !event.start_time);
+  const allDayEvents = dayEvents.filter((event) => !eventTime(event));
   const timedItems = [
     ...dayEvents
-      .filter((event) => event.start_time)
+      .filter((event) => eventTime(event))
       .map((event) => ({
         id: `event-${event.id}`,
-        time: event.start_time || "終日",
+        time: eventTime(event) || "終日",
         title: event.title,
-        note: event.note || "予定",
+        note: event.start_time ? event.note || "予定" : "タイトルから時刻を推定",
         kind: "予定",
       })),
     ...dayTodos
-      .filter((todo) => todo.due_time)
+      .filter((todo) => todoTime(todo))
       .map((todo) => ({
         id: `todo-${todo.id}`,
-        time: todo.due_time || "TODO",
+        time: todoTime(todo) || "TODO",
         title: todo.title,
-        note: todo.priority || "TODO",
+        note: todo.due_time ? todo.priority || "TODO" : "タイトルから時刻を推定",
         kind: "TODO",
       })),
   ].sort((a, b) => a.time.localeCompare(b.time));
@@ -4139,14 +4185,14 @@ function CalendarTimelineInlineV63({
   };
 
   return (
-    <GlassCard className="calendar-timeline-v63 bg-gradient-to-br from-sky-400/10 via-indigo-400/10 to-fuchsia-400/10">
+    <GlassCard className="calendar-timeline-v63 bg-gradient-to-br from-sky-400/10 via-indigo-400/10 to-fuchsia-400/10 text-white">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-xs font-black tracking-[0.25em] text-cyan-100/60">
             CALENDAR TIMELINE
           </p>
-          <h2 className="mt-1 text-2xl font-black">タイムライン付きカレンダー</h2>
-          <p className="mt-1 text-sm text-white/55">
+          <h2 className="mt-1 text-2xl font-black text-white">タイムライン付きカレンダー</h2>
+          <p className="mt-1 text-sm text-white/60">
             上の「手軽に予定追加」で保存した予定を、そのままここに反映するよ。
           </p>
         </div>
@@ -4154,21 +4200,21 @@ function CalendarTimelineInlineV63({
           <button
             type="button"
             onClick={() => setSelected(addDays(selected, -1))}
-            className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-black"
+            className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-black text-white"
           >
             前日
           </button>
           <button
             type="button"
             onClick={() => setSelected(todayKey())}
-            className="rounded-2xl bg-white px-3 py-2 text-sm font-black text-black"
+            className="rounded-2xl bg-white/15 px-3 py-2 text-sm font-black text-white"
           >
             今日
           </button>
           <button
             type="button"
             onClick={() => setSelected(addDays(selected, 1))}
-            className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-black"
+            className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-black text-white"
           >
             翌日
           </button>
@@ -4176,7 +4222,7 @@ function CalendarTimelineInlineV63({
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-[80px_repeat(7,minmax(0,1fr))]">
-        <div className="grid place-items-center rounded-3xl bg-white/10 p-3 text-2xl font-black">
+        <div className="grid place-items-center rounded-3xl bg-white/10 p-3 text-2xl font-black text-white">
           {Number(selected.slice(5, 7))}月
         </div>
         {weekDays.map((date, index) => {
@@ -4191,21 +4237,21 @@ function CalendarTimelineInlineV63({
               key={date}
               type="button"
               onClick={() => setSelected(date)}
-              className={`rounded-3xl border p-3 text-center transition active:scale-[0.98] ${
+              className={`rounded-3xl border p-3 text-center text-white transition active:scale-[0.98] ${
                 active
-                  ? "border-cyan-200 bg-cyan-300 text-black shadow-lg shadow-cyan-500/20"
+                  ? "border-cyan-200 bg-cyan-300/30 shadow-lg shadow-cyan-500/20"
                   : "border-white/10 bg-black/25 hover:bg-white/10"
               }`}
             >
-              <p className="text-xs font-black opacity-70">
+              <p className="text-xs font-black text-white/75">
                 {["日", "月", "火", "水", "木", "金", "土"][d.getDay()]}
               </p>
-              <p className="mt-1 text-2xl font-black">{d.getDate()}</p>
-              <p className="mt-1 text-xs font-black opacity-75">
+              <p className="mt-1 text-2xl font-black text-white">{d.getDate()}</p>
+              <p className="mt-1 text-xs font-black text-white/75">
                 {w.icon} {w.temp}
               </p>
               {count > 0 && (
-                <p className={`mt-2 rounded-full px-2 py-1 text-[11px] font-black ${active ? "bg-black/10" : "bg-white/10"}`}>
+                <p className="mt-2 rounded-full bg-white/10 px-2 py-1 text-[11px] font-black text-white">
                   {count}件
                 </p>
               )}
@@ -4218,24 +4264,24 @@ function CalendarTimelineInlineV63({
         <button
           type="button"
           onClick={() => setViewMode("day")}
-          className={`rounded-2xl px-4 py-2 text-sm font-black ${viewMode === "day" ? "bg-white text-black" : "bg-white/10"}`}
+          className={`rounded-2xl px-4 py-2 text-sm font-black text-white ${viewMode === "day" ? "bg-white/20" : "bg-white/10"}`}
         >
           日
         </button>
         <button
           type="button"
           onClick={() => setViewMode("timeline")}
-          className={`rounded-2xl px-4 py-2 text-sm font-black ${viewMode === "timeline" ? "bg-white text-black" : "bg-white/10"}`}
+          className={`rounded-2xl px-4 py-2 text-sm font-black text-white ${viewMode === "timeline" ? "bg-white/20" : "bg-white/10"}`}
         >
           タイムライン
         </button>
       </div>
 
-      <div className="mt-4 rounded-3xl border border-white/10 bg-black/20 p-4">
+      <div className="mt-4 rounded-3xl border border-white/10 bg-black/20 p-4 text-white">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-xl font-black">{selected} の予定</h3>
-            <p className="mt-1 text-sm text-white/50">
+            <h3 className="text-xl font-black text-white">{selected} の予定</h3>
+            <p className="mt-1 text-sm text-white/55">
               予定 {dayEvents.length}件 / TODO {dayTodos.length}件
             </p>
           </div>
@@ -4244,7 +4290,7 @@ function CalendarTimelineInlineV63({
         {viewMode === "day" ? (
           <div className="mt-4 space-y-3">
             <div className="grid gap-2 sm:grid-cols-[72px_1fr] sm:items-center">
-              <p className="text-sm font-black text-white/45">終日</p>
+              <p className="text-sm font-black text-white/55">終日</p>
               <div className="flex flex-wrap gap-2">
                 {allDayEvents.length ? (
                   allDayEvents.map((event) => (
@@ -4253,7 +4299,7 @@ function CalendarTimelineInlineV63({
                     </span>
                   ))
                 ) : (
-                  <span className="rounded-2xl bg-white/10 px-3 py-2 text-sm text-white/45">
+                  <span className="rounded-2xl bg-white/10 px-3 py-2 text-sm text-white/55">
                     終日の予定なし
                   </span>
                 )}
@@ -4275,7 +4321,7 @@ function CalendarTimelineInlineV63({
                 const hits = timedItems.filter((item) => item.time.startsWith(hourText));
                 return (
                   <div key={hour} className="grid min-h-20 grid-cols-[72px_1fr] gap-3 border-t border-white/10 py-3">
-                    <time className="text-sm font-black text-white/45">{hourText}:00</time>
+                    <time className="text-sm font-black text-white/55">{hourText}:00</time>
                     <div className="space-y-2">
                       {hits.map((item) => (
                         <button
@@ -4288,12 +4334,12 @@ function CalendarTimelineInlineV63({
                               node?.scrollIntoView({ behavior: "smooth", block: "center" });
                             }
                           }}
-                          className={`w-full rounded-2xl p-3 text-left text-sm ${
-                            item.kind === "TODO" ? "bg-emerald-300/15 text-emerald-50" : "bg-sky-300/15 text-sky-50"
+                          className={`w-full rounded-2xl p-3 text-left text-sm text-white ${
+                            item.kind === "TODO" ? "bg-emerald-300/15" : "bg-sky-300/15"
                           }`}
                         >
                           <b>{item.time}</b> {item.title}
-                          <p className="mt-1 text-xs opacity-60">{item.note}</p>
+                          <p className="mt-1 text-xs text-white/60">{item.note}</p>
                         </button>
                       ))}
                     </div>
@@ -4314,19 +4360,19 @@ function CalendarTimelineInlineV63({
             })), ...timedItems].map((item, index) => (
               <article
                 key={item.id}
-                className={`relative w-[calc(50%-1rem)] rounded-3xl border border-white/10 bg-slate-950/55 p-4 shadow-xl ${
+                className={`relative w-[calc(50%-1rem)] rounded-3xl border border-white/10 bg-slate-950/55 p-4 text-white shadow-xl ${
                   index % 2 ? "justify-self-end" : "justify-self-start"
                 }`}
               >
                 <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-cyan-100">
                   {item.time}
                 </span>
-                <h3 className="mt-2 font-black">{item.title}</h3>
-                <p className="mt-1 text-xs text-white/45">{item.kind} / {item.note}</p>
+                <h3 className="mt-2 font-black text-white">{item.title}</h3>
+                <p className="mt-1 text-xs text-white/55">{item.kind} / {item.note}</p>
               </article>
             ))}
             {!dayEvents.length && !dayTodos.length && (
-              <div className="relative justify-self-center rounded-3xl border border-white/10 bg-white/10 p-4 text-center">
+              <div className="relative justify-self-center rounded-3xl border border-white/10 bg-white/10 p-4 text-center text-white">
                 <p className="font-black">この日はまだ空だよ</p>
                 <p className="mt-1 text-sm text-white/55">上の予定追加から入れるとここに出るよ。</p>
               </div>
