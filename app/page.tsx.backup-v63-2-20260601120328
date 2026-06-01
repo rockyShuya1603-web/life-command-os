@@ -3177,7 +3177,7 @@ function MemosPanel({ snapshot, refreshSnapshot }: PanelProps) {
           </p>
         </GlassCard>
       )}
-      <GlassCard>
+      <GlassCard id="memo-list-search-v63">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-black tracking-[0.25em] text-sky-100/55">UNIFIED MEMO LIST</p>

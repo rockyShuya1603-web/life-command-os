@@ -3115,8 +3115,7 @@ function MemosPanel({ snapshot, refreshSnapshot }: PanelProps) {
           </div>
         )}
       </GlassCard>
-      <div id="memo-create-top-v63">
-        <GlassCard className="border-cyan-200/20 bg-gradient-to-br from-cyan-400/10 via-indigo-400/10 to-fuchsia-400/10">
+      <GlassCard id="memo-create-top-v63" className="border-cyan-200/20 bg-gradient-to-br from-cyan-400/10 via-indigo-400/10 to-fuchsia-400/10">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-black tracking-[0.25em] text-cyan-100/60">MEMO WRITE</p>
@@ -3133,8 +3132,7 @@ function MemosPanel({ snapshot, refreshSnapshot }: PanelProps) {
             入力をクリア
           </button>
         </div>
-        </GlassCard>
-      </div>
+      </GlassCard>
       <TextArea
         className="h-32"
         placeholder="メモを書く... 画像も添付できるよ"
@@ -3177,7 +3175,7 @@ function MemosPanel({ snapshot, refreshSnapshot }: PanelProps) {
           </p>
         </GlassCard>
       )}
-      <GlassCard>
+      <GlassCard id="memo-list-search-v63">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-black tracking-[0.25em] text-sky-100/55">UNIFIED MEMO LIST</p>
