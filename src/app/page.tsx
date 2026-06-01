@@ -4,8 +4,6 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { supabase } from "@/lib/supabase";
 import { ThemeKey, themes, getStoredTheme, saveTheme } from "@/lib/themes";
 import LifeLevelGachaV52 from "./components/LifeLevelGachaV52";
-import UnifiedMemoV62 from "./components/UnifiedMemoV62";
-import CalendarTimelineV62 from "./components/CalendarTimelineV62";
 
 type PageKey =
   | "home"
@@ -1247,11 +1245,6 @@ export default function Home() {
     <main
       className={`relative min-h-screen overflow-hidden bg-gradient-to-br ${theme.bg} ${visual.shell} ${(themeKey === "mirai" ? "future-os" : (themeKey === "hanabi" || themeKey === "natsumatsuri") ? "matsuri-os" : "")} text-white`}
     >
-      <div className="life-v62-injected">
-        <UnifiedMemoV62 page={page as any} />
-        <CalendarTimelineV62 page={page as any} />
-      </div>
-
       {appNotice && (
         <div className="fixed inset-x-3 top-3 z-[100] mx-auto max-w-md rounded-3xl border border-white/15 bg-slate-950/95 p-4 shadow-2xl backdrop-blur-xl">
           <p className="text-sm font-black text-white">{appNotice.title}</p>
