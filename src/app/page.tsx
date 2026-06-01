@@ -4,7 +4,8 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { supabase } from "@/lib/supabase";
 import { ThemeKey, themes, getStoredTheme, saveTheme } from "@/lib/themes";
 import LifeLevelGachaV52 from "./components/LifeLevelGachaV52";
-import RichMemoComposerTopV60 from "./components/RichMemoComposerTopV60";
+import RichMemoComposerTopV61 from "./components/RichMemoComposerTopV61";
+import CalendarTimelineV61 from "./components/CalendarTimelineV61";
 
 type PageKey =
   | "home"
@@ -1246,8 +1247,9 @@ export default function Home() {
     <main
       className={`relative min-h-screen overflow-hidden bg-gradient-to-br ${theme.bg} ${visual.shell} ${(themeKey === "mirai" ? "future-os" : (themeKey === "hanabi" || themeKey === "natsumatsuri") ? "matsuri-os" : "")} text-white`}
     >
-      <div className="rich-memo-v60-injected">
-        <RichMemoComposerTopV60 page={page as any} />
+      <div className="life-v61-injected">
+        <RichMemoComposerTopV61 page={page as any} />
+        <CalendarTimelineV61 page={page as any} />
       </div>
 
       {appNotice && (
