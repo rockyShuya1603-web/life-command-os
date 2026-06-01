@@ -1,5 +1,5 @@
-import CalendarTimelineV61 from "../components/CalendarTimelineV61";
+import CalendarTimelineV62 from "../components/CalendarTimelineV62";
 
 export default function TimelinePage() {
-  return <CalendarTimelineV61 forced standalone />;
+  return <CalendarTimelineV62 forced standalone />;
 }
