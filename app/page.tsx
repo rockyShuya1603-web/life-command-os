@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { ThemeKey, themes, getStoredTheme, saveTheme } from "@/lib/themes";
 import LifeLevelGachaV52 from "./components/LifeLevelGachaV52";
 import LifeCommandExpansionV65_69, { LifeLevelProV66, SmartQuestionSearchV68, WeeklyReviewV69, TrashHistoryV69 } from "./components/LifeCommandExpansionV65_69";
+import MemoLifeOSExpansionV70 from "./components/MemoLifeOSExpansionV70";
 
 type PageKey =
   | "home"
@@ -1389,11 +1390,17 @@ export default function Home() {
           >
             {page === "home" && (
               <>
+                <MemoLifeOSExpansionV70 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} variant="home" />
                 <LifeCommandExpansionV65_69 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
                 <HomePanel themeKey={themeKey} {...panelProps} />
               </>
             )}
-            {page === "memos" && <MemosPanel {...panelProps} />}
+            {page === "memos" && (
+              <div className="space-y-4">
+                <MemoLifeOSExpansionV70 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} variant="memo" />
+                <MemosPanel {...panelProps} />
+              </div>
+            )}
             {page === "tweets" && <TweetsPanel {...panelProps} />}
             {page === "todos" && <TodosPanel {...panelProps} />}
             {page === "calendar" && <CalendarPanel snapshot={snapshot} refreshSnapshot={refreshSnapshot} />}
@@ -1412,10 +1419,13 @@ export default function Home() {
               <LifeHubPanel snapshot={snapshot} setPage={setPage} />
             )}
             {page === "braindump" && (
-              <BrainDumpPanel
-                refreshSnapshot={refreshSnapshot}
-                setPage={setPage}
-              />
+              <div className="space-y-4">
+                <MemoLifeOSExpansionV70 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} variant="memo" />
+                <BrainDumpPanel
+                  refreshSnapshot={refreshSnapshot}
+                  setPage={setPage}
+                />
+              </div>
             )}
             {page === "focus" && (
               <FocusTimerPanel snapshot={snapshot} setPage={setPage} />
