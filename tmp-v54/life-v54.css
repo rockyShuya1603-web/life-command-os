@@ -1,0 +1,198 @@
+
+/* ===== v54 memo top / top AI search / life sync polish ===== */
+.life-v54-top-slot {
+  order: -9999;
+}
+
+.life-v54-memo-first {
+  margin-top: .25rem;
+}
+
+.life-v54-search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483200;
+  display: grid;
+  place-items: start center;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem 1rem;
+  background: rgba(2, 6, 23, .68);
+  backdrop-filter: blur(14px);
+}
+
+.life-v54-search-modal {
+  width: min(720px, 100%);
+  margin-top: 2.2rem;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(125, 211, 252, .24);
+  background:
+    radial-gradient(circle at 15% 0%, rgba(125,211,252,.22), transparent 35%),
+    linear-gradient(135deg, rgba(15,23,42,.94), rgba(30,64,175,.62));
+  box-shadow: 0 24px 70px rgba(2,6,23,.45), inset 0 1px 0 rgba(255,255,255,.12);
+  color: white;
+  padding: 1rem;
+}
+
+.life-v54-search-head {
+  display: flex;
+  justify-content: space-between;
+  gap: .8rem;
+}
+
+.life-v54-search-head p {
+  margin: 0 0 .25rem;
+  font-size: .72rem;
+  letter-spacing: .2em;
+  font-weight: 950;
+  color: rgba(186,230,253,.86);
+}
+
+.life-v54-search-head h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.life-v54-search-head small {
+  display: block;
+  margin-top: .3rem;
+  color: rgba(226,232,240,.68);
+  font-weight: 700;
+}
+
+.life-v54-search-head > button {
+  width: 2.4rem;
+  height: 2.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,.1);
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.life-v54-search-input {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .6rem;
+  margin-top: 1rem;
+}
+
+.life-v54-search-input input {
+  min-width: 0;
+  border-radius: 1rem;
+  border: 1px solid rgba(125,211,252,.22);
+  background: rgba(2,6,23,.36);
+  color: white;
+  padding: .85rem .95rem;
+  font-weight: 850;
+  outline: none;
+}
+
+.life-v54-search-input button,
+.life-v54-search-chips button,
+.life-v54-search-result button {
+  border: 0;
+  border-radius: .95rem;
+  padding: .72rem .9rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.life-v54-search-input button {
+  color: #061225;
+  background: linear-gradient(135deg, #bae6fd, #a7f3d0);
+}
+
+.life-v54-search-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-top: .75rem;
+}
+
+.life-v54-search-chips button,
+.life-v54-search-result button {
+  color: rgba(226,232,240,.86);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.1);
+  font-size: .78rem;
+  padding: .55rem .7rem;
+}
+
+.life-v54-search-dataset {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: .45rem;
+  margin-top: .8rem;
+}
+
+.life-v54-search-dataset span {
+  border-radius: .85rem;
+  padding: .55rem .35rem;
+  text-align: center;
+  background: rgba(255,255,255,.07);
+  color: rgba(226,232,240,.78);
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+.life-v54-search-result {
+  margin-top: .9rem;
+  border-radius: 1.1rem;
+  background: rgba(2,6,23,.32);
+  border: 1px solid rgba(255,255,255,.1);
+  padding: .85rem;
+}
+
+.life-v54-search-result > span {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  padding: .32rem .6rem;
+  background: rgba(125,211,252,.13);
+  color: #bae6fd;
+  font-size: .72rem;
+  font-weight: 950;
+}
+
+.life-v54-search-result h3 {
+  margin: .65rem 0;
+  line-height: 1.55;
+}
+
+.life-v54-search-result ul {
+  margin: .65rem 0 0;
+  padding-left: 1.15rem;
+  color: rgba(226,232,240,.76);
+  line-height: 1.6;
+  font-weight: 750;
+}
+
+.life-v54-search-result div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+  margin-top: .7rem;
+}
+
+/* v54では下部AI検索カードを使わない */
+.life-v53-ai-card,
+.life-v53-ai-input,
+.life-v53-chips,
+.life-v53-result {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  .life-v54-search-modal {
+    margin-top: 1rem;
+    border-radius: 1.25rem;
+  }
+
+  .life-v54-search-input {
+    grid-template-columns: 1fr;
+  }
+
+  .life-v54-search-dataset {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

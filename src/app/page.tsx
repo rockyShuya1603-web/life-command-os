@@ -4,6 +4,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { supabase } from "@/lib/supabase";
 import { ThemeKey, themes, getStoredTheme, saveTheme } from "@/lib/themes";
 import LifeLevelGachaV52 from "./components/LifeLevelGachaV52";
+import LifeCommandExpansionV65_69, { LifeLevelProV66, SmartQuestionSearchV68, WeeklyReviewV69, TrashHistoryV69 } from "./components/LifeCommandExpansionV65_69";
 
 type PageKey =
   | "home"
@@ -1387,7 +1388,10 @@ export default function Home() {
             className={`matsuri-stage ${themeKey === "mirai" ? "future-main-stage mt-3 rounded-[2rem] border-transparent bg-transparent p-0 shadow-none sm:mt-4 sm:p-0" : `mt-4 rounded-[1.75rem] border ${theme.card} p-3 shadow-2xl backdrop-blur-xl sm:mt-5 sm:rounded-[2rem] sm:p-6`}`}
           >
             {page === "home" && (
-              <HomePanel themeKey={themeKey} {...panelProps} />
+              <>
+                <LifeCommandExpansionV65_69 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+                <HomePanel themeKey={themeKey} {...panelProps} />
+              </>
             )}
             {page === "memos" && <MemosPanel {...panelProps} />}
             {page === "tweets" && <TweetsPanel {...panelProps} />}
@@ -1417,7 +1421,7 @@ export default function Home() {
               <FocusTimerPanel snapshot={snapshot} setPage={setPage} />
             )}
             {page === "todaycommand" && (
-              <LifeModulePanel config={lifeModuleConfigsByKey.todaycommand} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+              <LifeCommandExpansionV65_69 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
             )}
             {page === "lowenergy" && (
               <LifeModulePanel config={lifeModuleConfigsByKey.lowenergy} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
@@ -1453,19 +1457,28 @@ export default function Home() {
               <LifeModulePanel config={lifeModuleConfigsByKey.reset} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
             )}
             {page === "weeklyreview" && (
-              <LifeModulePanel config={lifeModuleConfigsByKey.weeklyreview} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+              <div className="space-y-4">
+                <WeeklyReviewV69 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+                <LifeModulePanel config={lifeModuleConfigsByKey.weeklyreview} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+              </div>
             )}
             {page === "monthlyreview" && (
               <LifeModulePanel config={lifeModuleConfigsByKey.monthlyreview} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
             )}
             {page === "lifescore" && (
-              <LifeModulePanel config={lifeModuleConfigsByKey.lifescore} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+              <div className="space-y-4">
+                <LifeLevelProV66 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+                <LifeModulePanel config={lifeModuleConfigsByKey.lifescore} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+              </div>
             )}
             {page === "skilltree" && (
               <LifeModulePanel config={lifeModuleConfigsByKey.skilltree} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
             )}
             {page === "archive" && (
-              <LifeModulePanel config={lifeModuleConfigsByKey.archive} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+              <div className="space-y-4">
+                <TrashHistoryV69 />
+                <LifeModulePanel config={lifeModuleConfigsByKey.archive} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+              </div>
             )}
             {page === "futureletter" && (
               <FutureLetterPanel snapshot={snapshot} setPage={setPage} />
@@ -1483,7 +1496,10 @@ export default function Home() {
               <LifeModulePanel config={lifeModuleConfigsByKey.timeline} snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
             )}
             {page === "search" && (
-              <SecondBrainSearch snapshot={snapshot} setPage={setPage} />
+              <div className="space-y-4">
+                <SmartQuestionSearchV68 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+                <SecondBrainSearch snapshot={snapshot} setPage={setPage} />
+              </div>
             )}
             {page === "tags" && <AutoTagsPanel snapshot={snapshot} />}
             {page === "chronology" && <ChronologyPanel snapshot={snapshot} />}
