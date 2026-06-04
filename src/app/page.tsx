@@ -6,6 +6,7 @@ import { ThemeKey, themes, getStoredTheme, saveTheme } from "@/lib/themes";
 import LifeLevelGachaV52 from "./components/LifeLevelGachaV52";
 import LifeCommandExpansionV65_69, { LifeLevelProV66, SmartQuestionSearchV68, WeeklyReviewV69, TrashHistoryV69 } from "./components/LifeCommandExpansionV65_69";
 import MemoLifeOSExpansionV70 from "./components/MemoLifeOSExpansionV70";
+import HomeOrganizerV71 from "./components/HomeOrganizerV71";
 
 type PageKey =
   | "home"
@@ -1389,11 +1390,17 @@ export default function Home() {
             className={`matsuri-stage ${themeKey === "mirai" ? "future-main-stage mt-3 rounded-[2rem] border-transparent bg-transparent p-0 shadow-none sm:mt-4 sm:p-0" : `mt-4 rounded-[1.75rem] border ${theme.card} p-3 shadow-2xl backdrop-blur-xl sm:mt-5 sm:rounded-[2rem] sm:p-6`}`}
           >
             {page === "home" && (
-              <>
-                <MemoLifeOSExpansionV70 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} variant="home" />
-                <LifeCommandExpansionV65_69 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
-                <HomePanel themeKey={themeKey} {...panelProps} />
-              </>
+              <div className="space-y-4">
+                <HomeOrganizerV71 snapshot={snapshot} setPage={setPage} refreshSnapshot={refreshSnapshot} />
+                <details className="rounded-[1.4rem] border border-white/10 bg-black/25 p-4 text-white shadow-xl backdrop-blur-xl">
+                  <summary className="cursor-pointer text-sm font-black text-white/70">
+                    従来ホームの詳細パネルを開く
+                  </summary>
+                  <div className="mt-4">
+                    <HomePanel themeKey={themeKey} {...panelProps} />
+                  </div>
+                </details>
+              </div>
             )}
             {page === "memos" && (
               <div className="space-y-4">
