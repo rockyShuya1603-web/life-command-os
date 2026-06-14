@@ -264,7 +264,7 @@ async function routeWithAiFallback(text: string): Promise<RouteDraft> {
 
 async function executeDraft(draft: RouteDraft, refreshSnapshot?: Props["refreshSnapshot"]) {
   if (draft.kind === "calendar") {
-    const { error } = await supabase.from("events").insert({ title: draft.title, event_date: draft.date || todayKey(), start_time: draft.time || null, note: draft.note || null });
+    const { error } = await supabase.from("calendar_events").insert({ title: draft.title, event_date: draft.date || todayKey(), start_time: draft.time || null, note: draft.note || null });
     if (error) throw error;
     addXp(8, "予定追加", "action");
     writeHistory("calendar", draft.title, draft);

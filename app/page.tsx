@@ -4194,7 +4194,7 @@ function PhotoCalendarImportV64({
     setMessage("");
 
     try {
-      const { error } = await supabase.from("events").insert({ title, event_date: eventDate, start_time: startTime || null, note });
+      const { error } = await supabase.from("calendar_events").insert({ title, event_date: eventDate, start_time: startTime || null, note });
       if (error) throw error;
       setSelected(eventDate);
       await refreshSnapshot();

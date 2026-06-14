@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Props = {
@@ -11,6 +11,15 @@ type Props = {
   refreshSnapshot?: () => Promise<void> | void;
 };
 
+type Candidate = {
+  title: string;
+  date?: string | null;
+  time?: string | null;
+  note?: string;
+  confidence?: number;
+  sourceText?: string;
+};
+
 function todayKey(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -18,9 +27,9 @@ function todayKey(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
-function addDays(date: string, amount: number) {
-  const d = new Date(`${date}T00:00:00`);
-  d.setDate(d.getDate() + amount);
+function addDays(dateKey: string, days: number) {
+  const d = new Date(`${dateKey}T00:00:00`);
+  d.setDate(d.getDate() + days);
   return todayKey(d);
 }
 
@@ -29,6 +38,34 @@ function normalizeDate(value?: string | null) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
   const m = raw.match(/^(\d{4}-\d{2}-\d{2})[T\s]/);
   return m ? m[1] : "";
+}
+
+function dateFromText(text: string) {
+  const now = todayKey();
+  if (/今日|本日/.test(text)) return now;
+  if (/明日/.test(text)) return addDays(now, 1);
+  if (/明後日|あさって/.test(text)) return addDays(now, 2);
+
+  const ymd = text.match(/(20\d{2})[-\/年](\d{1,2})[-\/月](\d{1,2})日?/);
+  if (ymd) return `${ymd[1]}-${String(Number(ymd[2])).padStart(2, "0")}-${String(Number(ymd[3])).padStart(2, "0")}`;
+
+  const md = text.match(/(\d{1,2})[\/月](\d{1,2})日?/);
+  if (md) {
+    const y = new Date().getFullYear();
+    return `${y}-${String(Number(md[1])).padStart(2, "0")}-${String(Number(md[2])).padStart(2, "0")}`;
+  }
+
+  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+  const w = text.match(/(来週)?([日月火水木金土])曜?/);
+  if (w) {
+    const target = weekdays.indexOf(w[2]);
+    const d = new Date();
+    let diff = target - d.getDay();
+    if (diff <= 0) diff += 7;
+    if (w[1]) diff += 7;
+    return addDays(now, diff);
+  }
+  return "";
 }
 
 function normalizeTime(value?: string | null) {
@@ -57,8 +94,25 @@ function inferTime(text: string) {
   return "";
 }
 
-function todoDate(todo: any) {
-  return normalizeDate(todo?.due_date || todo?.todo_date || todo?.target_date || todo?.date || todo?.scheduled_date || todo?.deadline || todo?.deadline_date || todo?.created_at) || todayKey();
+function uniqueById<T extends { id?: string }>(items: T[]) {
+  const map = new Map<string, T>();
+  items.forEach((item, index) => {
+    const key = String(item.id || `idx-${index}`);
+    if (!map.has(key)) map.set(key, item);
+  });
+  return Array.from(map.values());
+}
+
+function todoDate(todo: any, selected: string) {
+  const text = `${todo?.title || ""} ${todo?.note || ""} ${todo?.priority || ""}`;
+  const fromField = normalizeDate(todo?.due_date || todo?.todo_date || todo?.target_date || todo?.date || todo?.scheduled_date || todo?.deadline || todo?.deadline_date);
+  const fromText = dateFromText(text);
+  const fromCreated = normalizeDate(todo?.created_at);
+  if (fromField) return fromField;
+  if (fromText) return fromText;
+  // 日付未指定TODOは「今日」のいつでもTODOとしてだけ見せる。
+  if (selected === todayKey()) return todayKey();
+  return fromCreated || "";
 }
 
 function todoTime(todo: any) {
@@ -80,17 +134,44 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
 export function CalendarTodoTimelineV72({ events = [], todos = [], selected = todayKey(), setSelected, refreshSnapshot }: Props) {
   const [mode, setMode] = useState<"day" | "line">("day");
   const [autoSync, setAutoSync] = useState(true);
+  const [liveTodos, setLiveTodos] = useState<any[]>([]);
+  const [liveEvents, setLiveEvents] = useState<any[]>([]);
+  const [syncMessage, setSyncMessage] = useState("");
+
+  const syncNow = useCallback(async () => {
+    const [todoResult, eventResult] = await Promise.all([
+      supabase.from("todos").select("*").order("created_at", { ascending: false }).limit(300),
+      supabase.from("calendar_events").select("*").order("event_date", { ascending: false }).limit(300),
+    ]);
+
+    if (!todoResult.error && Array.isArray(todoResult.data)) setLiveTodos(todoResult.data);
+    if (!eventResult.error && Array.isArray(eventResult.data)) setLiveEvents(eventResult.data);
+
+    await Promise.resolve(refreshSnapshot?.()).catch(() => undefined);
+
+    const parts = [];
+    if (todoResult.error) parts.push(`TODO取得失敗: ${todoResult.error.message}`);
+    if (eventResult.error) parts.push(`予定取得失敗: ${eventResult.error.message}`);
+    setSyncMessage(parts.length ? parts.join(" / ") : "TODO・予定を同期しました。");
+  }, [refreshSnapshot]);
 
   useEffect(() => {
-    if (!refreshSnapshot || !autoSync) return;
-    const run = () => Promise.resolve(refreshSnapshot()).catch(() => undefined);
+    syncNow().catch(() => undefined);
+  }, [syncNow]);
+
+  useEffect(() => {
+    if (!autoSync) return;
+    const run = () => syncNow().catch(() => undefined);
     window.addEventListener("focus", run);
-    const id = window.setInterval(run, 20000);
+    const id = window.setInterval(run, 10000);
     return () => {
       window.removeEventListener("focus", run);
       window.clearInterval(id);
     };
-  }, [refreshSnapshot, autoSync]);
+  }, [autoSync, syncNow]);
+
+  const mergedTodos = useMemo(() => uniqueById([...(liveTodos || []), ...(todos || [])]), [liveTodos, todos]);
+  const mergedEvents = useMemo(() => uniqueById([...(liveEvents || []), ...(events || [])]), [liveEvents, events]);
 
   const week = useMemo(() => {
     const d = new Date(`${selected}T00:00:00`);
@@ -104,12 +185,13 @@ export function CalendarTodoTimelineV72({ events = [], todos = [], selected = to
   }, [selected]);
 
   const dayEvents = useMemo(
-    () => events.filter((e) => eventDate(e) === selected).sort((a, b) => (eventTime(a) || "99:99").localeCompare(eventTime(b) || "99:99")),
-    [events, selected],
+    () => mergedEvents.filter((e) => eventDate(e) === selected).sort((a, b) => (eventTime(a) || "99:99").localeCompare(eventTime(b) || "99:99")),
+    [mergedEvents, selected],
   );
+
   const dayTodos = useMemo(
-    () => todos.filter((t) => !t?.done && todoDate(t) === selected).sort((a, b) => (todoTime(a) || "99:99").localeCompare(todoTime(b) || "99:99")),
-    [todos, selected],
+    () => mergedTodos.filter((t) => !t?.done && todoDate(t, selected) === selected).sort((a, b) => (todoTime(a) || "99:99").localeCompare(todoTime(b) || "99:99")),
+    [mergedTodos, selected],
   );
 
   const allDayEvents = dayEvents.filter((e) => !eventTime(e));
@@ -122,28 +204,31 @@ export function CalendarTodoTimelineV72({ events = [], todos = [], selected = to
   const jumpTodo = (id: string) => document.getElementById(`todo-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   return (
-    <Card className="calendar-v72 border-cyan-200/20 bg-gradient-to-br from-sky-400/10 via-indigo-400/10 to-fuchsia-400/10 text-white">
+    <Card className="calendar-v73 border-cyan-200/20 bg-gradient-to-br from-sky-400/10 via-indigo-400/10 to-fuchsia-400/10 text-white">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-black tracking-[0.25em] text-cyan-100/60">TODO CALENDAR SYNC v72</p>
+          <p className="text-xs font-black tracking-[0.25em] text-cyan-100/60">FORCE TODO CALENDAR SYNC v73</p>
           <h2 className="mt-1 text-2xl font-black">TODO連携カレンダー</h2>
-          <p className="mt-1 text-sm text-white/60">時間ありTODOは時間帯へ、時間なしTODOは「いつでもTODO」へ自動表示。</p>
+          <p className="mt-1 text-sm text-white/60">
+            snapshot待ちではなく、todos / calendar_events から直接再取得して反映する版。
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setSelected?.(addDays(selected, -1))} className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-black">前日</button>
           <button onClick={() => setSelected?.(todayKey())} className="rounded-2xl bg-white/15 px-3 py-2 text-sm font-black">今日</button>
           <button onClick={() => setSelected?.(addDays(selected, 1))} className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-black">翌日</button>
-          <button onClick={() => Promise.resolve(refreshSnapshot?.()).catch(() => undefined)} className="rounded-2xl bg-cyan-300/20 px-3 py-2 text-sm font-black">TODO同期</button>
+          <button onClick={() => syncNow().catch(() => setSyncMessage("同期に失敗しました。"))} className="rounded-2xl bg-cyan-300/20 px-3 py-2 text-sm font-black">TODO同期</button>
           <button onClick={() => setAutoSync((v) => !v)} className="rounded-2xl bg-white/10 px-3 py-2 text-sm font-black">自動同期 {autoSync ? "ON" : "OFF"}</button>
         </div>
       </div>
+      {syncMessage && <p className="mt-3 rounded-2xl bg-white/10 px-3 py-2 text-xs font-black text-white/65">{syncMessage}</p>}
 
       <div className="mt-4 grid gap-2 sm:grid-cols-[76px_repeat(7,minmax(0,1fr))]">
         <div className="grid place-items-center rounded-3xl bg-white/10 p-3 text-2xl font-black">{Number(selected.slice(5, 7))}月</div>
         {week.map((date) => {
           const d = new Date(`${date}T00:00:00`);
           const active = date === selected;
-          const count = events.filter((e) => eventDate(e) === date).length + todos.filter((t) => !t?.done && todoDate(t) === date).length;
+          const count = mergedEvents.filter((e) => eventDate(e) === date).length + mergedTodos.filter((t) => !t?.done && todoDate(t, date) === date).length;
           return (
             <button key={date} onClick={() => setSelected?.(date)} className={`rounded-3xl border p-3 text-center transition ${active ? "border-cyan-200 bg-cyan-300/30" : "border-white/10 bg-black/25 hover:bg-white/10"}`}>
               <p className="text-xs font-black text-white/70">{["日", "月", "火", "水", "木", "金", "土"][d.getDay()]}</p>
@@ -213,8 +298,6 @@ export function CalendarTodoTimelineV72({ events = [], todos = [], selected = to
     </Card>
   );
 }
-
-type Candidate = { title: string; date?: string | null; time?: string | null; note?: string; confidence?: number; sourceText?: string };
 
 export function PhotoCalendarImportV72({ refreshSnapshot, setSelected }: Props) {
   const [preview, setPreview] = useState("");
@@ -292,7 +375,7 @@ export function PhotoCalendarImportV72({ refreshSnapshot, setSelected }: Props) 
     setBusy(true);
     try {
       const note = [c.note ? `写真AIメモ: ${c.note}` : "", c.sourceText ? `読み取り根拠: ${c.sourceText}` : "", filename ? `画像: ${filename}` : ""].filter(Boolean).join("\n");
-      const { error } = await supabase.from("events").insert({ title, event_date: date, start_time: time || null, note });
+      const { error } = await supabase.from("calendar_events").insert({ title, event_date: date, start_time: time || null, note });
       if (error) throw error;
       setSelected?.(date);
       await Promise.resolve(refreshSnapshot?.());
@@ -308,9 +391,9 @@ export function PhotoCalendarImportV72({ refreshSnapshot, setSelected }: Props) 
     <Card className="border-cyan-200/20 bg-gradient-to-br from-cyan-400/10 via-indigo-400/10 to-fuchsia-400/10 text-white">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-black tracking-[0.25em] text-cyan-100/60">PHOTO TO CALENDAR v72</p>
+          <p className="text-xs font-black tracking-[0.25em] text-cyan-100/60">PHOTO TO CALENDAR v73</p>
           <h2 className="mt-1 text-2xl font-black">写真から予定を読み取る</h2>
-          <p className="mt-1 text-sm text-white/60">画像は自動圧縮。AIが失敗しても手動候補から追加できるよ。</p>
+          <p className="mt-1 text-sm text-white/60">保存先を calendar_events に修正。AIが失敗しても手動候補から追加できるよ。</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <label className="cursor-pointer rounded-2xl bg-white/15 px-4 py-3 text-sm font-black transition hover:bg-white/20">

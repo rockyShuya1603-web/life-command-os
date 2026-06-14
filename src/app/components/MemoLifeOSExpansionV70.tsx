@@ -212,7 +212,7 @@ async function saveDraft(draft: Draft, refreshSnapshot?: Props["refreshSnapshot"
     const { error } = await supabase.from("todos").insert({ title: draft.title, done: false, priority: "normal", due_date: draft.date || todayKey(), due_time: draft.time || null });
     if (error) throw error;
   } else if (draft.kind === "calendar") {
-    const { error } = await supabase.from("events").insert({ title: draft.title, event_date: draft.date || todayKey(), start_time: draft.time || null, note: draft.note || null });
+    const { error } = await supabase.from("calendar_events").insert({ title: draft.title, event_date: draft.date || todayKey(), start_time: draft.time || null, note: draft.note || null });
     if (error) throw error;
   } else if (draft.kind === "budget") {
     if (!draft.amount) throw new Error("金額が読み取れないため、未処理メモに送るのが安全です。");
