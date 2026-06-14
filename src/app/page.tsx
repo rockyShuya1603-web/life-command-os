@@ -7,6 +7,7 @@ import LifeLevelGachaV52 from "./components/LifeLevelGachaV52";
 import LifeCommandExpansionV65_69, { LifeLevelProV66, SmartQuestionSearchV68, WeeklyReviewV69, TrashHistoryV69 } from "./components/LifeCommandExpansionV65_69";
 import MemoLifeOSExpansionV70 from "./components/MemoLifeOSExpansionV70";
 import HomeOrganizerV71 from "./components/HomeOrganizerV71";
+import { PhotoCalendarImportV72, CalendarTodoTimelineV72 } from "./components/CalendarTodoPhotoFixV72";
 
 type PageKey =
   | "home"
@@ -4529,8 +4530,10 @@ function CalendarPanel({ snapshot, refreshSnapshot }: { snapshot: Snapshot | nul
   return (
     <div className="space-y-4">
       <CalendarQuickAddPanel refreshSnapshot={refreshSnapshot} setSelected={setSelected} setCursorMonth={setCursorMonth} />
-      <PhotoCalendarImportV64 refreshSnapshot={refreshSnapshot} setSelected={setSelected} />
-      <CalendarTimelineInlineV64 events={snapshot?.events || []} todos={snapshot?.todos || []} selected={selected} setSelected={setSelected} />
+
+      <PhotoCalendarImportV72 refreshSnapshot={refreshSnapshot} setSelected={setSelected} />
+
+      <CalendarTodoTimelineV72 events={snapshot?.events || []} todos={snapshot?.todos || []} selected={selected} setSelected={setSelected} refreshSnapshot={refreshSnapshot} />
 <CalendarEventOpsPanel events={snapshot?.events || []} refreshSnapshot={refreshSnapshot} setSelected={setSelected} />
       <GlassCard className="calendar-mobile-agenda">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
