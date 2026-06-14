@@ -3500,7 +3500,7 @@ function TodosPanel({ snapshot, refreshSnapshot }: PanelProps) {
 
       if (columnMismatch) {
         const fallbackPayload = {
-          title: cleanTitle,
+          title: dueTime ? `${dueTime} ${cleanTitle}` : cleanTitle,
           priority,
           due_date: dueDate || null,
           done: false,
@@ -3581,7 +3581,9 @@ function TodosPanel({ snapshot, refreshSnapshot }: PanelProps) {
         const fallbackResult = await supabase
           .from("todos")
           .update({
-            title: nextEdit.title,
+            title: nextEdit.due_time && !nextEdit.title.includes(nextEdit.due_time)
+              ? `${nextEdit.due_time} ${nextEdit.title}`
+              : nextEdit.title,
             priority: nextEdit.priority,
             due_date: nextEdit.due_date,
           })

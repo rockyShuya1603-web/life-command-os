@@ -127,6 +127,17 @@ function eventTime(event: any) {
   return normalizeTime(event?.start_time || event?.time || event?.event_time || event?.scheduled_time) || inferTime(`${event?.title || ""} ${event?.note || ""}`);
 }
 
+
+function schemaMismatchV74(error: unknown) {
+  const message = String((error as any)?.message || error || "");
+  return /start_time|end_time|due_time|schema cache|column|Could not find/i.test(message);
+}
+
+function withTimeInTextV74(title: string, time: string) {
+  if (!time || title.includes(time)) return title;
+  return `${time} ${title}`;
+}
+
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <section className={`rounded-[1.6rem] border border-white/10 bg-black/25 p-4 shadow-xl backdrop-blur-xl ${className}`}>{children}</section>;
 }
@@ -207,10 +218,10 @@ export function CalendarTodoTimelineV72({ events = [], todos = [], selected = to
     <Card className="calendar-v73 border-cyan-200/20 bg-gradient-to-br from-sky-400/10 via-indigo-400/10 to-fuchsia-400/10 text-white">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-black tracking-[0.25em] text-cyan-100/60">FORCE TODO CALENDAR SYNC v73</p>
+          <p className="text-xs font-black tracking-[0.25em] text-cyan-100/60">SCHEMA SAFE TODO CALENDAR v74</p>
           <h2 className="mt-1 text-2xl font-black">TODO連携カレンダー</h2>
           <p className="mt-1 text-sm text-white/60">
-            snapshot待ちではなく、todos / calendar_events から直接再取得して反映する版。
+            DB列が足りない場合でも、タイトル/メモ内の時刻を拾って表示。SQL実行後は正式な時刻列で動く。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -374,9 +385,30 @@ export function PhotoCalendarImportV72({ refreshSnapshot, setSelected }: Props) 
     const time = normalizeTime(c.time);
     setBusy(true);
     try {
-      const note = [c.note ? `写真AIメモ: ${c.note}` : "", c.sourceText ? `読み取り根拠: ${c.sourceText}` : "", filename ? `画像: ${filename}` : ""].filter(Boolean).join("\n");
-      const { error } = await supabase.from("calendar_events").insert({ title, event_date: date, start_time: time || null, note });
-      if (error) throw error;
+      const note = [time ? `時刻: ${time}` : "", c.note ? `写真AIメモ: ${c.note}` : "", c.sourceText ? `読み取り根拠: ${c.sourceText}` : "", filename ? `画像: ${filename}` : ""].filter(Boolean).join("\n");
+
+      const fullResult = await supabase
+        .from("calendar_events")
+        .insert({ title, event_date: date, start_time: time || null, note })
+        .select("*")
+        .single();
+
+      if (fullResult.error) {
+        if (!schemaMismatchV74(fullResult.error)) throw fullResult.error;
+
+        const fallbackResult = await supabase
+          .from("calendar_events")
+          .insert({
+            title: withTimeInTextV74(title, time),
+            event_date: date,
+            note,
+          })
+          .select("*")
+          .single();
+
+        if (fallbackResult.error) throw fallbackResult.error;
+      }
+
       setSelected?.(date);
       await Promise.resolve(refreshSnapshot?.());
       setMessage(time ? `${date} ${time} に予定を追加しました。` : `${date} の終日予定として追加しました。`);
@@ -391,9 +423,9 @@ export function PhotoCalendarImportV72({ refreshSnapshot, setSelected }: Props) 
     <Card className="border-cyan-200/20 bg-gradient-to-br from-cyan-400/10 via-indigo-400/10 to-fuchsia-400/10 text-white">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-xs font-black tracking-[0.25em] text-cyan-100/60">PHOTO TO CALENDAR v73</p>
+          <p className="text-xs font-black tracking-[0.25em] text-cyan-100/60">PHOTO TO CALENDAR v74</p>
           <h2 className="mt-1 text-2xl font-black">写真から予定を読み取る</h2>
-          <p className="mt-1 text-sm text-white/60">保存先を calendar_events に修正。AIが失敗しても手動候補から追加できるよ。</p>
+          <p className="mt-1 text-sm text-white/60">DB列不足でも fallback 保存する版。SQL実行後は正式な時刻列で保存できるよ。</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <label className="cursor-pointer rounded-2xl bg-white/15 px-4 py-3 text-sm font-black transition hover:bg-white/20">
